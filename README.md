@@ -42,7 +42,8 @@ Supported databases
 - SQLite 3;
 - PostgreSQL 9.6 or later.
 
-##Third-party dependencies
+Third-party dependencies
+------------------------
 
 These dependencies are required for the framework to work correctly: 
 - Twig-2.x - used to generate and render templates for web pages (https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip);
@@ -56,7 +57,8 @@ This behavior can be disabled by specifying the input argument:
 --download-requires=false
 ```
 
-##Usage
+Usage
+-----
 
 ```bash
 FlyCubePHP/bin> php ./fly_cube_php --help
@@ -75,7 +77,8 @@ Options include:
     --version                           Print the version [-v]
 ```
 
-##Create new FlyCubePHP project
+Create new FlyCubePHP project
+-----------------------------
 
 ```bash
 FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject 
@@ -99,16 +102,19 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 === FlyCubePHP: Dir: /home/[USER]/FlyCubePHProjects/MyProject ===
 ```
 
-##Development guides
+Development guides
+------------------
 
 - [RUS](https://github.com/AnthonySnow887/FlyCubePHP/blob/main/FlyCubePHP_Development_Guide_RUS.pdf)
 - ENG: Coming soon...
 
-##Basic system requirements
+Basic system requirements
+-------------------------
 
 - PHP >= 7.0
 
-##Additional required PHP modules
+Additional required PHP modules
+-------------------------------
 
 - php7-ctype
 - php7-json
@@ -122,16 +128,19 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 - php7-xmlwriter
 - php7-zip
 
-##Operating systems tested
+Operating systems tested
+------------------------
 
 - OpenSUSE 15.1 and later
 - CentOS 8
 - Astra Linux SE 1.6 (Linux kernel: 4.15.3-1)
 
-#Releases
+Releases
+--------
 
 Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP).
 
-##License
+License
+-------
 
 FlyCubePHP is licensed under the MIT License. See the LICENSE file for details.
