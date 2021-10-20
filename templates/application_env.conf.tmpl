@@ -1,0 +1,142 @@
+#
+# This is FlyCubePHP application environment configuration file.
+#
+
+#
+# --- env type ---
+#
+# NOTE: default env-type: development
+# NOTE: supported env-types: production / development
+#
+# NOTE: enable 'FLY_CUBE_PHP_ENV: production' in production mode!
+#
+#FLY_CUBE_PHP_ENV: production
+
+#
+# --- application settings ---
+#
+APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
+
+#
+# --- cache settings ---
+#
+# NOTE: disable this settings in production mode!
+#
+# In production mode:
+#  - rebuild cache      - default false
+#  - rebuild twig cache - default false
+#
+# In development mode:
+#  - rebuild cache      - default true
+#  - rebuild twig cache - default true
+#
+#FLY_CUBE_PHP_REBUILD_CACHE: false
+#FLY_CUBE_PHP_REBUILD_TWIG_CACHE: false
+
+#
+# --- protect settings ---
+#
+# NOTE: enable needed settings in production mode.
+#
+# In production mode:
+#  - CSRF protect       - default true
+#  - CSP protect        - default false
+#
+# In development mode:
+#  - CSRF protect       - default true
+#  - CSP protect        - default false
+#
+# Cookie salt - generate by command 'fly_cube_php --secret --secret-length=16'
+#
+#FLY_CUBE_PHP_CSRF_PROTECT: true
+#FLY_CUBE_PHP_CSP_PROTECT: false
+#FLY_CUBE_PHP_COOKIE_SIGNED_SALT: "signed cookie"
+#FLY_CUBE_PHP_COOKIE_ENCRYPTED_SALT: "authenticated encrypted cookie"
+
+#
+# --- controllers settings ---
+#
+# NOTE: disable this settings in production mode!
+#
+# In production mode:
+#  - enable action output           - default false
+#  - enable twig strict variables   - default true
+#  - enable twig debug extension    - default false
+#  - check duplicate helpers        - default false
+#
+# In development mode:
+#  - enable action output           - default true
+#  - enable twig strict variables   - default true
+#  - enable twig debug extension    - default true
+#  - check duplicate helpers        - default true
+#
+#FLY_CUBE_PHP_ENABLE_ACTION_OUTPUT: false
+#FLY_CUBE_PHP_ENABLE_TWIG_STRICT_VARIABLES: false
+#FLY_CUBE_PHP_ENABLE_TWIG_DEBUG_EXTENSION: true
+#FLY_CUBE_PHP_CHECK_DUPLICATE_HELPERS: false
+
+#
+# --- plugins system settings ---
+#
+# In production mode:
+#  - enable plugins core    - default true
+#  - check plugins count    - default true
+#
+# In development mode:
+#  - enable plugins core    - default true
+#  - check plugins count    - default true
+#
+#FLY_CUBE_PHP_ENABLE_PLUGINS_CORE: false
+#FLY_CUBE_PHP_CHECK_PLUGINS_COUNT: false
+
+#
+# --- extensions settings ---
+#
+# In production mode:
+#  - enable extension support   - default false
+#  - extensions folder          - default "extensions"
+#
+# In development mode:
+#  - enable extension support   - default false
+#  - extensions folder          - default "extensions"
+#
+#FLY_CUBE_PHP_ENABLE_EXTENSION_SUPPORT: true
+#FLY_CUBE_PHP_EXTENSIONS_FOLDER: "extensions"
+
+#
+# --- logging settings ---
+#
+# Supported log levels:
+#  - debug
+#  - info
+#  - warning
+#  - error
+#
+# In production mode:
+#  - enable log                     - default true (enable/disable logging system)
+#  - enable rotate log              - default true (enable/disable rotating logging)
+#  - log rotate max files           - default 10
+#  - log rotate file date format    - default "Y_m_d"
+#  - log rotate file name format    - default "{date}_{filename}"
+#  - log level                      - default warning
+#  - log folder                     - default "log"
+#  - date time format               - default "d.m.Y H:i:s"
+#
+# In development mode:
+#  - enable log                     - default true (enable/disable logging system)
+#  - enable rotate log              - default false (enable/disable rotating logging)
+#  - log rotate max files           - default 10
+#  - log rotate file date format    - default "Y_m_d"
+#  - log rotate file name format    - default "{date}_{filename}"
+#  - log level                      - default debug
+#  - log folder                     - default "log"
+#  - date time format               - default "d.m.Y H:i:s"
+#
+#FLY_CUBE_PHP_ENABLE_LOG: true
+#FLY_CUBE_PHP_ENABLE_ROTATE_LOG: false
+#FLY_CUBE_PHP_LOG_ROTATE_MAX_FILES: 10
+#FLY_CUBE_PHP_LOG_ROTATE_FILE_DATE_FORMAT: "Y_m_d"
+#FLY_CUBE_PHP_LOG_ROTATE_FILE_NAME_FORMAT: "{date}_{filename}"
+#FLY_CUBE_PHP_LOG_LEVEL: debug
+#FLY_CUBE_PHP_LOG_FOLDER: "log"
+#FLY_CUBE_PHP_LOG_DATE_TIME_FORMAT: "d.m.Y H:i:s"

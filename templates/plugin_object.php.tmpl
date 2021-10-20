@@ -1,0 +1,37 @@
+<?php
+/**
+ * Created by FlyCubePHP generator.
+ * User: {{ USER }}
+ * Date: {{ DATE }}
+ * Time: {{ TIME }}
+ */
+
+class {{ PLUGIN_CLASS_NAME }} extends \FlyCubePHP\ComponentsCore\BaseComponent
+{
+    /**
+     * BaseComponent constructor.
+     * @param string $name
+     * @param string $version
+     * @param string $compat_version
+     * @param string $description
+     */
+    function __construct(string $name,
+                         string $version,
+                         string $compat_version,
+                         string $description = "") {
+        parent::__construct($name, $version, $compat_version, $description);
+
+        // TODO Append here plugin dependence if needed...
+    }
+
+    /**
+     * @brief Метод инициализации плагина
+     * @return bool
+     *
+     * Именно в данном методе должна происходить проверка и формирование данных и объектов плагина.
+     */
+    public function init(): bool {
+        // TODO Set here your plugin init code...
+        return false;
+    }
+}

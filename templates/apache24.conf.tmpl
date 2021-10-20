@@ -1,0 +1,59 @@
+#
+# Created by FlyCubePHP generator.
+# User: {{ USER }}
+# Date: {{ DATE }}
+# Time: {{ TIME }}
+#
+
+#
+# NOTE: Uncomment needed apache 2.4 config.
+#
+
+# ----------------------------------------------------------------
+# NOTE: This is config for rpm-base systems (CentOS, OpenSUSE...)
+# ----------------------------------------------------------------
+
+# --- For listen eny port ---
+Listen 8080
+<VirtualHost *:8080>
+    # Set your server name
+    #ServerName my-server.com
+
+    Alias /{{ APP_NAME }} "{{ APP_PATH }}"
+
+    <Directory "{{ APP_PATH }}">
+      Options Indexes FollowSymLinks
+      Require all granted
+
+      # Redirect all requests to index.php
+      RewriteEngine On
+      RewriteBase /{{ APP_NAME }}
+      RewriteRule ^(.+)$ index.php [QSA,L]
+   </Directory>
+</VirtualHost>
+
+
+# --------------------------------------------------------------------
+# NOTE: This is config for debian systems (Astra Linux 1.6 supported)
+# --------------------------------------------------------------------
+
+## --- For listen eny port ---
+#Listen 8080
+#<VirtualHost *:8080>
+#    # Set your server name
+#    #ServerName my-server.com
+#
+#    Alias "/{{ APP_NAME }}" "{{ APP_PATH }}"
+#    AliasMatch "^/{{ APP_NAME }}" "{{ APP_PATH }}"
+#    DocumentRoot {{ APP_PATH }}
+#
+#    # Redirect all requests to index.php
+#    RewriteEngine On
+#    RewriteRule . /index.php [QSA,L]
+#
+#    <Directory "{{ APP_PATH }}">
+#      Options Indexes FollowSymLinks
+#      AllowOverride All
+#      Require all granted
+#   </Directory>
+#</VirtualHost>

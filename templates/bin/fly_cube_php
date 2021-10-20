@@ -1,0 +1,2569 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Created by PhpStorm.
+ * User: anton
+ * Date: 06.08.21
+ * Time: 16:19
+ */
+
+error_reporting(E_ALL);
+
+if (version_compare(PHP_VERSION, '7.0') < 0)
+    die("ERROR: Requires PHP 7.0 or above\r\n");
+
+if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php"))
+    include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php";
+
+if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnvLoader.php")) {
+    $pwd = getcwd();
+    chdir(__DIR__."/../"); // go to app root
+    include_once __DIR__ . "/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnvLoader.php";
+    chdir($pwd); // go to pwd
+}
+
+if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.php")) {
+    $pwd = getcwd();
+    chdir(__DIR__."/../"); // go to app root
+    include_once __DIR__ . "/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.php";
+    chdir($pwd); // go to pwd
+
+    class FK_BaseErrorHandler extends \FlyCubePHP\Core\Error\BaseErrorHandler
+    {
+        /**
+         * Метод обработки ошибки
+         * @param int $errCode - код ошибки
+         * @param string $errStr - текст с ошибкой
+         * @param string $errFile - файл с ошибкой
+         * @param int $errLine - номер строки с ошибкой
+         * @param string $errFileContent - часть кода файла с ошибкой
+         * @param string $backtrace - стек вызовов
+         * @return bool
+         */
+        final public function evalError(int $errCode,
+                                        string $errStr,
+                                        string $errFile,
+                                        int $errLine,
+                                        string $errFileContent,
+                                        string $backtrace): bool {
+            $message = $errStr;
+            $file = str_replace(dirname(__DIR__), "", $errFile);
+            $line = $errLine;
+            $type = $this->errorTypeByValue($errCode);
+
+            $errorTitle = "FlyCubePHP Error";
+            $errorTitle2 = "in " . basename($file);
+            $errorBody = "$message\r\n\r\nFile: $file (line: $line)\r\nType: $type\r\n";
+            $errorBody .= "PHP " . PHP_VERSION . " (" . PHP_OS . ")\r\n";
+            $errorBody .= $this->makeTrace('Code:', $errFileContent, $errLine);
+            $errorBody .= $this->makeTrace('Backtrace:', $backtrace);
+            $this->renderError($errorTitle, $errorTitle2, $errorBody);
+            die();
+        }
+
+        /**
+         * Метод обработки исключения
+         * @param \Throwable $ex
+         * @return mixed
+         */
+        final public function evalException(\Throwable $ex) {
+            $isAddedCode = false;
+            $isAddedBacktrace = false;
+
+            $message = $ex->getMessage();
+            $file = str_replace(dirname(__DIR__), "", $ex->getFile());
+            $line = $ex->getLine();
+
+            $errorTitle = "FlyCubePHP Exception";
+            $errorTitle2 = "in " . basename($ex->getFile());
+            $errorBody = "$message\r\n";
+
+            if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
+                && $ex->hasAdditionalMessage() === true) {
+                $additionalMessage = $ex->additionalMessage();
+                $errorBody .= "$additionalMessage\r\n";
+            }
+            $errorBody .= "\r\nFile: $file (line: $line)\r\n";
+            $errorBody .= "PHP " . PHP_VERSION . " (" . PHP_OS . ")\r\n";
+
+            if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")) {
+                $tag = $ex->tag();
+                $errorBody .= "Exception tag: \"$tag\"\r\n";
+
+                switch ($ex->type()) {
+                    case \FlyCubePHP\Core\Error\ErrorType::DEFAULT: {
+                        $errorTitle = "FlyCubePHP: Default Exception";
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::ASSET_PIPELINE: {
+                        $className = $ex->className();
+                        $method = $ex->method();
+                        $assetName = str_replace(dirname(__DIR__), "", $ex->assetName());
+
+                        $errorTitle = "FlyCubePHP: Asset Pipeline Exception";
+                        $errorBody .= "Asset Pipeline class: $className\r\nMethod: $method\r\nAsset name: $assetName\r\n";
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::ACTIVE_RECORD: {
+                        $activeRecordClass = $ex->activeRecordClass();
+                        $activeRecordMethod = $ex->activeRecordMethod();
+
+                        $errorTitle = "FlyCubePHP: Active Record Exception";
+                        $errorTitle2 = "in $activeRecordClass#$activeRecordMethod";
+                        $errorBody .= "Active Record class: $activeRecordClass\r\nMethod: $activeRecordMethod\r\n";
+                        if ($ex->hasErrorDatabase()) {
+                            $adapterClass = $ex->errorDatabase()->adapterClass();
+                            $adapterName = $ex->errorDatabase()->adapterName();
+                            $errorBody .= "Database adapter name: $adapterName\r\nDatabase adapter class: $adapterClass\r\n";
+                            if (!empty($ex->errorDatabase()->sqlQueryWithParams())) {
+                                $sqlQuery = $ex->errorDatabase()->sqlQueryWithParams();
+                                $errorBody .= "\r\n";
+                                $errorBody .= $this->makeDiv('SQL Query:', $sqlQuery);
+                            }
+                        }
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::CONTROLLER: {
+                        $controller = $ex->controller();
+                        $action = $ex->action();
+
+                        $errorTitle = "FlyCubePHP: Controller Exception";
+                        $errorTitle2 = "in $controller#$action";
+                        $errorBody .= "Controller: $controller\r\nAction: $action\r\n";
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::DATABASE: {
+                        $adapterClass = $ex->adapterClass();
+                        $adapterMethod = $ex->adapterMethod();
+                        $adapterName = $ex->adapterName();
+                        $sqlQuery = $ex->sqlQueryWithParams();
+
+                        $errorTitle = "FlyCubePHP: Database Exception";
+                        $errorTitle2 = "in $adapterClass#$adapterMethod";
+                        $errorBody .= "Adapter name: $adapterName\r\nAdapter class: $adapterClass\r\nMethod: $adapterMethod\r\n";
+                        if (!empty($sqlQuery)) {
+                            $errorBody .= "\r\n";
+                            $errorBody .= $this->makeDiv('SQL Query:', $sqlQuery);
+                        }
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::ROUTES: {
+                        $uri = $ex->uri();
+                        $controller = $ex->controller();
+                        $action = $ex->action();
+                        $routeType = $ex->routeTypeStr();
+
+                        $errorTitle = "FlyCubePHP: Routes Exception";
+                        $errorBody .= "URL: $uri\r\nHTTP Method: $routeType\r\nController: $controller\r\nAction: $action\r\n";
+                        break;
+                    }
+                    case \FlyCubePHP\Core\Error\ErrorType::COOKIE: {
+                        $cookieClass = $ex->className();
+                        $cookieMethod = $ex->method();
+                        $cookieData = $ex->cookieKeyWithOptions();
+
+                        $errorTitle = "FlyCubePHP: Cookie Exception";
+                        $errorBody .= "Cookie class: $cookieClass\r\nMethod: $cookieMethod\r\n";
+                        if (!empty($cookieData)) {
+                            $errorBody .= "<br>";
+                            $errorBody .= $this->makeDiv('Cookie data:', $cookieData);
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                // --- add additional data ---
+                if ($ex->hasAdditionalData() === true) {
+                    $additionalCode = [];
+                    foreach ($ex->additionalData() as $key => $value) {
+                        if (strcmp($key, "Backtrace") === 0)
+                            continue;
+                        $pos = strpos($key, " error file");
+                        if ($pos !== false) {
+                            $tmpName = substr($key, 0, $pos);
+                            $additionalCode[] = $tmpName;
+                            continue;
+                        }
+                        if (strpos($key, " error line") !== false)
+                            continue;
+                        $value = str_replace(dirname(__DIR__), "", $value);
+                        if (strlen($value) > 100)
+                            $value = $this->splitStr($value, "/", 100);
+                        $errorBody .= "\r\n$key: $value";
+                    }
+
+                    $errorBody .= "\r\n";
+                    if (!empty($additionalCode)) {
+                        foreach ($additionalCode as $code) {
+                            $addFile = $ex->additionalDataValue("$code error file");
+                            $addFileName = $addFile;
+                            $addLine = $ex->additionalDataValue("$code error line");
+                            if (!is_null($addFile) && !is_null($addLine))
+                                $errorBody .= $this->makeTrace("Code ($code: $addFileName):", \FlyCubePHP\Core\Error\ErrorHandlingCore::fileCodeTrace($addFile, $addLine), $addLine, false);
+                        }
+                    }
+                    $outName = str_replace(dirname(__DIR__), "", $file);
+                    $errorBody .= $this->makeTrace("Code ($outName):", \FlyCubePHP\Core\Error\ErrorHandlingCore::fileCodeTrace($file, $line), $line, false);
+                    if ($ex->hasAdditionalDataKey("Backtrace"))
+                        $errorBody .= $this->makeTrace('Backtrace:', $ex->additionalDataValue("Backtrace"));
+                    else
+                        $errorBody .= $this->makeTrace('Backtrace:', $ex->getTraceAsString());
+
+                    $isAddedCode = true;
+                    $isAddedBacktrace = true;
+                }
+            }
+            if ($isAddedCode !== true || $isAddedBacktrace !== true)
+                $errorBody .= "\r\n";
+            if ($isAddedCode !== true) {
+                $outName = str_replace(dirname(__DIR__), "", $file);
+                $errorBody .= $this->makeTrace("Code ($outName):", \FlyCubePHP\Core\Error\ErrorHandlingCore::fileCodeTrace($file, $line), $line, false);
+            }
+            if ($isAddedBacktrace !== true)
+                $errorBody .= $this->makeTrace('Backtrace:', $ex->getTraceAsString());
+
+            $this->renderError($errorTitle, $errorTitle2, $errorBody);
+            die();
+        }
+
+        final private function renderError(string $title = "FlyCubePHP Error",
+                                           string $title2 = "",
+                                           string $errorBody) {
+            $html = "\r\n\r\n=== FlyCubePHP: ERROR  =========";
+            $html .= "\r\nError title: $title ($title2)\r\n\r\n$errorBody";
+            $html .= "\r\n=== FlyCubePHP: END ERROR =========\r\n\r\n";
+            echo $html;
+        }
+
+        final private function makeTrace(string $title,
+                                         string $trace,
+                                         int $lineError = -1,
+                                         bool $buildAppPath = true): string {
+            $tmpTraceCount = [];
+            $tmpTraceData = [];
+            $tmpTraceCountMaxLength = 0;
+            $traceLst = [];
+            preg_match_all('/.*#([0-9]{1,})\s.*/', $trace, $matches, PREG_OFFSET_CAPTURE);
+            if (count($matches) >= 2) {
+                $mCount = count($matches[0]);
+                for ($i = 0; $i < $mCount; $i++) {
+                    $str = $matches[0][$i][0];
+                    $pos = strpos($str, "#");
+                    if ($pos !== false)
+                        $traceLst[] = substr($str, $pos + 1, strlen($str));
+                }
+            }
+            foreach ($traceLst as $item) {
+                if (empty($item))
+                    continue;
+                $pos = strpos($item, " ");
+                if ($pos === false)
+                    continue;
+                $num = trim(substr($item, 0, $pos + 1));
+                $item = substr($item, $pos + 1, strlen($item));
+                if ($buildAppPath === true)
+                    $item = str_replace(dirname(__DIR__), "", $item);
+                $item = trim($item, "\n\r\0\x0B");
+                $tmpTraceCount[] = strval($num);
+                $tmpTraceData[] = strval($item);
+                if (strlen(strval($num)) > $tmpTraceCountMaxLength)
+                    $tmpTraceCountMaxLength = strlen(strval($num));
+            }
+            $tmpTraceCountMaxLength += 1;
+            if ($lineError !== -1)
+                $tmpTraceCountMaxLength += 4;
+
+            $tmpTrace = "";
+            for ($i = 0; $i < count($tmpTraceData); $i++) {
+                $str = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($tmpTraceCount[$i], $tmpTraceCountMaxLength, 'before');
+                if (intval($tmpTraceCount[$i]) == $lineError) {
+                    $str = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($tmpTraceCount[$i], $tmpTraceCountMaxLength - 5, 'before');
+                    $str = " ==> $str";
+                }
+                $strVal = $tmpTraceData[$i];
+                $tmpTrace .= "$str | $strVal\r\n";
+            }
+            return $this->makeDiv($title, $tmpTrace);
+        }
+
+        final private function makeDiv(string $title,
+                                       string $data): string {
+            $title = trim($title);
+            $data = trim($data);
+            $html = "\r\n$title\r\n";
+            $html .= "-------------------------\r\n";
+            $html .= "$data\r\n";
+            $html .= "-------------------------\r\n";
+            return $html;
+        }
+
+        /**
+         * Вставить в строку пробелы после разделителя по максимальной длине
+         * @param string $str - строка
+         * @param string $splitter - разделитель для поиска
+         * @param int $maxlen - максимальная длина
+         * @return string
+         */
+        final private function splitStr(string $str, string $splitter, int $maxlen): string {
+            $pos = -1;
+            while (true) {
+                $lastPos = $pos;
+                $pos = strpos($str, $splitter, $pos + 1);
+                if ($pos === false)
+                    break;
+                if ($pos >= $maxlen) {
+                    $pos = $lastPos;
+                    break;
+                }
+            }
+            if ($pos === false || $pos <= 0)
+                return $str;
+            $strStart = substr($str, 0, $pos);
+            $strEnd = substr($str, $pos + strlen($splitter), strlen($str));
+            return $strStart . "$splitter " . $strEnd;
+        }
+
+        /**
+         * Получить название ошибки PHP по ее коду
+         * @param $type
+         * @return string
+         */
+        private function errorTypeByValue($type): string {
+            $constants  = get_defined_constants(true);
+            foreach ($constants['Core'] as $key => $value) { // Each Core constant
+                if (preg_match('/^E_/', $key)) {    // Check error constants
+                    if ($type == $value)
+                        return $key;
+                }
+            }
+            return "???";
+        }
+    }
+    \FlyCubePHP\Core\Error\ErrorHandlingCore::instance()->setErrorHandler(new FK_BaseErrorHandler());
+}
+
+
+const URL_TWIG = "https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip";
+const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.1.0.zip";
+const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.5.2.zip";
+const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip";
+const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
+
+/**
+ * Вывести справку приложения
+ * @param string $app - название приложения
+ */
+function printHelp(string $app) {
+    $HELP = <<<EOT
+
+Usage: $app [options]
+
+Options include:
+
+    --help                              Show this message [-h, -?]
+    --version                           Print the version [-v]
+    --output=[true/false]               Show output (optional)
+    --env=[VALUE]                       Set current environment (production/development; default: development)
+    
+    --new [option]                      Create new object (project/controller/model/migration/plugin/...etc)
+    --project                           Create new FlyCubePHP project
+    --controller                        Create new controller
+    --controller-api                    Create new API controller
+    --model                             Create new model
+    --migration                         Create new migration
+    --plugin                            Create new FlyCubePHP plugin
+    --plugin-gui                        Create new FlyCubePHP Gui plugin
+    --plugin-controller                 Create new FlyCubePHP plugin controller
+    --plugin-controller-api             Create new FlyCubePHP plugin API controller
+    --plugin-model                      Create new FlyCubePHP plugin model
+    --plugin-migration                  Create new FlyCubePHP plugin migration
+    --path=[VALUE]                      Set new project root path (optional; default: user home)
+    --download-requires=[true/false]    Download FlyCubePHP requires in new project (optional; default: true)
+    --name=[VALUE]                      Set new object name
+    --plugin-name=[VALUE]               Set plugin name
+    --actions=[VALUE(,VALUE...)]        Set new controller actions list
+    
+    --db-create                         Create database for current environment
+    --db-create-all                     Create databases for all environments (development and production)
+    --db-drop                           Drop database for current environment
+    --db-drop-all                       Drop databases for all environments (development and production)
+    --db-setup                          Init database for current environment
+    --db-reset                          Re-Init database for current environment
+    --db-seed                           Load database Seed.php file
+    --db-migrate                        Start database migrations
+    --db-migrate-redo                   Start re-install last database migration
+    --db-migrate-status                 Select migrations status
+    --db-rollback                       Start uninstall last database migration
+    --db-rollback-all                   Start uninstall all database migrations
+    --db-version                        Select current database migration version
+    --db-schema-dump                    Create database schema dump
+    --db-schema-load                    Re-Create database and load schema dump     
+    --to-version=[VALUE]                Set needed migration version (optional; if 0 - uninstall all migrations)
+    --step=[VALUE]                      Set needed number of steps for uninstall (re-install) migrations (optional; default: 1)
+    
+    --routes                            Show application routes
+    
+    --secret                            Create application secret key
+    --secret-length=[VALUE]             Set application secret key length (value > 0)
+    
+    --assets-precompile                 Build assets cache
+    --clear-cache                       Clear all application cache
+    --clear-logs                        Clear all application logs
+    --clear-php-sessions                Clear all php sessions
+    
+Examples:
+
+1. Create new FlyCubePHP project:
+    $app --new --project --name=MyProject
+
+2. Create new controller without actions:
+    $app --new --controller --name=Example
+
+3. Create new controller with actions:
+    $app --new --controller --name=Example --actions=act_1,act_2
+    
+4. Create new plugin:
+    $app --new --plugin --name=ExamplePlugin
+    
+5. Create new plugin controller:
+    $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
+    
+6. Install all migrations:
+    $app --db-migrate
+
+7. Install needed migrations:
+    $app --db-migrate --to-version=20210309092620
+    
+8. Uninstall last migration:
+    $app --db-rollback
+    
+9. Uninstall last N-steps migrations:
+    $app --db-rollback --step=3
+
+
+EOT;
+    exit($HELP);
+}
+
+/**
+ * Получить значение аргумента
+ * @param string $key - ключ
+ * @param array $args - массив аргументов
+ * @param null $defVal - базовое значение
+ * @return string|null
+ */
+function argumentValue(string $key, array $args, $defVal = null)/*: string|null */ {
+    for ($i = 0; $i < count($args); $i++) {
+        $arg = $args[$i];
+        $reg = "^$key=(.*)$";
+        preg_match("/$reg/", $arg, $matches, PREG_OFFSET_CAPTURE);
+        if (count($matches) >= 2 && strlen($matches[1][0]) > 0)
+            return $matches[1][0];
+    }
+    return $defVal;
+}
+
+/**
+ * Проверка наличия аргумента в массиве
+ * @param string $key - ключ
+ * @param array $args - массив аргументов
+ * @return bool
+ */
+function containsArgument(string $key, array $args): bool {
+    return in_array($key, $args);
+}
+
+/**
+ * Пребразовать значение в bool
+ * @param bool|int|string $val
+ * @return bool
+ */
+function toBool($val): bool {
+    if (is_bool($val)) {
+        return $val;
+    } elseif (is_numeric($val)) {
+        return ($val == 1) ? true : false;
+    } elseif (is_string($val)) {
+        $val = trim(strtolower($val));
+        if (strcmp($val, "true") === 0
+            || strcmp($val, "1") === 0)
+            return true;
+        return false;
+    }
+    return false;
+}
+
+/**
+ * Собрать путь до файла/каталога из строк
+ * @param mixed ...$segments
+ * @return string
+ */
+function buildPath(...$segments): string {
+    if (empty($segments))
+        return "";
+    if (!is_array($segments))
+        return "";
+    if (!is_array($segments[0]))
+        return join(DIRECTORY_SEPARATOR, $segments);
+    return implode(DIRECTORY_SEPARATOR, $segments[0]);
+}
+
+/**
+ * Создать каталог
+ * @param string $path
+ * @param int $mode
+ * @param bool $recursive
+ * @param bool $showOutput
+ * @return bool
+ */
+function makeDir(string $path, $mode = 0777, $recursive = false, bool $showOutput = false): bool {
+    if (!is_dir($path)) {
+        if (false === @mkdir($path, $mode, $recursive)) {
+            if (!is_dir($path))
+                return false;
+        }
+    } elseif (!is_writable($path)) {
+        return false;
+    }
+    if ($showOutput === true)
+        echo "[Created] $path\r\n";
+    return true;
+}
+
+/**
+ * Рекурсивно скопировать содержимое каталога
+ * @param string $src
+ * @param string $dst
+ * @param bool $showOutput
+ */
+function recursiveCopyDir(string $src, string $dst, bool $showOutput = false) {
+    $dir = opendir($src);
+    @mkdir($dst);
+    while (false !== ( $file = readdir($dir)) ) {
+        if (($file != '.' ) && ($file != '..')) {
+            if (is_dir(buildPath($src, $file))) {
+                recursiveCopyDir(buildPath($src, $file), buildPath($dst, $file), $showOutput);
+            } else {
+                $pathFrom = buildPath($src, $file);
+                $pathTo = buildPath($dst, $file);
+                copy($pathFrom, $pathTo);
+                if ($showOutput === true)
+                    echo "[Copy] $pathFrom ==> $pathTo\r\n";
+            }
+        }
+    }
+    closedir($dir);
+}
+
+/**
+ * Рекурсивно удалить каталог
+ * @param string $dir
+ * @param bool $showOutput
+ */
+function recursiveDeleteDir(string $dir, bool $showOutput = false) {
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (is_dir(buildPath($dir, $object)) && !is_link(buildPath($dir, $object))) {
+                    recursiveDeleteDir(buildPath($dir, $object), $showOutput);
+                } else {
+                    $path = buildPath($dir, $object);
+                    unlink($path);
+                    if ($showOutput === true)
+                        echo "[Delete] $path\r\n";
+                }
+            }
+        }
+        rmdir($dir);
+        if ($showOutput === true)
+            echo "[Delete] $dir\r\n";
+    }
+}
+
+/**
+ * Удалить все файлы каталога
+ * @param string $dir
+ * @param bool $showOutput
+ */
+function deleteDirFiles(string $dir, bool $showOutput = false) {
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (is_dir(buildPath($dir, $object))) {
+                    continue;
+                } else {
+                    $path = buildPath($dir, $object);
+                    unlink($path);
+                    if ($showOutput === true)
+                        echo "[Delete] $path\r\n";
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Скачать файл
+ * @param string $url - URL
+ * @param string $path - путь для сохранения
+ * @param string $error - сообщение об ошибке
+ * @return bool
+ */
+function downloadFile(string $url, string $path, string &$error) {
+    $fileName = basename($url);
+    set_error_handler(function($errno, $errstr, $errfile, $errline) {
+        // error was suppressed with the @-operator
+        if (0 === error_reporting())
+            return false;
+        throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+    });
+    try {
+        $fData = file_get_contents($url);
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+        return false;
+    }
+    restore_error_handler();
+    if (file_put_contents(buildPath($path, $fileName), $fData))
+        return true;
+    return false;
+}
+
+/**
+ * Разпаковать данные из ZIP архива
+ * @param string $path - путь до архива
+ * @param string $pathTo - путь для сохранения
+ * @param string $error - сообщение об ошибке
+ * @return bool
+ */
+function unzipFile(string $path, string $pathTo, string &$error) {
+    if (!class_exists('ZipArchive')) {
+        $error = "Not found php class 'ZipArchive'!";
+        return false;
+    }
+    $zip = new ZipArchive;
+    $res = $zip->open($path);
+    if ($res === true) {
+        $zip->extractTo($pathTo);
+        $zip->close();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Обрезать путь вконце (исключить '/')
+ * @param string $path - путь
+ * @return string
+ *
+ * echo splice_url_first("/tmp/app1/");
+ *   => "/tmp/app1"
+ */
+function splicePathLast(string $path): string {
+    if (is_null($path) || empty($path))
+        return $path;
+    if (strcmp($path[strlen($path) - 1], DIRECTORY_SEPARATOR) === 0) {
+        if (strlen($path) > 1) {
+            $path = substr($path, 0, -1);
+            $path = splicePathLast($path);
+        } else {
+            $path = "";
+        }
+    }
+    return $path;
+}
+
+/**
+ * Обрезать url строку вначале (исключить '/')
+ * @param string $uri - строка URL
+ * @return string
+ *
+ * echo splice_url_first("/app1/");
+ *   => "app1/"
+ */
+function spliceUrlFirst(string $uri): string {
+    if (empty($uri))
+        return $uri;
+    if (strcmp($uri[0], "/") === 0) {
+        if (strlen($uri) > 1) {
+            $uri = ltrim($uri, "/");
+            $uri = spliceUrlFirst($uri);
+        } else {
+            $uri = "";
+        }
+    }
+    return $uri;
+}
+
+/**
+ * Обрезать url строку вконце (исключить '/')
+ * @param string $uri - строка URL
+ * @return string
+ *
+ * echo splice_url_first("/app1/");
+ *   => "/app1"
+ */
+function spliceUrlLast(string $uri): string {
+    if (empty($uri))
+        return $uri;
+    if (strcmp($uri[strlen($uri) - 1], "/") === 0) {
+        if (strlen($uri) > 1) {
+            $uri = substr($uri, 0, -1);
+            $uri = spliceUrlLast($uri);
+        } else {
+            $uri = "";
+        }
+    }
+    return $uri;
+}
+
+/**
+ * Получить имя текущего пользователя
+ * @return mixed
+ */
+function currentUser() {
+    $processUser = posix_getpwuid(posix_geteuid());
+    return $processUser['name'];
+}
+
+/**
+ * Запросить версию ядра FlyCubePHP
+ * @return string
+ */
+function flyCubePhpVersion() {
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php";
+    if (function_exists("\FlyCubePHP\VERSION_STR"))
+        return \FlyCubePHP\VERSION_STR();
+
+    return "?.?.?";
+}
+
+/**
+ * Метод создания новго проекта FlyCubePHP
+ * @param string $name - название проекта
+ * @param string $path - путь для сохранения
+ * @param bool $downloadRequires - скачивать необходимые зависимости
+ * @param bool $useDelete - удалять каталог проекта в случае ошибки
+ * @return bool
+ */
+function createNewProject(string $name,
+                          string $path,
+                          bool $downloadRequires,
+                          bool &$useDelete): bool {
+    $useDelete = false;
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return false;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return false;
+    }
+    $useDelete = true;
+    $nameUnderscore = \FlyCubePHP\HelperClasses\CoreHelper::underscore($name);
+    // --- create project dir ---
+    echo "  - Create project dir: ";
+    $tmpPath = buildPath($path, $name);
+    if (is_dir($tmpPath)) {
+        $useDelete = false;
+        echo "FAILED\r\n";
+        echo "ERROR: Folder for project already exists (path: $tmpPath)!\r\n";
+        return false;
+    }
+    if (!makeDir($tmpPath, 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create folder for project failed (path: $tmpPath)!\r\n";
+        return false;
+    }
+    echo "OK\r\n";
+
+    // --- create project tree ---
+    echo "  - Create project tree: ";
+    if (!makeDir(buildPath($tmpPath, "app", "assets", "images"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "assets", "javascripts"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "assets", "stylesheets"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "controllers"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "helpers"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "models"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "views"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "views", "layouts"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "bin"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "config", "environments"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "db"), 0777, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!chmod(buildPath($tmpPath, "db"), 0777)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "db", "migrate"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "db", "adapters"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "db", "migrators"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "controller", "helpers"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "js_builder"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "css_builder"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "extensions", "error_handling"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "lib", "assets", "images"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "lib", "assets", "javascripts"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "lib", "assets", "stylesheets"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "log"), 0777, true)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!chmod(buildPath($tmpPath, "log"), 0777)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "plugins"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "tmp"), 0777, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!chmod(buildPath($tmpPath, "tmp"), 0777)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "vendor"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "images"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "javascripts"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "stylesheets"), 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create project tree failed!\r\n";
+        return false;
+    }
+    echo "OK\r\n";
+
+    // --- copy FlyCubePHP core ---
+    echo "  - Copy FlyCubePHP core: ";
+    $coreDir = __DIR__."/../vendor/FlyCubePHP";
+    recursiveCopyDir($coreDir, buildPath($tmpPath, "vendor", "FlyCubePHP"));
+
+    // --- rename src dir ---
+    if (is_dir(buildPath($tmpPath, "vendor", "FlyCubePHP", "src")))
+        rename(buildPath($tmpPath, "vendor", "FlyCubePHP", "src"),
+            buildPath($tmpPath, "vendor", "FlyCubePHP", "FlyCubePHP"));
+
+    echo "OK\r\n";
+
+    // --- templates ---
+    echo "  - Copy FlyCubePHP templates: ";
+
+    // --- copy bin/fly_cube_php template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/bin/fly_cube_php";
+    if (!copy($tmplFile, buildPath($tmpPath, "bin", "fly_cube_php"))) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+    if (!chmod(buildPath($tmpPath, "bin", "fly_cube_php"), 0555)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Change template mod failed!\r\n";
+        return false;
+    }
+
+    // --- copy index.php template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/index.php.tmpl";
+    $resultFile = buildPath($tmpPath, "index.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy apache conf template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/apache24.conf.tmpl";
+    $resultFile = buildPath($tmpPath, $nameUnderscore.".apache24.conf");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
+    $tmplParams['APP_PATH'] = spliceUrlLast($tmpPath);
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app env template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application_env.conf.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "application_env.conf");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_URL_PREFIX'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app ignore list template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/ignore-list.conf.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "ignore-list.conf");
+    $tmplParams = [];
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app db template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/database.json.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "database.json");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app routes template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/routes.php.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "routes.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app env types template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/development.php.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "environments", "development.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/production.php.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "environments", "production.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app js template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application.js.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "assets", "javascripts", "application.js");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app css template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application.css.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "assets", "stylesheets", "application.css");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app view template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application.html.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "views", "layouts", "application.html");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app controller template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application_controller.php.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "controllers", "ApplicationController.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app controller api template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application_controller_api.php.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "controllers", "ApplicationControllerAPI.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    // --- copy app controller helper template ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "helpers", "ApplicationHelper.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = "Application";
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy template failed!\r\n";
+        return false;
+    }
+
+    echo "OK\r\n";
+
+    // --- download requires ---
+    if ($downloadRequires === true) {
+        echo "  - Download requires [Twig]: ";
+        $url = URL_TWIG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Download require library failed!\r\n";
+            echo "       URL: $url\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [JShrink]: ";
+        $url = URL_JSHRINK;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Download require library failed!\r\n";
+            echo "       URL: $url\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [ScssPhp]: ";
+        $url = URL_SCSS_PHP;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Download require library failed!\r\n";
+            echo "       URL: $url\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [Psr/Log]: ";
+        $url = URL_PSR_LOG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return false;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [Monolog]: ";
+        $url = URL_MONOLOG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return false;
+        }
+        echo "OK\r\n";
+
+        // --- unzip requires ---
+        echo "  - Unzip requires [Twig]: ";
+        $fPath = buildPath($tmpPath, "vendor", basename(URL_TWIG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        if (!is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5"))
+            || !is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5", "src"))) {
+            echo "FAILED\r\n";
+            echo "ERROR: Invalid unzipped required folders for Twig!\r\n";
+            return false;
+        }
+        rename(buildPath($tmpPath, "vendor", "Twig-2.12.5"),
+               buildPath($tmpPath, "vendor", "Twig-2.x"));
+        rename(buildPath($tmpPath, "vendor", "Twig-2.x", "src"),
+               buildPath($tmpPath, "vendor", "Twig-2.x", "Twig"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [JShrink]: ";
+        $fPath = buildPath($tmpPath, "vendor", basename(URL_JSHRINK));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        if (!is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0"))
+            || !is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0", "src"))) {
+            echo "FAILED\r\n";
+            echo "ERROR: Invalid unzipped required folders for JShrink!\r\n";
+            return false;
+        }
+        rename(buildPath($tmpPath, "vendor", "JShrink-1.1.0"),
+               buildPath($tmpPath, "vendor", "JShrink"));
+        rename(buildPath($tmpPath, "vendor", "JShrink", "src"),
+               buildPath($tmpPath, "vendor", "JShrink", "JShrink"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [ScssPhp]: ";
+        $fPath = buildPath($tmpPath, "vendor", basename(URL_SCSS_PHP));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "       Message: $errorStr\r\n";
+            return false;
+        }
+        if (!is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2"))
+            || !is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2", "src"))) {
+            echo "FAILED\r\n";
+            echo "ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return false;
+        }
+        rename(buildPath($tmpPath, "vendor", "scssphp-1.5.2"),
+               buildPath($tmpPath, "vendor", "ScssPhp"));
+        rename(buildPath($tmpPath, "vendor", "ScssPhp", "src"),
+               buildPath($tmpPath, "vendor", "ScssPhp", "ScssPhp"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [Psr/Log]: ";
+        $fPath = buildPath($tmpPath, "vendor", basename(URL_PSR_LOG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return false;
+        }
+        if (!is_dir(buildPath($tmpPath, "vendor", "log-1.1.4"))
+            || !is_dir(buildPath($tmpPath, "vendor", "log-1.1.4", "Psr"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return false;
+        }
+        rename(buildPath($tmpPath, "vendor", "log-1.1.4"),
+               buildPath($tmpPath, "vendor", "Psr"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [Monolog]: ";
+        $fPath = buildPath($tmpPath, "vendor", basename(URL_MONOLOG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($tmpPath, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return false;
+        }
+        if (!is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1"))
+            || !is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1", "src"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return false;
+        }
+        rename(buildPath($tmpPath, "vendor", "monolog-1.26.1"),
+               buildPath($tmpPath, "vendor", "Monolog"));
+        rename(buildPath($tmpPath, "vendor", "Monolog", "src"),
+               buildPath($tmpPath, "vendor", "Monolog", "Monolog"));
+        unlink($fPath);
+        echo "OK\r\n";
+    }
+    return true;
+}
+
+/**
+ * Выполнить миграцию базы данных
+ * @param $version - необходимая версия миграции
+ * @param $output - отображать дополнительный вывод
+ */
+function dbMigrate($version, $output) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrate($version, $output);
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($output);
+}
+
+/**
+ * Запросить состояние миграций
+ */
+function dbMigrateStatus() {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateStatus();
+}
+
+/**
+ * Выполнить переустановку миграции базы данных
+ * @param $step - необходимое число шагов
+ * @param $output - отображать дополнительный вывод
+ */
+function dbMigrateRedo($step, $output) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateRedo($step, $output);
+}
+
+/**
+ * Выполнить откат базы данных
+ * @param $step - необходимое число шагов
+ * @param $output - отображать дополнительный вывод
+ */
+function dbRollback($step, $output) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->rollback($step, $output);
+}
+
+/**
+ * Запросить текущую версию миграции базы данных
+ * @return string
+ */
+function currentDbMigrationVersion(): string {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return "?";
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    return strval(\FlyCubePHP\Core\Migration\MigrationsCore::instance()->currentVersion());
+}
+
+/**
+ * Выполнить дамп схемы базы данных
+ * @param $output
+ */
+function dbSchemaDump($output) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($output);
+}
+
+/**
+ * Пересоздать базу данных и установить дамп
+ * @param $output
+ */
+function dbSchemaLoad($output) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaLoad($output);
+}
+
+/**
+ * Создать базу данных для текущего ENV
+ * @param $output
+ * @param bool $all
+ */
+function dbCreate($output, bool $all = false) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    if ($all === true) {
+        // --- create for development ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+
+        // --- create for production ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+    } else {
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+    }
+}
+
+/**
+ * Удалить базу данных для текущего ENV
+ * @param $output
+ * @param bool $all
+ */
+function dbDrop($output, bool $all = false) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    if ($all === true) {
+        // --- drop for development ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+
+        // --- drop for production ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+    } else {
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+    }
+}
+
+/**
+ * Выполнить запуск файда db/Seed.php
+ */
+function dbSeed() {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
+    if (!class_exists("\FlyCubePHP\Core\Migration\MigrationsCore")) {
+        echo "ERROR: Not found MigrationsCore!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbSeed();
+}
+
+/**
+ * Выполнить настройку базы данных (создание схемы и запуск db/Seed.php)
+ * @param $output
+ */
+function dbSetup($output) {
+    dbSchemaLoad($output);
+    dbSeed();
+}
+
+/**
+ * Выполнить перенастройку базы данных (удаление базы данных, создание схемы и запуск db/Seed.php)
+ * @param $output
+ */
+function dbReset($output) {
+    dbDrop($output);
+    dbSetup($output);
+}
+
+/**
+ * Создать новый контроллер
+ * @param $name - название
+ * @param $actions - список методов
+ * @param bool $isAPI
+ */
+function createController($name, $actions, bool $isAPI = false) {
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new controller name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/controller.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/controller_api.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_js.js.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_css.scss.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_view.html.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    if ($isAPI === true)
+        $name = "Api ".$name;
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $nameUnderscore = \FlyCubePHP\HelperClasses\CoreHelper::underscore($name);
+
+    $actionsData = "";
+    if (!is_null($actions)) {
+        $actions = explode(',', $actions);
+        $actions = array_filter($actions,'strlen');
+        foreach ($actions as $act)
+            $actionsData .= "\n    public function $act() {\n    }\n";
+    }
+    if (empty($actionsData))
+        $actionsData = "\n    // TODO Append here controller actions...\n";
+
+    // --- create controller ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/controller.php.tmpl";
+    if ($isAPI === true)
+        $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/controller_api.php.tmpl";
+    $resultFile = buildPath("app", "controllers", $name."Controller.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    $tmplParams['ACTIONS'] = $actionsData;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+
+    if ($isAPI === false) {
+        // --- create controller helper ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl";
+        $resultFile = buildPath("app", "helpers", $name . "Helper.php");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller js ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_js.js.tmpl";
+        $resultFile = buildPath("app", "assets", "javascripts", $nameUnderscore . ".js");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller scss ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_css.scss.tmpl";
+        $resultFile = buildPath("app", "assets", "stylesheets", $nameUnderscore . ".scss");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller views ---
+        if (!makeDir(buildPath("app", "views", $nameUnderscore), 0755, false, true)) {
+            echo "ERROR: Make views dir failed!\r\n";
+            return;
+        }
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_view.html.tmpl";
+                $resultFile = buildPath("app", "views", $nameUnderscore, $act . ".html");
+                $tmplParams = [];
+                $tmplParams['USER'] = currentUser();
+                $tmplParams['DATE'] = date('d.m.y');
+                $tmplParams['TIME'] = date('H:i');
+                $tmplParams['NAME'] = $name;
+                $tmplParams['ACTION'] = $act;
+                $tmplParams['PATH'] = buildPath("app", "views", $nameUnderscore);
+                if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+                    echo "ERROR: Copy template failed!\r\n";
+                    return;
+                }
+            }
+        }
+    }
+
+    // --- append routes ---
+    if (!empty($actions)) {
+        $tmpRoutes = "\n";
+        foreach ($actions as $act) {
+            $actRoute = $act;
+            if ($isAPI === true)
+                $actRoute = "api/$act";
+            $tmpRoutes .= "get(\"/$actRoute\", \"$name\", \"$act\");\n";
+        }
+        if (!empty($tmpRoutes))
+            file_put_contents(buildPath("config", "routes.php"), $tmpRoutes,FILE_APPEND);
+    }
+}
+
+/**
+ * Создать новую миграцию
+ * @param $name - название
+ */
+function createMigration($name) {
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new migration name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/migration.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $curTime = gmdate('YmdHis');
+
+    // --- create migration ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/migration.php.tmpl";
+    $resultFile = buildPath("db", "migrate", $curTime."_".$name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+}
+
+/**
+ * Создать новую модель данных
+ * @param $name - название
+ */
+function createModel($name) {
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new model name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/model.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    if ($name[strlen($name) - 1] === "s")
+        $name = substr($name, 0, strlen($name) - 1);
+
+    // --- create model ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/model.php.tmpl";
+    $resultFile = buildPath("app", "models", $name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+    createMigration("create_".\FlyCubePHP\HelperClasses\CoreHelper::underscore($name)."s");
+}
+
+/**
+ * Создать новый плагин FlyCubePHP
+ * @param $name
+ * @param bool $isGui
+ */
+function createPlugin($name, bool $isGui = false) {
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new plugin name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/plugin_init.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/plugin_object.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $nameObject = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name, false);
+
+    // --- create plugin dir ---
+    $tmpPath = buildPath("plugins", $name);
+    if (is_dir($tmpPath)) {
+        echo "ERROR: Folder for plugin already exists (path: $tmpPath)!\r\n";
+        return;
+    }
+    if (!makeDir($tmpPath, 0755, false, true)) {
+        echo "ERROR: Create folder for plugin failed (path: $tmpPath)!\r\n";
+        return;
+    }
+
+    // --- create plugin tree ---
+    if ($isGui === true) {
+        if (!makeDir(buildPath($tmpPath, "app", "assets", "images"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+        if (!makeDir(buildPath($tmpPath, "app", "assets", "javascripts"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+        if (!makeDir(buildPath($tmpPath, "app", "assets", "stylesheets"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "controllers"), 0755, true, true)) {
+        echo "ERROR: Create project tree failed!\r\n";
+        return;
+    }
+    if ($isGui === true) {
+        if (!makeDir(buildPath($tmpPath, "app", "helpers"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+    }
+    if (!makeDir(buildPath($tmpPath, "app", "models"), 0755, true, true)) {
+        echo "ERROR: Create project tree failed!\r\n";
+        return;
+    }
+    if ($isGui === true) {
+        if (!makeDir(buildPath($tmpPath, "app", "views"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+    }
+    if (!makeDir(buildPath($tmpPath, "config"), 0755, true, true)) {
+        echo "ERROR: Create project tree failed!\r\n";
+        return;
+    }
+    // TODO ... add extensions?
+//    if (!makeDir(buildPath($tmpPath, "db", "extensions", "adapters"), 0755, true, true)) {
+//        echo "ERROR: Create project tree failed!\r\n";
+//        return;
+//    }
+//    if (!makeDir(buildPath($tmpPath, "db", "extensions", "migrators"), 0755, true, true)) {
+//        echo "ERROR: Create project tree failed!\r\n";
+//        return;
+//    }
+    if (!makeDir(buildPath($tmpPath, "db", "migrate"), 0755, true, true)) {
+        echo "ERROR: Create project tree failed!\r\n";
+        return;
+    }
+    if (!makeDir(buildPath($tmpPath, "lib"), 0755, true, true)) {
+        echo "ERROR: Create project tree failed!\r\n";
+        return;
+    }
+    if ($isGui === false) {
+        if (!makeDir(buildPath($tmpPath, "lib", "assets", "images"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+        if (!makeDir(buildPath($tmpPath, "lib", "assets", "javascripts"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+        if (!makeDir(buildPath($tmpPath, "lib", "assets", "stylesheets"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+    }
+    if ($isGui === true) {
+        if (!makeDir(buildPath($tmpPath, "help", "images"), 0755, true, true)) {
+            echo "ERROR: Create project tree failed!\r\n";
+            return;
+        }
+    }
+
+    // --- create init file ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/plugin_init.php.tmpl";
+    $resultFile = buildPath($tmpPath, "init.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['PLUGIN_NAME'] = \FlyCubePHP\HelperClasses\CoreHelper::prettyName($name);
+    $tmplParams['PLUGIN_CLASS_NAME'] = $name;
+    $tmplParams['PLUGIN_OBJECT_NAME'] = $nameObject;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+
+    // --- create object file ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/plugin_object.php.tmpl";
+    $resultFile = buildPath($tmpPath, $name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['PLUGIN_NAME'] = \FlyCubePHP\HelperClasses\CoreHelper::prettyName($name);
+    $tmplParams['PLUGIN_CLASS_NAME'] = $name;
+    $tmplParams['PLUGIN_OBJECT_NAME'] = $nameObject;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+
+    // --- create route file ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/routes.php.tmpl";
+    $resultFile = buildPath($tmpPath, "config", "routes.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['PLUGIN_NAME'] = \FlyCubePHP\HelperClasses\CoreHelper::prettyName($name);
+    $tmplParams['APP_NAME'] = "plugin \"".$tmplParams['PLUGIN_NAME']."\"";
+    $tmplParams['PLUGIN_CLASS_NAME'] = $name;
+    $tmplParams['PLUGIN_OBJECT_NAME'] = $nameObject;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+}
+
+/**
+ * Создать новый контроллер для плагина FlyCubePHP
+ * @param $pluginName
+ * @param $name
+ * @param $actions
+ * @param bool $isAPI
+ */
+function createPluginController($pluginName, $name, $actions, bool $isAPI = false) {
+    if (is_null($pluginName) || empty($pluginName)) {
+        echo "ERROR: Invalid plugin name!\r\n";
+        return;
+    }
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new controller name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/controller.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/controller_api.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_js.js.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_css.scss.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/application_controller_view.html.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    $name = "$pluginName $name";
+    if ($isAPI === true)
+        $name = "Api $name";
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $nameUnderscore = \FlyCubePHP\HelperClasses\CoreHelper::underscore($name);
+
+    // --- search plugin dir ---
+    $tmpPath = buildPath("plugins", $pluginName);
+    if (!is_dir($tmpPath)) {
+        echo "ERROR: Not found plugin directory (path: $tmpPath)!\r\n";
+        return;
+    }
+
+    $actionsData = "";
+    if (!is_null($actions)) {
+        $actions = explode(',', $actions);
+        $actions = array_filter($actions,'strlen');
+        foreach ($actions as $act)
+            $actionsData .= "\n    public function $act() {\n    }\n";
+    }
+    if (empty($actionsData))
+        $actionsData = "\n    // TODO Append here controller actions...\n";
+
+    // --- create controller ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/controller.php.tmpl";
+    if ($isAPI === true)
+        $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/controller_api.php.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "controllers", $name."Controller.php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    $tmplParams['ACTIONS'] = $actionsData;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+
+    if ($isAPI === false) {
+        // --- create controller helper ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl";
+        $resultFile = buildPath($tmpPath, "app", "helpers", $name . "Helper.php");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller js ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_js.js.tmpl";
+        $resultFile = buildPath($tmpPath, "app", "assets", "javascripts", $nameUnderscore . ".js");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller scss ---
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_css.scss.tmpl";
+        $resultFile = buildPath($tmpPath, "app", "assets", "stylesheets", $nameUnderscore . ".scss");
+        $tmplParams = [];
+        $tmplParams['USER'] = currentUser();
+        $tmplParams['DATE'] = date('d.m.y');
+        $tmplParams['TIME'] = date('H:i');
+        $tmplParams['NAME'] = $name;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+
+        // --- create controller views ---
+        if (!makeDir(buildPath($tmpPath, "app", "views", $nameUnderscore), 0755, false, true)) {
+            echo "ERROR: Make views dir failed!\r\n";
+            return;
+        }
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_view.html.tmpl";
+                $resultFile = buildPath($tmpPath, "app", "views", $nameUnderscore, $act . ".html");
+                $tmplParams = [];
+                $tmplParams['USER'] = currentUser();
+                $tmplParams['DATE'] = date('d.m.y');
+                $tmplParams['TIME'] = date('H:i');
+                $tmplParams['NAME'] = $name;
+                $tmplParams['ACTION'] = $act;
+                $tmplParams['PATH'] = buildPath($tmpPath, "app", "views", $nameUnderscore);
+                if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+                    echo "ERROR: Copy template failed!\r\n";
+                    return;
+                }
+            }
+        }
+    }
+
+    // --- append routes ---
+    if (!empty($actions)) {
+        $tmpRoutes = "\n";
+        foreach ($actions as $act) {
+            $actRoute = $act;
+            if ($isAPI === true)
+                $actRoute = "api/$act";
+            $tmpRoutes .= "get(\"/$actRoute\", \"$name\", \"$act\");\n";
+        }
+        if (!empty($tmpRoutes))
+            file_put_contents(buildPath($tmpPath, "config", "routes.php"), $tmpRoutes,FILE_APPEND);
+    }
+}
+
+/**
+ * Создать новую миграцию для плагина FlyCubePHP
+ * @param $pluginName
+ * @param $name - название
+ */
+function createPluginMigration($pluginName, $name) {
+    if (is_null($pluginName) || empty($pluginName)) {
+        echo "ERROR: Invalid plugin name!\r\n";
+        return;
+    }
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new migration name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/migration.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    // --- search plugin dir ---
+    $tmpPath = buildPath("plugins", $pluginName);
+    if (!is_dir($tmpPath)) {
+        echo "ERROR: Not found plugin directory (path: $tmpPath)!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $curTime = gmdate('YmdHis');
+
+    // --- create migration ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/migration.php.tmpl";
+    $resultFile = buildPath($tmpPath, "db", "migrate", $curTime."_".$name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+}
+
+/**
+ * Создать новую модель данных для плагина FlyCubePHP
+ * @param $pluginName
+ * @param $name - название
+ */
+function createPluginModel($pluginName, $name) {
+    if (is_null($pluginName) || empty($pluginName)) {
+        echo "ERROR: Invalid plugin name!\r\n";
+        return;
+    }
+    if (is_null($name) || empty($name)) {
+        echo "ERROR: Invalid new model name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/model.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+    // --- search plugin dir ---
+    $tmpPath = buildPath("plugins", $pluginName);
+    if (!is_dir($tmpPath)) {
+        echo "ERROR: Not found plugin directory (path: $tmpPath)!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    if ($name[strlen($name) - 1] === "s")
+        $name = substr($name, 0, strlen($name) - 1);
+
+    // --- create model ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/model.php.tmpl";
+    $resultFile = buildPath($tmpPath, "app", "models", $name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+    createPluginMigration($pluginName, "create_".\FlyCubePHP\HelperClasses\CoreHelper::underscore($name)."s");
+}
+
+/**
+ * Выполнить сборку asset-ов
+ */
+function assetsPrecompile() {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
+    if (!class_exists("\FlyCubePHP\Core\Routes\RouteCollector")) {
+        echo "ERROR: Not found RouteCollector!\r\n";
+        return;
+    }
+    if (!class_exists("\FlyCubePHP\Core\AssetPipeline\AssetPipeline")) {
+        echo "ERROR: Not found AssetPipeline!\r\n";
+        return;
+    }
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_ACTION_OUTPUT, true);
+    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
+    if (empty($routes)) {
+        echo "ERROR: Routes list Empty!\r\n";
+        return;
+    }
+    foreach ($routes as $route) {
+        if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
+            continue;
+        $tmpClassName = $route->controller();
+        $tmpClassAct = $route->action();
+        $tmpController = new $tmpClassName();
+        if (is_subclass_of($tmpController, '\FlyCubePHP\Core\Controllers\BaseActionControllerAPI')) {
+            unset($tmpController);
+            continue;
+        }
+        echo "[Render] $tmpClassName->$tmpClassAct: ";
+        ob_start();
+        $tmpController->renderPrivate($tmpClassAct);
+        ob_clean();
+        echo "OK\r\n";
+        unset($tmpController);
+    }
+}
+
+/**
+ * Выполнить очистку кэша приложения
+ */
+function clearAppCache() {
+    chdir(__DIR__."/../"); // go to app root
+    if (!is_dir(buildPath("tmp", "cache"))) {
+        echo "ERROR: Not found cache directory!\r\n";
+        return;
+    }
+    recursiveDeleteDir(buildPath("tmp", "cache"), true);
+}
+
+/**
+ * Выполнить удаление всех log-файлов
+ */
+function clearAppLogs() {
+    chdir(__DIR__."/../"); // go to app root
+    $logDir = \FlyCubePHP\Core\Config\Config::instance()->arg(\FlyCubePHP\Core\Config\Config::TAG_LOG_FOLDER, 'log');
+    if (!is_dir(buildPath($logDir))) {
+        echo "ERROR: Not found log directory! Dir: $logDir\r\n";
+        return;
+    }
+    deleteDirFiles(buildPath($logDir), true);
+}
+
+/**
+ * Вывести список маршрутов приложения
+ */
+function appRoutes() {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
+    if (!class_exists("\FlyCubePHP\Core\Routes\RouteCollector")) {
+        echo "ERROR: Not found RouteCollector!\r\n";
+        return;
+    }
+    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
+    if (empty($routes)) {
+        echo "\r\nERROR: Not found routes!\r\n\r\n";
+        return;
+    }
+    if (\FlyCubePHP\Core\Routes\RouteCollector::instance()->containsRootRoute() === false)
+        echo "\r\nWARNING: Not found root route!\r\n\r\n";
+
+    $maxLen = 0;
+    foreach ($routes as $route) {
+        $rURI = $route->uri();
+        $len = strlen($rURI);
+        if ($maxLen < $len)
+            $maxLen = $len;
+    }
+    foreach ($routes as $route) {
+        $rType = \FlyCubePHP\Core\Routes\RouteType::intToString($route->type());
+        $rType = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($rType, 8);
+        $rURI = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($route->uri(), $maxLen + 2);
+        $rController = $route->controller();
+        $rAction = $route->action();
+        echo "  $rType  $rURI  $rController#$rAction\r\n";
+    }
+}
+
+/**
+ * Сгенерировать секретный ключ приложения
+ * @param null|int $secretLength
+ * @throws Exception
+ */
+function appSecret($secretLength) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Protection/RequestForgeryProtection.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Protection/RequestForgeryProtection.php";
+    if (!class_exists("\FlyCubePHP\Core\Protection\RequestForgeryProtection")) {
+        echo "ERROR: Not found RequestForgeryProtection!\r\n";
+        return;
+    }
+    $sKey = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey($secretLength);
+    echo "\r\n$sKey\r\n\r\n";
+}
+
+/**
+ * Удалить все файлы php сессий
+ */
+function clearPhpSessions() {
+    deleteDirFiles(session_save_path(), true);
+}
+
+$app = $argv[0];
+$arguments = [];
+for ($i = 1; $i < $argc; $i++)
+    $arguments[] = $argv[$i];
+
+// --- check help ---
+if (in_array('-?', $arguments)
+    || in_array('-h', $arguments)
+    || in_array('--help', $arguments)) {
+    printHelp($app);
+    exit();
+}
+if (in_array('--version', $arguments)
+    || in_array('-v', $arguments)) {
+    $vStr = flyCubePhpVersion();
+    exit("[FlyCubePHP] Core version: $vStr\r\n");
+}
+
+// --- set env ---
+$envValue = argumentValue('--env', $arguments);
+if (!is_null($envValue) && !empty($envValue))
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, strval($envValue));
+
+// --- disable logging system ---
+\FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_LOG, false);
+
+// --- processing ---
+if (in_array('--new', $arguments)) {
+    $objName = argumentValue('--name', $arguments);
+    if (in_array('--project', $arguments)) {
+        $projectPath = argumentValue('--path', $arguments);
+        $downloadRequires = toBool(argumentValue('--download-requires', $arguments, true));
+        if (is_null($objName) || empty($objName))
+            exit("Invalid new project name! Use --help!\r\n");
+        $projectName = ucwords($objName);
+        if (is_null($projectPath) || empty($projectPath))
+            $projectPath = splicePathLast($_SERVER['HOME']) . "/FlyCubePHProjects";
+        else
+            $projectPath = splicePathLast($projectPath);
+
+        $tmpPath = buildPath($projectPath, $projectName);
+        $useDelete = false;
+        echo "=== FlyCubePHP: Create new project \"$projectName\" ===\r\n";
+        if (!createNewProject($projectName, $projectPath, $downloadRequires, $useDelete)) {
+            echo "=== FlyCubePHP: Create project failed! ===\r\n";
+            if ($useDelete === true)
+                recursiveDeleteDir($tmpPath);
+        } else {
+            echo "=== FlyCubePHP: Create project success. ===\r\n";
+            echo "=== FlyCubePHP: Dir: $tmpPath ===\r\n";
+        }
+    } else if (in_array('--controller', $arguments)) {
+        $cActions = argumentValue('--actions', $arguments, "");
+        echo "=== FlyCubePHP: Create new controller ===\r\n";
+        createController($objName, $cActions);
+        echo "=== FlyCubePHP ==========================\r\n";
+    } else if (in_array('--controller-api', $arguments)) {
+        $cActions = argumentValue('--actions', $arguments, "");
+        echo "=== FlyCubePHP: Create new controller ===\r\n";
+        createController($objName, $cActions, true);
+        echo "=== FlyCubePHP ==========================\r\n";
+    } else if (in_array('--model', $arguments)) {
+        echo "=== FlyCubePHP: Create new model ===\r\n";
+        createModel($objName);
+        echo "=== FlyCubePHP =====================\r\n";
+    } else if (in_array('--migration', $arguments)) {
+        echo "=== FlyCubePHP: Create new migration ===\r\n";
+        createMigration($objName);
+        echo "=== FlyCubePHP =========================\r\n";
+    } else if (in_array('--plugin', $arguments)) {
+        echo "=== FlyCubePHP: Create new plugin ===\r\n";
+        createPlugin($objName);
+        echo "=== FlyCubePHP ======================\r\n";
+    } else if (in_array('--plugin-gui', $arguments)) {
+        echo "=== FlyCubePHP: Create new gui plugin ===\r\n";
+        createPlugin($objName, true);
+        echo "=== FlyCubePHP ==========================\r\n";
+    } else if (in_array('--plugin-controller', $arguments)) {
+        $pName = argumentValue('--plugin-name', $arguments, "");
+        $cActions = argumentValue('--actions', $arguments, "");
+        echo "=== FlyCubePHP: Create new plugin controller ===\r\n";
+        createPluginController($pName, $objName, $cActions);
+        echo "=== FlyCubePHP =================================\r\n";
+    } else if (in_array('--plugin-controller-api', $arguments)) {
+        $pName = argumentValue('--plugin-name', $arguments, "");
+        $cActions = argumentValue('--actions', $arguments, "");
+        echo "=== FlyCubePHP: Create new plugin API controller ===\r\n";
+        createPluginController($pName, $objName, $cActions, true);
+        echo "=== FlyCubePHP =====================================\r\n";
+    } else if (in_array('--plugin-model', $arguments)) {
+        $pName = argumentValue('--plugin-name', $arguments, "");
+        echo "=== FlyCubePHP: Create new plugin model ===\r\n";
+        createPluginModel($pName, $objName);
+        echo "=== FlyCubePHP ============================\r\n";
+    } else if (in_array('--plugin-migration', $arguments)) {
+        $pName = argumentValue('--plugin-name', $arguments, "");
+        echo "=== FlyCubePHP: Create new plugin migration ===\r\n";
+        createPluginMigration($pName, $objName);
+        echo "=== FlyCubePHP ================================\r\n";
+    } else {
+        exit("Invalid arguments for command '--new'! Use --help!\r\n");
+    }
+    exit();
+} else if (in_array('--db-migrate', $arguments)) {
+    $version = argumentValue('--to-version', $arguments);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Migrate database ===\r\n";
+    dbMigrate($version, $showOut);
+    echo "=== FlyCubePHP =====================\r\n";
+    exit();
+} else if (in_array('--db-migrate-status', $arguments)) {
+    echo "=== FlyCubePHP: Migrate status ===\r\n";
+    dbMigrateStatus();
+    echo "=== FlyCubePHP ===================\r\n";
+    exit();
+} else if (in_array('--db-version', $arguments)) {
+    $vStr = currentDbMigrationVersion();
+    exit("[FlyCubePHP] Current database version: $vStr\r\n");
+} else if (in_array('--db-migrate-redo', $arguments)) {
+    $step = argumentValue('--step', $arguments, 1);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Re-Install database migration ===\r\n";
+    dbMigrateRedo($step, $showOut);
+    echo "=== FlyCubePHP ==================================\r\n";
+} else if (in_array('--db-rollback', $arguments)) {
+    $step = argumentValue('--step', $arguments, 1);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Rollback database ===\r\n";
+    dbRollback($step, $showOut);
+    echo "=== FlyCubePHP ======================\r\n";
+} else if (in_array('--db-rollback-all', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Rollback all database ===\r\n";
+    dbRollback(-1, $showOut);
+    echo "=== FlyCubePHP ==========================\r\n";
+} else if (in_array('--db-schema-dump', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Create database schema dump ===\r\n";
+    dbSchemaDump($showOut);
+    echo "=== FlyCubePHP ================================\r\n";
+} else if (in_array('--db-schema-load', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Load database schema dump ===\r\n";
+    dbSchemaLoad($showOut);
+    echo "=== FlyCubePHP ==============================\r\n";
+} else if (in_array('--db-create', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Create database ===\r\n";
+    dbCreate($showOut);
+    echo "=== FlyCubePHP ====================\r\n";
+} else if (in_array('--db-create-all', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Create all databases ===\r\n";
+    dbCreate($showOut, true);
+    echo "=== FlyCubePHP =========================\r\n";
+} else if (in_array('--db-drop', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Drop database ===\r\n";
+    dbDrop($showOut);
+    echo "=== FlyCubePHP ==================\r\n";
+} else if (in_array('--db-drop-all', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Drop all databases ===\r\n";
+    dbDrop($showOut, true);
+    echo "=== FlyCubePHP =======================\r\n";
+} else if (in_array('--db-setup', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Database setup ===\r\n";
+    dbSetup($showOut);
+    echo "=== FlyCubePHP ===================\r\n";
+} else if (in_array('--db-reset', $arguments)) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    echo "=== FlyCubePHP: Database reset ===\r\n";
+    dbReset($showOut);
+    echo "=== FlyCubePHP ===================\r\n";
+} else if (in_array('--db-seed', $arguments)) {
+    echo "=== FlyCubePHP: Load database Seed.php ===\r\n";
+    dbSeed();
+    echo "=== FlyCubePHP ===========================\r\n";
+} else if (in_array('--assets-precompile', $arguments)) {
+    echo "=== FlyCubePHP: Assets precompile ===\r\n";
+    assetsPrecompile();
+    echo "=== FlyCubePHP ======================\r\n";
+    exit();
+} else if (in_array('--clear-cache', $arguments)) {
+    echo "=== FlyCubePHP: Clear application cache ===\r\n";
+    clearAppCache();
+    echo "=== FlyCubePHP ============================\r\n";
+    exit();
+} else if (in_array('--clear-logs', $arguments)) {
+    echo "=== FlyCubePHP: Clear application logs ===\r\n";
+    clearAppLogs();
+    echo "=== FlyCubePHP ===========================\r\n";
+    exit();
+} else if (in_array('--routes', $arguments)) {
+    echo "=== FlyCubePHP: Application routes ===\r\n";
+    appRoutes();
+    echo "=== FlyCubePHP =======================\r\n";
+    exit();
+} else if (in_array('--secret', $arguments)) {
+    $secretLength = argumentValue('--secret-length', $arguments);
+    echo "=== FlyCubePHP: Application secret ===\r\n";
+    appSecret($secretLength);
+    echo "=== FlyCubePHP =======================\r\n";
+    exit();
+} else if (in_array('--clear-php-sessions', $arguments)) {
+    echo "=== FlyCubePHP: Clear php sessions ===\r\n";
+    clearPhpSessions();
+    echo "=== FlyCubePHP =======================\r\n";
+    exit();
+} else {
+    exit("Invalid arguments! Use --help!\r\n");
+}

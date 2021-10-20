@@ -1,0 +1,30 @@
+{
+  "default_sqlite_dev": {
+    "adapter": "sqlite",
+    "database": "db/development.sqlite3"
+  },
+
+  "default_sqlite_prod": {
+    "adapter": "sqlite",
+    "database": "db/production.sqlite3"
+  },
+
+  "default_postgresql_dev": {
+    "adapter": "postgresql",
+    "database": "fly_cube_php_dev",
+    "host": "127.0.0.1",
+    "username": "postgres",
+    "password": "postgres"
+  },
+
+  "default_postgresql_prod": {
+    "adapter": "postgresql",
+    "database": "fly_cube_php_prod",
+    "host": "127.0.0.1",
+    "username": "postgres",
+    "password": "postgres"
+  },
+
+  "production": "default_sqlite_prod",
+  "development": "default_sqlite_dev"
+}
