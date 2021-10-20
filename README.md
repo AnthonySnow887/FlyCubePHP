@@ -8,7 +8,8 @@ An additional functionality added to the FlyCubePHP core is the plug-in mechanis
 which allows you to extend or change the functionality of your application, taking into account the plug-in dependencies during operation. 
 In terms of its structure, the plug-in partially repeats the architecture of the application, making the necessary changes to it.
 
-## Currently FlyCubePHP supports
+Currently FlyCubePHP supports
+-----------------------------
 
 - creating projects that architecturally repeat Ruby on Rails 5 projects:
   - creation of controllers (gui / api);
@@ -35,7 +36,8 @@ In terms of its structure, the plug-in partially repeats the architecture of the
   - add support for the necessary tools for preprocessing and assembling JavaScript files;
   - add support for the necessary tools for preprocessing and assembling Stylesheets files.
   
-##Supported databases
+Supported databases
+-------------------
 
 - SQLite 3;
 - PostgreSQL 9.6 or later.
