@@ -93,7 +93,7 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 ```
 
 ##Development guides
-- [RUS](https://github.com/AnthonySnow887/FlyCubePHP)
+- [RUS](https://github.com/AnthonySnow887/FlyCubePHP/blob/main/FlyCubePHP_Development_Guide_RUS.pdf)
 - ENG: Coming soon...
 
 ##Basic system requirements
