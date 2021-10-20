@@ -9,6 +9,7 @@ which allows you to extend or change the functionality of your application, taki
 In terms of its structure, the plug-in partially repeats the architecture of the application, making the necessary changes to it.
 
 ## Currently FlyCubePHP supports
+
 - creating projects that architecturally repeat Ruby on Rails 5 projects:
   - creation of controllers (gui / api);
   - creation of data models;
@@ -35,10 +36,12 @@ In terms of its structure, the plug-in partially repeats the architecture of the
   - add support for the necessary tools for preprocessing and assembling Stylesheets files.
   
 ##Supported databases
+
 - SQLite 3;
 - PostgreSQL 9.6 or later.
 
 ##Third-party dependencies
+
 These dependencies are required for the framework to work correctly: 
 - Twig-2.x - used to generate and render templates for web pages (https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip);
 - JShrink - used to build * .min.js files in production mode (https://github.com/tedious/JShrink/archive/refs/tags/v1.1.0.zip);
@@ -52,6 +55,7 @@ This behavior can be disabled by specifying the input argument:
 ```
 
 ##Usage
+
 ```bash
 FlyCubePHP/bin> php ./fly_cube_php --help
 
@@ -70,6 +74,7 @@ Options include:
 ```
 
 ##Create new FlyCubePHP project
+
 ```bash
 FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject 
 
@@ -93,13 +98,16 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 ```
 
 ##Development guides
+
 - [RUS](https://github.com/AnthonySnow887/FlyCubePHP/blob/main/FlyCubePHP_Development_Guide_RUS.pdf)
 - ENG: Coming soon...
 
 ##Basic system requirements
+
 - PHP >= 7.0
 
 ##Additional required PHP modules
+
 - php7-ctype
 - php7-json
 - php7-mbstring
@@ -113,12 +121,15 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 - php7-zip
 
 ##Operating systems tested
+
 - OpenSUSE 15.1 and later
 - CentOS 8
 - Astra Linux SE 1.6 (Linux kernel: 4.15.3-1)
 
 #Releases
+
 Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP).
 
 ##License
+
 FlyCubePHP is licensed under the MIT License. See the LICENSE file for details.
