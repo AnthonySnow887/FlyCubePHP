@@ -274,9 +274,11 @@ class CSSBuilder
                     $line = trim($line);
                     $tmpPath = $this->makeDirPath(dirname($path), $line);
                     $tmpCSS = CoreHelper::scanDir($tmpPath, true);
-                    foreach ($tmpCSS as $css)
+                    foreach ($tmpCSS as $css) {
+                        if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
+                            continue;
                         $tmpChild = array_unique(array_merge($tmpChild, $this->parseRequireList($css, $readFiles)));
-
+                    }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
                     $line = substr($line, 8, strlen($line));
@@ -382,9 +384,11 @@ class CSSBuilder
                     $tmpLine = trim($tmpLine);
                     $tmpPath = $this->makeDirPath(dirname($path), $tmpLine);
                     $tmpCssLst = CoreHelper::scanDir($tmpPath, true);
-                    foreach ($tmpCssLst as $css)
+                    foreach ($tmpCssLst as $css) {
+                        if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
+                            continue;
                         $tmpCSS .= $this->parseAndMakeRequireList($css, $lastModified, $readFiles);
-
+                    }
                     continue; // ignore require_tree folder
                 } elseif (substr($tmpLine, 0, 8) == "require ") {
                     $tmpLine = substr($tmpLine, 8, strlen($tmpLine));
