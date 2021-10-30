@@ -254,8 +254,11 @@ class RouteCollector
     static public function currentRouteUri(): string {
         $tmpURI = $_SERVER['REQUEST_URI'];
         $appPrefix = RouteCollector::applicationUrlPrefix();
-        if (!empty($appPrefix) && $appPrefix !== "/")
-            $tmpURI = str_replace($appPrefix, "", $tmpURI);
+        if (!empty($appPrefix) && $appPrefix !== "/") {
+            $pos = strpos($tmpURI, $appPrefix);
+            if ($pos !== false)
+                $tmpURI = substr_replace($tmpURI, "", $pos, strlen($appPrefix));
+        }
         $tmpURILst = explode('?', $tmpURI);
         $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
         if (empty($tmpURI))
