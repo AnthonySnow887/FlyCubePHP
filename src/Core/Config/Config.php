@@ -175,11 +175,12 @@ class Config
                     continue;
                 unset($tmpKeyVal[0]);
                 $tmpVal = trim(join(':', $tmpKeyVal));
-                if (strcmp($tmpVal[0], '"') === 0)
-                    $tmpVal = substr($tmpVal, 1, strlen($tmpVal));
-                if (strcmp($tmpVal[strlen($tmpVal) - 1], '"') === 0)
-                    $tmpVal = substr($tmpVal, 0, strlen($tmpVal) - 1);
-
+                if (!empty($tmpVal)) {
+                    if (strcmp($tmpVal[0], '"') === 0)
+                        $tmpVal = substr($tmpVal, 1, strlen($tmpVal));
+                    if (strcmp($tmpVal[strlen($tmpVal) - 1], '"') === 0)
+                        $tmpVal = substr($tmpVal, 0, strlen($tmpVal) - 1);
+                }
                 $tmpEnv[$tmpKey] = $tmpVal;
             }
             fclose($file);
