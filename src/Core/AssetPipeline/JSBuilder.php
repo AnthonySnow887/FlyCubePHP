@@ -274,9 +274,11 @@ class JSBuilder
                     $line = trim($line);
                     $tmpPath = $this->makeDirPath(dirname($path), $line);
                     $tmpJS = CoreHelper::scanDir($tmpPath, true);
-                    foreach ($tmpJS as $js)
+                    foreach ($tmpJS as $js) {
+                        if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $js))
+                            continue;
                         $tmpChild = array_unique(array_merge($tmpChild, $this->parseRequireList($js, $readFiles)));
-
+                    }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
                     $line = substr($line, 8, strlen($line));
@@ -382,9 +384,11 @@ class JSBuilder
                     $tmpLine = trim($tmpLine);
                     $tmpPath = $this->makeDirPath(dirname($path), $tmpLine);
                     $tmpJSLst = CoreHelper::scanDir($tmpPath, true);
-                    foreach ($tmpJSLst as $js)
-                        $tmpJS .= $this->parseAndMakeRequireList($js, $lastModified,  $readFiles);
-
+                    foreach ($tmpJSLst as $js) {
+                        if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $js))
+                            continue;
+                        $tmpJS .= $this->parseAndMakeRequireList($js, $lastModified, $readFiles);
+                    }
                     continue; // ignore require_tree folder
                 } elseif (substr($tmpLine, 0, 8) == "require ") {
                     $tmpLine = substr($tmpLine, 8, strlen($tmpLine));
