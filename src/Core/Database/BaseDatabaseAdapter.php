@@ -45,7 +45,12 @@ abstract class BaseDatabaseAdapter
                     'adapter-method' => __FUNCTION__,
                     'adapter-name' => $this->name()
                 ]);
-            $this->_pdoObject = new \PDO($dsn);
+
+            if ($this->userPassTransferToPDO())
+                $this->_pdoObject = new \PDO($dsn, $this->_settings['username'], $this->_settings['password']);
+            else
+                $this->_pdoObject = new \PDO($dsn);
+
             $this->_pdoObject->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         } catch (\PDOException $e) {
             throw ErrorDatabase::makeError([
@@ -131,6 +136,9 @@ abstract class BaseDatabaseAdapter
         }
         if (false === $result)
             return null;
+        if ($sth->columnCount() === 0
+            || $sth->rowCount() === 0)
+            return [];
         return $sth->fetchAll(\PDO::FETCH_CLASS, $className);
     }
 
@@ -178,6 +186,9 @@ abstract class BaseDatabaseAdapter
         }
         if (false === $result)
             return null;
+        if ($sth->columnCount() === 0
+            || $sth->rowCount() === 0)
+            return [];
         return $sth->fetchAll(\PDO::FETCH_CLASS, $className);
     }
 
@@ -245,6 +256,14 @@ abstract class BaseDatabaseAdapter
      * @return string
      */
     abstract protected function makeDSN(array $settings): string;
+
+    /**
+     * Передавать логин и пароль в PDO при его создании как аргументы
+     * @return bool
+     */
+    protected function userPassTransferToPDO(): bool {
+        return false;
+    }
 
     /**
      * Имя объекта класса
