@@ -18,11 +18,7 @@ class MySQLAdapter extends BaseDatabaseAdapter
      * @throws
      */
     final public function tables()/*: array|null */{
-        $settings = $this->settings();
-        if (!isset($settings['database']))
-            return [];
-
-        $dbName = $settings['database'];
+        $dbName = $this->database();
         $res = $this->query("SELECT table_name FROM information_schema.tables WHERE table_schema = '$dbName';");
         if (!is_null($res)) {
             $tmpArr = array();

@@ -96,6 +96,16 @@ abstract class BaseDatabaseAdapter
     }
 
     /**
+     * Получить имя текущей базы данных из настроек
+     * @return string
+     */
+    final public function database(): string {
+        if (isset($this->_settings['database']))
+            return $this->_settings['database'];
+        return "";
+    }
+
+    /**
      * Метод выполнения запроса к базе данных
      * @param string $sql - SQL запрос
      * @param array $params - параметры запроса
