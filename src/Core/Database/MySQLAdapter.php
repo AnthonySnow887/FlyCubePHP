@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: anton
- * Date: 30.07.21
- * Time: 16:59
- */
 
 namespace FlyCubePHP\Core\Database;
 
@@ -12,7 +6,7 @@ use FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
 
 include_once 'BaseDatabaseAdapter.php';
 
-class PostgreSQLAdapter extends BaseDatabaseAdapter
+class MySQLAdapter extends BaseDatabaseAdapter
 {
     public function __construct(array $settings) {
         parent::__construct($settings);
@@ -24,13 +18,16 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
      * @throws
      */
     final public function tables()/*: array|null */{
-        $res = $this->query("select * from information_schema.tables where table_schema != 'pg_catalog' and table_schema != 'information_schema' and table_type != 'VIEW';");
+        $settings = $this->settings();
+        if (!isset($settings['database']))
+            return [];
+
+        $dbName = $settings['database'];
+        $res = $this->query("SELECT table_name FROM information_schema.tables WHERE table_schema = '$dbName';");
         if (!is_null($res)) {
             $tmpArr = array();
-            foreach ($res as $item) {
-                $tmpName = $item->table_schema . "." . $item->table_name;
-                $tmpArr[] = $tmpName;
-            }
+            foreach ($res as $item)
+                $tmpArr[] = $item->table_name;
             return $tmpArr;
         }
         return [];
@@ -41,7 +38,7 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
      * @return string
      */
     final public function name(): string {
-        return "PostgreSQL";
+        return "MySQL";
     }
 
     /**
@@ -54,44 +51,45 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
         if (empty($settings))
             return "";
         if (!array_key_exists('host', $settings)
-            && !array_key_exists('unix_socket_dir', $settings))
+            && !array_key_exists('unix_socket', $settings))
             return "";
         if (array_key_exists('host', $settings)
-            && array_key_exists('unix_socket_dir', $settings))
+            && array_key_exists('unix_socket', $settings))
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
-                'message' => "Use only 'host' or 'unix_socket_dir' in the config!",
+                'message' => "Use only 'host' or 'unix_socket' in the config!",
                 'class-name' => $this->objectName(),
                 'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name()
             ]);
 
-        $pdo = "pgsql:";
+        $pdo = "mysql:";
         $database = "";
         if (isset($settings['database']))
             $database = $settings['database'];
-
         if (array_key_exists('host', $settings)) {
             $host = $settings['host'];
-            $port = 5432;
+            $port = 3306;
             if (array_key_exists('port', $settings))
                 $port = $settings['port'];
             $pdo .= "host=$host;port=$port";
-        } else if (array_key_exists('unix_socket_dir', $settings)) {
-            $unixSocket = $settings['unix_socket_dir'];
-            $pdo .= "host=$unixSocket";
+        } else if (array_key_exists('unix_socket', $settings)) {
+            $unixSocket = $settings['unix_socket'];
+            $pdo .= "unix_socket=$unixSocket";
+            ini_set('mysql.default_socket', $unixSocket);
+            ini_set('pdo_mysql.default_socket', $unixSocket);
         }
         if (!empty($database))
             $pdo .= ";dbname=$database";
 
-        $username = "";
-        if (array_key_exists('username', $settings))
-            $username = $settings['username'];
-        $password = "";
-        if (array_key_exists('password', $settings))
-            $password = $settings['password'];
-
-        $pdo .= ";user=$username;password=$password";
         return $pdo;
+    }
+
+    /**
+     * Передавать логин и пароль в PDO при его создании как аргументы
+     * @return bool
+     */
+    final protected function authSettingsTransferToPDO(): bool {
+        return true;
     }
 }

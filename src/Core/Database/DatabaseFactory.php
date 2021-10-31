@@ -13,6 +13,7 @@ include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php';
 include_once 'SQLiteAdapter.php';
 include_once 'PostgreSQLAdapter.php';
+include_once 'MySQLAdapter.php';
 
 use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
@@ -46,6 +47,8 @@ class DatabaseFactory
         $this->registerDatabaseAdapter('sqlite', 'FlyCubePHP\Core\Database\SQLiteAdapter');
         $this->registerDatabaseAdapter('sqlite3', 'FlyCubePHP\Core\Database\SQLiteAdapter');
         $this->registerDatabaseAdapter('postgresql', 'FlyCubePHP\Core\Database\PostgreSQLAdapter');
+        $this->registerDatabaseAdapter('mysql', 'FlyCubePHP\Core\Database\MySQLAdapter');
+        $this->registerDatabaseAdapter('mariadb', 'FlyCubePHP\Core\Database\MySQLAdapter');
     }
 
     /**

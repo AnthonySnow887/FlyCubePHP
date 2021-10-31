@@ -41,12 +41,12 @@ abstract class BaseDatabaseAdapter
                 throw ErrorDatabase::makeError([
                     'tag' => 'database',
                     'message' => "Invalid DSN!",
-                    'adapter-class' => $this->objectName(),
-                    'adapter-method' => __FUNCTION__,
+                    'class-name' => $this->objectName(),
+                    'class-method' => __FUNCTION__,
                     'adapter-name' => $this->name()
                 ]);
 
-            if ($this->userPassTransferToPDO())
+            if ($this->authSettingsTransferToPDO())
                 $this->_pdoObject = new \PDO($dsn, $this->_settings['username'], $this->_settings['password']);
             else
                 $this->_pdoObject = new \PDO($dsn);
@@ -56,8 +56,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name()
             ]);
         }
@@ -111,8 +111,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => 'Database adapter is not valid!',
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -127,8 +127,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -158,8 +158,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => 'Database adapter is not valid!',
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -177,8 +177,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -261,7 +261,7 @@ abstract class BaseDatabaseAdapter
      * Передавать логин и пароль в PDO при его создании как аргументы
      * @return bool
      */
-    protected function userPassTransferToPDO(): bool {
+    protected function authSettingsTransferToPDO(): bool {
         return false;
     }
 
@@ -278,8 +278,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => __CLASS__,
-                'adapter-method' => __FUNCTION__,
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name()
             ]);
         }
