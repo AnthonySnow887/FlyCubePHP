@@ -17,6 +17,17 @@ class SQLiteAdapter extends BaseDatabaseAdapter
     }
 
     /**
+     * Метод запроса версии сервера базы данных
+     * @return string
+     */
+    final public function serverVersion(): string {
+        $res = $this->query("select sqlite_version() as version;");
+        if (!empty($res))
+            return $res[0]->version;
+        return "";
+    }
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      * @throws

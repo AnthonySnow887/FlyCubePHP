@@ -247,6 +247,12 @@ abstract class BaseDatabaseAdapter
     }
 
     /**
+     * Метод запроса версии сервера базы данных
+     * @return string
+     */
+    abstract public function serverVersion(): string;
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      */

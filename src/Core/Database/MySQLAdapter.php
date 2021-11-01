@@ -13,6 +13,26 @@ class MySQLAdapter extends BaseDatabaseAdapter
     }
 
     /**
+     * Метод запроса версии сервера базы данных
+     * @return string
+     */
+    final public function serverVersion(): string {
+        $res = $this->query("SHOW VARIABLES LIKE \"%version%\"");
+        if (is_null($res))
+            return "";
+        foreach ($res as $r) {
+            if (strcmp($r->Variable_name, 'version') !== 0)
+                continue;
+            preg_match('/^(\d+\.)?(\d+\.)?(\*|\d+)/', $r->Value, $matches, PREG_OFFSET_CAPTURE);
+            if (!empty($matches))
+                return $matches[0][0];
+
+            return $r->Value;
+        }
+        return "";
+    }
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      * @throws
