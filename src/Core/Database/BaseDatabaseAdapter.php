@@ -136,8 +136,7 @@ abstract class BaseDatabaseAdapter
         }
         if (false === $result)
             return null;
-        if ($sth->columnCount() === 0
-            || $sth->rowCount() === 0)
+        if ($sth->columnCount() === 0)
             return [];
         return $sth->fetchAll(\PDO::FETCH_CLASS, $className);
     }
@@ -186,8 +185,7 @@ abstract class BaseDatabaseAdapter
         }
         if (false === $result)
             return null;
-        if ($sth->columnCount() === 0
-            || $sth->rowCount() === 0)
+        if ($sth->columnCount() === 0)
             return [];
         return $sth->fetchAll(\PDO::FETCH_CLASS, $className);
     }
