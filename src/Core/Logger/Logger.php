@@ -76,14 +76,21 @@ class Logger
     private $_logFolder = 'log';
     private $_logger = null;
     private $_level = Logger::DEBUG; // enable all logs
+    private $_errorMessage = "";
 
     /**
      * gets the instance via lazy initialization (created on first usage)
      * @throws
      */
     public static function instance(): Logger {
-        if (static::$_instance === null)
+        if (static::$_instance === null) {
             static::$_instance = new static();
+            if (static::$_instance->hasErrorMessage())
+                throw \FlyCubePHP\Core\Error\Error::makeError([
+                    'tag' => 'core',
+                    'message' => static::$_instance->errorMessage()
+                ]);
+        }
         return static::$_instance;
     }
 
@@ -106,11 +113,11 @@ class Logger
             return;
 
         $this->_logFolder = CoreHelper::buildPath(CoreHelper::rootDir(), \FlyCubePHP\configValue(Config::TAG_LOG_FOLDER, "log"));
-        if (!CoreHelper::makeDir($this->_logFolder, 0777, true))
-            throw \FlyCubePHP\Core\Error\Error::makeError([
-                'tag' => 'core',
-                'message' => "Unable to create the log directory! Dir: $this->_logFolder."
-            ]);
+        if (!CoreHelper::makeDir($this->_logFolder, 0777, true)) {
+            $this->_isEnabled = false;
+            $this->_errorMessage = "Unable to create the log directory! Dir: $this->_logFolder.";
+            return;
+        }
 
         $defLevel = "debug";
         if (Config::instance()->isProduction())
@@ -121,6 +128,7 @@ class Logger
         if (!class_exists('\Monolog\Formatter\LineFormatter', true)
             || !class_exists('\Monolog\Handler\StreamHandler', true)) {
             $this->_isEnabled = false;
+            $this->_errorMessage = "Not found Monolog library!";
             return;
         }
 
@@ -228,6 +236,22 @@ class Logger
      */
     public function logFolder(): string {
         return $this->_logFolder;
+    }
+
+    /**
+     * Задана ли ошибка инициализации
+     * @return bool
+     */
+    private function hasErrorMessage(): bool {
+        return !empty($this->_errorMessage);
+    }
+
+    /**
+     * Получить текст ошибки
+     * @return string
+     */
+    private function errorMessage(): string {
+        return $this->_errorMessage;
     }
 
     /**
