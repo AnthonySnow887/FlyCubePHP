@@ -209,7 +209,7 @@ abstract class ActiveRecord
         $tName = $aRec->tableName();
         unset($aRec);
         try {
-            $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." LIMIT :f_value;", [ ":f_value" => $num ], static::class);
+            $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." LIMIT $num", [], static::class);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -624,9 +624,9 @@ abstract class ActiveRecord
         $dataColumns = array();
         $dataValues = array();
         $dataValues4Upd = array();
+        $this->prepareData($db, $dataColumns, $dataValues, $dataValues4Upd);
         if (empty($dataValues4Upd))
             return; // no changed
-        $this->prepareData($db, $dataColumns, $dataValues, $dataValues4Upd);
         $tName = $this->tableName();
         $tPK = $this->primaryKey();
         $dataValues[":pk_value"] = $this->preparePKeyValue();
