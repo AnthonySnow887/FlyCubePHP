@@ -34,7 +34,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function createDatabase(string $name, array $props = []) {
-        return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> createDatabase: not supported!');
+        return;
     }
 
     /**
@@ -44,7 +44,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function dropDatabase(string $name) {
-        return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropDatabase: not supported!');
+        return;
     }
 
     /**
@@ -59,7 +59,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function createSchema(string $name, array $props = []) {
-        return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> createSchema: not supported!');
+        return;
     }
 
     /**
@@ -74,7 +74,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function dropSchema(string $name, array $props = []) {
-        return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropSchema: not supported!');
+        return;
     }
 
     /**
@@ -103,7 +103,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function tableIndexes(string $table) {
-        return []; // TODO throw new \RuntimeException('Migration::BaseMigrator -> tableIndexes: not supported!');
+        return [];
     }
 
     /**
@@ -134,7 +134,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function tableColumns(string $table) {
-        return [];  // TODO throw new \RuntimeException('Migration::BaseMigrator -> tableColumns: not supported!');
+        return [];
     }
 
     /**
@@ -155,7 +155,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function tablePrimaryKeys(string $table) {
-        return [];  // TODO throw new \RuntimeException('Migration::BaseMigrator -> tablePrimaryKeys: not supported!');
+        return [];
     }
 
     /**
@@ -180,7 +180,7 @@ abstract class BaseMigrator
      * NOTE: override this method for correct implementation.
      */
     public function tableForeignKeys(string $table) {
-        return [];  // TODO throw new \RuntimeException('Migration::BaseMigrator -> tableForeignKeys: not supported!');
+        return [];
     }
 
     /**
@@ -217,7 +217,7 @@ abstract class BaseMigrator
             $ifNotExists = "IF NOT EXISTS";
             unset($args['if_not_exists']);
         }
-        $tmpName = $this->quoteTableName($name);
+        $tmpName = $this->_dbAdapter->quoteTableName($name);
         $sql = "CREATE TABLE $ifNotExists $tmpName (\n";
         $sql .= $this->prepareCreateTable($name, $args);
         $sql .= "\n);";
@@ -235,8 +235,8 @@ abstract class BaseMigrator
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid database connector (NULL)!');
         $tmpIdexes = $this->tableIndexes($name);
-        $tmpName = $this->quoteTableName($name);
-        $tmpNewName = $this->quoteTableName($newName);
+        $tmpName = $this->_dbAdapter->quoteTableName($name);
+        $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
         $this->_dbAdapter->query("ALTER TABLE $tmpName RENAME TO $tmpNewName;");
         foreach ($tmpIdexes as $info) {
             $indexNewName = str_replace($name, $newName, $info['index_name']);
@@ -259,7 +259,7 @@ abstract class BaseMigrator
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid table name!');
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid database connector (NULL)!');
-        $name = $this->quoteTableName($name);
+        $name = $this->_dbAdapter->quoteTableName($name);
         $sql = "DROP TABLE $name";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
             $sql .= " IF EXISTS";
@@ -297,7 +297,7 @@ abstract class BaseMigrator
         $sql = $this->prepareCreateColumn($column, $props, $tmpPKey, $tmpUnique);
         if (empty($sql))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid SQL!');
-        $table = $this->quoteTableName($table);
+        $table = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $table ADD COLUMN $ifNotExists $sql;");
     }
 
@@ -313,8 +313,10 @@ abstract class BaseMigrator
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid database connector (NULL)!');
         $tmpIdexes = $this->tableIndexes($table);
-        $tmpTable = $this->quoteTableName($table);
-        $this->_dbAdapter->query("ALTER TABLE $tmpTable RENAME COLUMN \"$column\" TO \"$newName\";");
+        $tmpTable = $this->_dbAdapter->quoteTableName($table);
+        $tmpColumn = $this->_dbAdapter->quoteTableName($column);
+        $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
+        $this->_dbAdapter->query("ALTER TABLE $tmpTable RENAME COLUMN $tmpColumn TO $tmpNewName;");
         foreach ($tmpIdexes as $info) {
             if (!in_array($column, $info['columns']))
                 continue;
@@ -342,10 +344,10 @@ abstract class BaseMigrator
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid database connector (NULL)!');
 
-        $table = $this->quoteTableName($table);
+        $table = $this->_dbAdapter->quoteTableName($table);
 
         // --- drop default ---
-        $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" DROP DEFAULT;";
+        $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP DEFAULT;";
         $this->_dbAdapter->query($sql);
 
         // --- change type ---
@@ -357,22 +359,22 @@ abstract class BaseMigrator
         $tPos = strpos($tmpType, "(");
         if ($tPos !== false)
             $tmpTypeUsing = trim(substr($tmpTypeUsing, 0, $tPos));
-        $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" TYPE $tmpType USING ($column::$tmpTypeUsing);";
+        $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." TYPE $tmpType USING ($column::$tmpTypeUsing);";
         $this->_dbAdapter->query($sql);
 
         // --- change default ---
         if (isset($props['default'])) {
             $tmpDefault = $this->makeDefaultValue($props['default'], $tmpType);
-            $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" SET $tmpDefault;";
+            $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." SET $tmpDefault;";
             $this->_dbAdapter->query($sql);
         }
 
         // --- change not null ---
         if (isset($props['null'])) {
             if ($props['null'] === false)
-                $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" SET NOT NULL;";
+                $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." SET NOT NULL;";
             else
-                $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" DROP NOT NULL;";
+                $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP NOT NULL;";
 
             $this->_dbAdapter->query($sql);
         }
@@ -392,8 +394,8 @@ abstract class BaseMigrator
 
         if (!isset($default)) {
             // --- drop default ---
-            $table = $this->quoteTableName($table);
-            $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" DROP DEFAULT;";
+            $table = $this->_dbAdapter->quoteTableName($table);
+            $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP DEFAULT;";
             $this->_dbAdapter->query($sql);
         } else {
             // --- replace default ---
@@ -402,8 +404,8 @@ abstract class BaseMigrator
                 return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: not found column '$column' in table '$table'!');
             $tmpType = $tmpColumns[$column]['type'];
             $tmpDefault = $this->makeDefaultValue($default, $tmpType);
-            $table = $this->quoteTableName($table);
-            $sql = "ALTER TABLE $table ALTER COLUMN \"$column\" SET $tmpDefault;";
+            $table = $this->_dbAdapter->quoteTableName($table);
+            $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." SET $tmpDefault;";
             $this->_dbAdapter->query($sql);
         }
     }
@@ -419,11 +421,11 @@ abstract class BaseMigrator
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid database connector (NULL)!');
-        $table = $this->quoteTableName($table);
+        $table = $this->_dbAdapter->quoteTableName($table);
         if (!isset($notNull) || $notNull === false) {
-            $this->_dbAdapter->query("ALTER TABLE $table ALTER COLUMN \"$column\" DROP NOT NULL;");
+            $this->_dbAdapter->query("ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP NOT NULL;");
         } elseif (isset($notNull) || $notNull === true) {
-            $this->_dbAdapter->query("ALTER TABLE $table ALTER COLUMN \"$column\" SET NOT NULL;");
+            $this->_dbAdapter->query("ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." SET NOT NULL;");
         }
     }
 
@@ -439,8 +441,8 @@ abstract class BaseMigrator
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid database connector (NULL)!');
-        $table = $this->quoteTableName($table);
-        $this->_dbAdapter->query("ALTER TABLE $table DROP COLUMN \"$column\";");
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("ALTER TABLE $table DROP COLUMN ".$this->_dbAdapter->quoteTableName($column).";");
     }
 
     /**
@@ -477,7 +479,11 @@ abstract class BaseMigrator
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
-        $this->_dbAdapter->query("ALTER INDEX \"$oldName\" RENAME TO \"$newName\";");
+        if (strcmp($oldName, $newName) === 0)
+            return; // skip
+        $tmpOldName = $this->_dbAdapter->quoteTableName($oldName);
+        $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
+        $this->_dbAdapter->query("ALTER INDEX $tmpOldName RENAME TO $tmpNewName;");
     }
 
     /**
@@ -521,9 +527,9 @@ abstract class BaseMigrator
             $this->dropPrimaryKey($table, $info['column']);
         // --- set new primary key ---
         $tmpTable = explode('.', $table);
-        $tmpName = $tmpTable[count($tmpTable) - 1] . "_pkey";
-        $table = $this->quoteTableName($table);
-        $this->_dbAdapter->query("ALTER TABLE $table ADD CONSTRAINT \"$tmpName\" PRIMARY KEY ($column);");
+        $tmpName = $this->_dbAdapter->quoteTableName($tmpTable[count($tmpTable) - 1] . "_pkey");
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("ALTER TABLE $table ADD CONSTRAINT $tmpName PRIMARY KEY ($column);");
     }
 
     /**
@@ -546,8 +552,8 @@ abstract class BaseMigrator
         }
         if (empty($tmpPKeyName))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: not found pkey name for table $table and column $column!');
-        $table = $this->quoteTableName($table);
-        $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT \"$tmpPKeyName\";");
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpPKeyName).";");
     }
 
     /**
@@ -585,9 +591,9 @@ abstract class BaseMigrator
         if (isset($props['name']) && !empty($props['name']))
             $tmpName = CoreHelper::underscore($props['name']);
 
-        $table = $this->quoteTableName($table);
-        $refTable = $this->quoteTableName($refTable);
-        $sql = "ALTER TABLE $table ADD CONSTRAINT \"$tmpName\" FOREIGN KEY ($columnNames) REFERENCES $refTable ($refColumnNames)";
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $refTable = $this->_dbAdapter->quoteTableName($refTable);
+        $sql = "ALTER TABLE $table ADD CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName)." FOREIGN KEY ($columnNames) REFERENCES $refTable ($refColumnNames)";
         $addNext = false;
         if (isset($props['on_update']) && $props['on_update'] === true) {
             $sql .= " ON UPDATE";
@@ -662,8 +668,8 @@ abstract class BaseMigrator
         }
         if (empty($tmpName))
             return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: not found fkey name for table $table and columns ($columnNames)!');
-        $table = $this->quoteTableName($table);
-        $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT \"$tmpName\";");
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName).";");
     }
 
     /**
@@ -826,7 +832,7 @@ abstract class BaseMigrator
             return ""; // TODO throw new \RuntimeException('Migration::BaseMigrator -> prepareCreateColumn: invalid create table args (required column keys: type)!);
 
         // --- create ---
-        $tmpColumnConf = "\"$name\"";
+        $tmpColumnConf = $this->_dbAdapter->quoteTableName($name);
         $tmpLimit = null;
         if (isset($args['limit']))
             $tmpLimit = intval($args['limit']);
@@ -876,8 +882,8 @@ abstract class BaseMigrator
         if (isset($args['unique']) && $args['unique'] === true)
             $isUnique = "UNIQUE";
 
-        $table = $this->quoteTableName($table);
-        $this->_dbAdapter->query("CREATE $isUnique INDEX \"$tmpName\" ON $table ($columnNames);");
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("CREATE $isUnique INDEX ".$this->_dbAdapter->quoteTableName($tmpName)." ON $table ($columnNames);");
     }
 
     /**
@@ -913,22 +919,5 @@ abstract class BaseMigrator
             $sql .= " CASCADE";
 
         $this->_dbAdapter->query("$sql;");
-    }
-
-    /**
-     * Получить корректное экранированное имя таблицы
-     * @param string $name
-     * @return string
-     */
-    protected function quoteTableName(string $name): string {
-        $nameLst = explode('.', $name);
-        $tmpName = "";
-        foreach ($nameLst as $n) {
-            if (empty($tmpName))
-                $tmpName = "\"$n\"";
-            else
-                $tmpName .= ".\"$n\"";
-        }
-        return $tmpName;
     }
 }

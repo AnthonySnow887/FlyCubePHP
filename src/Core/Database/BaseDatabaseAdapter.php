@@ -265,6 +265,13 @@ abstract class BaseDatabaseAdapter
     abstract public function name(): string;
 
     /**
+     * Получить корректное экранированное имя таблицы
+     * @param string $name
+     * @return string
+     */
+    abstract public function quoteTableName(string $name): string;
+
+    /**
      * Метод создания строки с настройками подключения
      * @param array $settings - массив настроек
      * @return string

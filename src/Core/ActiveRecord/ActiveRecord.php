@@ -12,6 +12,7 @@ include_once __DIR__.'/../Database/DatabaseFactory.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Error/ErrorActiveRecord.php';
 
+use FlyCubePHP\Core\Database\BaseDatabaseAdapter;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
 use \FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
@@ -119,7 +120,7 @@ abstract class ActiveRecord
         $tName = $aRec->tableName();
         unset($aRec);
         try {
-            $res = $db->query("SELECT * FROM \"$tName\";", [], static::class);
+            $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName).";", [], static::class);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -153,7 +154,7 @@ abstract class ActiveRecord
         $tName = $aRec->tableName();
         unset($aRec);
         try {
-            $db->query("DELETE FROM \"$tName\";");
+            $db->query("DELETE FROM ".$db->quoteTableName($tName).";");
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -208,7 +209,7 @@ abstract class ActiveRecord
         $tName = $aRec->tableName();
         unset($aRec);
         try {
-            $res = $db->query("SELECT * FROM \"$tName\" LIMIT :f_value;", [ ":f_value" => $num ], static::class);
+            $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." LIMIT :f_value;", [ ":f_value" => $num ], static::class);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -243,7 +244,7 @@ abstract class ActiveRecord
         $tName = $aRec->tableName();
         unset($aRec);
         try {
-            $res = $db->query("SELECT COUNT(*) AS count FROM \"$tName\";");
+            $res = $db->query("SELECT COUNT(*) AS count FROM ".$db->quoteTableName($tName).";");
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -374,12 +375,12 @@ abstract class ActiveRecord
             $tmpColumn = $key;
             if ($prepareNames === true)
                 $tmpColumn = CoreHelper::underscore($key);
-            $tmpWhere .= " \"$tName\".\"$tmpColumn\" = :$tmpKey";
+            $tmpWhere .= " ".$db->quoteTableName("$tName.$tmpColumn")." = :$tmpKey";
             $tmpWhereVal[$tmpKey] = $val;
         }
         $tmpWhere = trim($tmpWhere);
         try {
-            $res = $db->query("SELECT * FROM \"$tName\" WHERE $tmpWhere;", $tmpWhereVal, static::class);
+            $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." WHERE $tmpWhere;", $tmpWhereVal, static::class);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -416,7 +417,7 @@ abstract class ActiveRecord
         $tPK = $aRec->primaryKey();
         unset($aRec);
         try {
-            $res = $db->query("SELECT 1 AS one FROM \"$tName\" WHERE \"$tName\".\"$tPK\" = :f_value LIMIT 1;", [ ":f_value" => $pkVal ]);
+            $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :f_value LIMIT 1;", [ ":f_value" => $pkVal ]);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -469,7 +470,7 @@ abstract class ActiveRecord
         if ($prepareNames === true)
             $tmpColumn = CoreHelper::underscore($column);
         try {
-            $res = $db->query("SELECT 1 AS one FROM \"$tName\" WHERE \"$tName\".\"$tmpColumn\" IN ($tmpWhere) LIMIT 1;", $tmpWhereVal);
+            $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tmpColumn")." IN ($tmpWhere) LIMIT 1;", $tmpWhereVal);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -512,11 +513,11 @@ abstract class ActiveRecord
             $tmpVal = $val;
             if ($prepareNames === true)
                 $tmpVal = CoreHelper::underscore($val);
-            $tmpColumns .= " \"$tmpVal\"";
+            $tmpColumns .= " ".$db->quoteTableName($tmpVal);
         }
         $tmpColumns = trim($tmpColumns);
         try {
-            $res = $db->query("SELECT $tmpColumns FROM \"$tName\";", [], static::class);
+            $res = $db->query("SELECT $tmpColumns FROM ".$db->quoteTableName($tName).";", [], static::class);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -588,13 +589,13 @@ abstract class ActiveRecord
 
         $dataColumns = array();
         $dataValues = array();
-        $this->prepareData($dataColumns, $dataValues);
+        $this->prepareData($db, $dataColumns, $dataValues);
         if (empty($dataValues))
             return; // no changed
         $dataValuesKeys = array_keys($dataValues);
         $tName = $this->tableName();
         try {
-            $db->query("INSERT INTO \"$tName\" (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ");", $dataValues);
+            $db->query("INSERT INTO ".$db->quoteTableName($tName)." (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ");", $dataValues);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -625,12 +626,12 @@ abstract class ActiveRecord
         $dataValues4Upd = array();
         if (empty($dataValues4Upd))
             return; // no changed
-        $this->prepareData($dataColumns, $dataValues, $dataValues4Upd);
+        $this->prepareData($db, $dataColumns, $dataValues, $dataValues4Upd);
         $tName = $this->tableName();
         $tPK = $this->primaryKey();
         $dataValues[":pk_value"] = $this->preparePKeyValue();
         try {
-            $db->query("UPDATE \"$tName\" SET " . implode(',', $dataValues4Upd) . " WHERE \"$tName\".\"$tPK\" = :pk_value;", $dataValues);
+            $db->query("UPDATE ".$db->quoteTableName($tName)." SET " . implode(',', $dataValues4Upd) . " WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value;", $dataValues);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -661,7 +662,7 @@ abstract class ActiveRecord
         $dataValues = array();
         $dataValues[":pk_value"] = $this->preparePKeyValue();
         try {
-            $db->query("DELETE FROM \"$tName\" WHERE \"$tName\".\"$tPK\" = :pk_value;", $dataValues);
+            $db->query("DELETE FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value;", $dataValues);
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -676,12 +677,14 @@ abstract class ActiveRecord
 
     /**
      * Метод подготовки данных для запросов
+     * @param BaseDatabaseAdapter $db - адапрет доступа к БД
      * @param array $dataColumns - названия колонок
      * @param array $dataValues - массив связки ключей и их значений
      * @param array $dataValues4Upd - названия ключей и значений для UPDATE
      * @throws
      */
-    private function prepareData(array &$dataColumns,
+    private function prepareData(BaseDatabaseAdapter &$db,
+                                 array &$dataColumns,
                                  array &$dataValues,
                                  array &$dataValues4Upd = []) {
         foreach ($this->_dataHash as $key => $value) {
@@ -692,7 +695,7 @@ abstract class ActiveRecord
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
             $dataColumns[] = $tmpKey;
-            $dataValues4Upd[] = "\"$tmpKey\" = $tmpName";
+            $dataValues4Upd[] = $db->quoteTableName($tmpKey)." = $tmpName";
             $dataValues[$tmpName] = $tmpValue;
         }
         $objectProps = $this->objectProperties();
@@ -705,7 +708,7 @@ abstract class ActiveRecord
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
             $dataColumns[] = $tmpKey;
-            $dataValues4Upd[] = "\"$tmpKey\" = $tmpName";
+            $dataValues4Upd[] = $db->quoteTableName($tmpKey)." = $tmpName";
             $dataValues[$tmpName] = $tmpValue;
         }
     }

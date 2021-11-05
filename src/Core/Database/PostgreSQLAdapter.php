@@ -56,6 +56,23 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
     }
 
     /**
+     * Получить корректное экранированное имя таблицы
+     * @param string $name
+     * @return string
+     */
+    final public function quoteTableName(string $name): string {
+        $nameLst = explode('.', $name);
+        $tmpName = "";
+        foreach ($nameLst as $n) {
+            if (empty($tmpName))
+                $tmpName = "\"$n\"";
+            else
+                $tmpName .= ".\"$n\"";
+        }
+        return $tmpName;
+    }
+
+    /**
      * Метод создания строки с настройками подключения
      * @param array $settings - массив настроек
      * @return string

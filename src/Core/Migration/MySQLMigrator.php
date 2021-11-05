@@ -43,7 +43,7 @@ class MySQLMigrator extends BaseMigrator
         else
             $strOptions = "DEFAULT CHARACTER SET utf8";
 
-        $res = $this->_dbAdapter->query("CREATE DATABASE $name $strOptions;");
+        $res = $this->_dbAdapter->query("CREATE DATABASE ".$this->_dbAdapter->quoteTableName($name)." $strOptions;");
         if (is_null($res))
             return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid result (NULL)!');
     }
@@ -58,7 +58,7 @@ class MySQLMigrator extends BaseMigrator
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database connector (NULL)!');
 
-        $res = $this->_dbAdapter->query("DROP DATABASE IF EXISTS $name;");
+        $res = $this->_dbAdapter->query("DROP DATABASE IF EXISTS ".$this->_dbAdapter->quoteTableName($name).";");
         if (is_null($res))
             return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid result (NULL)!');
     }
@@ -93,7 +93,7 @@ class MySQLMigrator extends BaseMigrator
 
         // --- select table information ---
         $dbName = $this->_dbAdapter->database();
-        $res = $this->_dbAdapter->query("SHOW INDEX FROM $table FROM $dbName;");
+        $res = $this->_dbAdapter->query("SHOW INDEX FROM ".$this->_dbAdapter->quoteTableName($table)." FROM ".$this->_dbAdapter->quoteTableName($dbName).";");
         if (empty($res))
             return [];
         $tmpIndexes = [];
@@ -144,7 +144,7 @@ class MySQLMigrator extends BaseMigrator
         if (is_null($this->_dbAdapter))
             return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
         // --- select table information ---
-        $res = $this->_dbAdapter->query("SHOW COLUMNS FROM $table;");
+        $res = $this->_dbAdapter->query("SHOW COLUMNS FROM ".$this->_dbAdapter->quoteTableName($table).";");
         if (empty($res))
             return [];
         $tmpColumns = [];
@@ -187,7 +187,7 @@ class MySQLMigrator extends BaseMigrator
         if (is_null($this->_dbAdapter))
             return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
         // --- select table sql ---
-        $res = $this->_dbAdapter->query("SHOW KEYS FROM $table WHERE Key_name = 'PRIMARY';");
+        $res = $this->_dbAdapter->query("SHOW KEYS FROM ".$this->_dbAdapter->quoteTableName($table)." WHERE Key_name = 'PRIMARY';");
         if (empty($res))
             return [];
         $tmpColumns = [];
@@ -273,5 +273,111 @@ EOT;
             ];
         }
         return $tmpList;
+    }
+
+    /**
+     * Переименовать колонку в таблице
+     * @param string $table - название таблицы
+     * @param string $column - название колонки
+     * @param string $newName - новое название колонки
+     */
+    public function renameColumn(string $table, string $column, string $newName) {
+        if (empty($table) || empty($column) || empty($newName))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid table name or column name or new column name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid database connector (NULL)!');
+        $tmpIdexes = $this->tableIndexes($table);
+        $tmpColumns = $this->tableColumns($table);
+        if (!isset($tmpColumns[$column]))
+            return;
+        $tmpTable = $this->_dbAdapter->quoteTableName($table);
+        $tmpColumn = $this->_dbAdapter->quoteTableName($column);
+        $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
+        $colType = $tmpColumns[$column]['type'];
+        $colIsNotNull = "";
+        if ($tmpColumns[$column]['is_not_null'])
+            $colIsNotNull = "NOT NULL";
+        $colDefault = "";
+        if (!empty($tmpColumns[$column]['default']))
+            $colDefault = $this->makeDefaultValue($tmpColumns[$column]['default'], $colType);
+
+        $this->_dbAdapter->query("ALTER TABLE $tmpTable CHANGE $tmpColumn $tmpNewName $colType $colIsNotNull $colDefault;");
+        foreach ($tmpIdexes as $info) {
+            if (!in_array($column, $info['columns']))
+                continue;
+            $indexNewName = $table . "_" . $newName . "_index";
+            $this->renameIndex($table, $info['index_name'], $indexNewName);
+        }
+    }
+
+    /**
+     * Изменить тип колонки и ее дополнительные параметры, если они заданы
+     * @param string $table - название таблицы
+     * @param string $column - название колонки
+     * @param string $type - новый тип данных
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [integer]  limit          - размер данных колонки
+     * [bool]     null           - может ли быть NULL
+     * [string]   default        - базовое значение
+     */
+    public function changeColumn(string $table, string $column, string $type, array $props = []) {
+        if (empty($table) || empty($column) || empty($type))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid table name or column name or column type!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid database connector (NULL)!');
+
+        $table = $this->_dbAdapter->quoteTableName($table);
+
+        // --- drop default ---
+        $sql = "ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP DEFAULT;";
+        $this->_dbAdapter->query($sql);
+
+        // --- change type ---
+        $tmpLimit = null;
+        if (isset($props['limit']))
+            $tmpLimit = intval($props['limit']);
+        $tmpType = $this->toDatabaseType($type, $tmpLimit);
+        $tmpTypeUsing = $tmpType;
+
+        $colIsNotNull = "";
+        if (isset($props['null']) && $props['null'] === false)
+            $colIsNotNull = "NOT NULL";
+        $colDefault = "";
+        if (isset($props['default']) && !empty($props['default']))
+            $colDefault = $this->makeDefaultValue($props['default'], $tmpType);
+
+        $sql = "ALTER TABLE $table MODIFY ".$this->_dbAdapter->quoteTableName($column)." $tmpType $colIsNotNull $colDefault;";
+        $this->_dbAdapter->query($sql);
+    }
+
+    /**
+     * Добавить/Удалить секцию NOT NULL у колонки
+     * @param string $table - название таблицы
+     * @param string $column - название колонки
+     * @param bool $notNull - значение секции (если false - секция NOT NULL удаляется)
+     */
+    public function changeColumnNull(string $table, string $column, $notNull = false) {
+        if (empty($table) || empty($column))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid table name or column name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid database connector (NULL)!');
+        $tmpColumns = $this->tableColumns($table);
+        if (!isset($tmpColumns[$column]))
+            return;
+        $tmpTable = $this->_dbAdapter->quoteTableName($table);
+        $tmpColumn = $this->_dbAdapter->quoteTableName($column);
+        $colType = $tmpColumns[$column]['type'];
+        $colIsNotNull = "";
+        if ($notNull === true)
+            $colIsNotNull = "NOT NULL";
+
+        $colDefault = "";
+        if (!empty($tmpColumns[$column]['default']))
+            $colDefault = $this->makeDefaultValue($tmpColumns[$column]['default'], $colType);
+
+        $this->_dbAdapter->query("ALTER TABLE $tmpTable MODIFY $tmpColumn $colType $colIsNotNull $colDefault;");
     }
 }

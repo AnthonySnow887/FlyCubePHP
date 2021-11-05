@@ -1206,13 +1206,4 @@ class SQLiteMigrator extends BaseMigrator
 
         $this->_dbAdapter->query("DROP INDEX \"$tmpName\";");
     }
-
-    /**
-     * Получить корректное экранированное имя таблицы
-     * @param string $name
-     * @return string
-     */
-    final protected function quoteTableName(string $name): string {
-        return "\"$name\"";
-    }
 }
