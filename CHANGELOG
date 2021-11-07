@@ -1,0 +1,16 @@
+# 1.1.0 (2021-11-07)
+
+ * Add MySQL support (database adapter + migrator)
+ * Fix SQLite migrator (error while creating an existing index)
+ * Fix Logger (fail if not found log folder)
+ * Fix Default error page (output multiple unreadable errors)
+
+# 1.0.1 (2021-10-31)
+
+ * Fix Config loader (fail if value is empty)  
+ * Fix JS/CSS bulder (fail if load invalid files [not *.js/.*css]) 
+ * Fix invalid current route uri (change str_replace to substr_replace) 
+
+# 1.0.0 (2021-10-20) 
+
+ * Release first version.
