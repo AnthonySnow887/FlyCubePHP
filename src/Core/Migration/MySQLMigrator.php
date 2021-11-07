@@ -10,16 +10,6 @@ use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 
 class MySQLMigrator extends BaseMigrator
 {
-    // TODO delete after tests!!!
-    function __construct(BaseDatabaseAdapter &$_dbAdapter)
-    {
-        parent::__construct($_dbAdapter);
-//        var_dump($this->tableIndexes('test'));
-//        var_dump($this->tableColumns('test'));
-//        var_dump($this->tablePrimaryKeys('test'));
-//        var_dump($this->tableForeignKeys('child'));
-    }
-
     /**
      * Создать новую базу данных
      * @param string $name - название базы данных
@@ -379,5 +369,89 @@ EOT;
             $colDefault = $this->makeDefaultValue($tmpColumns[$column]['default'], $colType);
 
         $this->_dbAdapter->query("ALTER TABLE $tmpTable MODIFY $tmpColumn $colType $colIsNotNull $colDefault;");
+    }
+
+    /**
+     * Переименовать индекс для таблицы
+     * @param string $table - название таблицы
+     * @param string $oldName - старое название
+     * @param string $newName - новое название
+     */
+    public function renameIndex(string $table, string $oldName, string $newName) {
+        if (empty($table) || empty($oldName) || empty($newName))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
+        if (strcmp($oldName, $newName) === 0)
+            return; // skip
+        $tIndexes = $this->tableIndexes($table);
+        if (empty($tIndexes) || !isset($tIndexes[$oldName]))
+            return;
+        $this->dropIndex($table, [ 'name' => $oldName ]);
+        $this->addIndex($table, $tIndexes[$oldName]['columns'], [ 'name' => $newName, 'unique' => $tIndexes[$oldName]['unique']]);
+    }
+
+    /**
+     * Удалить индекс у таблицы
+     * @param array $args
+     */
+    protected function dropIndexProtected(array $args) {
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+        if (empty($args))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
+        if (!isset($args['table']))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+        if (!isset($args['columns']) && !isset($args['name']))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+        $table = $args['table'];
+        $tmpName = "";
+        if (isset($args['columns'])) {
+            $columns = array_filter($args['columns'], 'strlen');
+            if (empty($columns))
+                return;
+            $tmpName = $table . "_" . implode('_', $columns) . "_index";
+        }
+        if (isset($args['name']))
+            $tmpName = $args['name'];
+
+        if (isset($args['if_exists']) && $args['if_exists'] === true) {
+            $tIndexes = $this->tableIndexes($table);
+            if (!isset($tIndexes[$tmpName]))
+                return;
+        }
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $tmpName = $this->_dbAdapter->quoteTableName($tmpName);
+        $this->_dbAdapter->query("DROP INDEX $tmpName ON $table;");
+    }
+
+    /**
+     * Удалить вторичный ключ таблицы
+     * @param string $table - название таблицы
+     * @param array $columns - названия колонок
+     */
+    public function dropForeignKey(string $table, array $columns) {
+        if (empty($table) || empty($columns))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid input arguments!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid database connector (NULL)!');
+        $columns = array_filter($columns,'strlen');
+        if (empty($columns))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid columns (Empty)!');
+        // --- select f-keys list ---
+        $tmpForeignKeysLst = $this->tableForeignKeys($table);
+        $columnNames = implode(', ', $columns);
+        $tmpName = "";
+        foreach ($tmpForeignKeysLst as $fk) {
+            if (strcmp($fk['column'], $columnNames) === 0) {
+                $tmpName = $fk['name'];
+                break;
+            }
+        }
+        if (empty($tmpName))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: not found fkey name for table $table and columns ($columnNames)!');
+        $tmpTable = $this->_dbAdapter->quoteTableName($table);
+        $this->_dbAdapter->query("ALTER TABLE $tmpTable DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName).";");
+        $this->dropIndex($table, [ 'name' => $tmpName, 'if_exists' => true ]);
     }
 }

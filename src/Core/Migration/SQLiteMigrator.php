@@ -420,8 +420,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
-            $this->addIndex($table, $index['columns'], [ 'unique' => $index['unique'] ]);
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
+            $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
     }
 
     /**
@@ -464,7 +468,7 @@ class SQLiteMigrator extends BaseMigrator
                 } else {
                     $tmpArgs = [
                         'type' => $tmpColumns[$column]['type'],
-                        'default' => $default,
+                        'default' => $this->prepareDefault($default),
                         'null' => !$tmpColumns[$column]['is_not_null']
                     ];
                     $tmpSql = $this->prepareCreateColumn($column, $tmpArgs);
@@ -515,8 +519,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
-            $this->addIndex($table, $index['columns'], [ 'unique' => $index['unique'] ]);
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
+            $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
     }
 
     /**
@@ -559,7 +567,7 @@ class SQLiteMigrator extends BaseMigrator
                 } else {
                     $tmpArgs = [
                         'type' => $tmpColumns[$column]['type'],
-                        'default' => $tmpColumns[$column]['default'],
+                        'default' => $this->prepareDefault($tmpColumns[$column]['default']),
                         'null' => !$notNull
                     ];
                     $tmpSql = $this->prepareCreateColumn($column, $tmpArgs);
@@ -610,8 +618,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
     }
 
     /**
@@ -795,8 +807,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
 
         // --- set old states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = $deferForeignKeys;");
@@ -904,8 +920,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
 
         // --- set old states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = $deferForeignKeys;");
@@ -1039,8 +1059,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
 
         // --- set old states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = $deferForeignKeys;");
@@ -1135,7 +1159,7 @@ class SQLiteMigrator extends BaseMigrator
             $newSql = trim($newSql);
         }
         // --- add last ')' ---
-        if (strcmp($newSql[strlen($newSql) - 1], ')') !== 0)
+//        if (strcmp($newSql[strlen($newSql) - 1], ')') !== 0)
             $newSql .= " )";
 
         $tmpColumns = implode(', ', array_keys($tmpColumns));
@@ -1155,8 +1179,12 @@ class SQLiteMigrator extends BaseMigrator
         $this->_dbAdapter->query("DROP TABLE \"$newTName\";");
 
         // --- append indexes ---
-        foreach ($tmpIdexes as $index)
+        $tmpIdexesUpd = $this->tableIndexes($table);
+        foreach ($tmpIdexes as $index) {
+            if (isset($tmpIdexesUpd[$index['index_name']]))
+                continue;
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
+        }
 
         // --- set old states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = $deferForeignKeys;");
@@ -1205,5 +1233,31 @@ class SQLiteMigrator extends BaseMigrator
             $tmpName = $args['name'];
 
         $this->_dbAdapter->query("DROP INDEX \"$tmpName\";");
+    }
+
+    /**
+     * Получить значение секции default без кавычек
+     * @param null|string $val
+     * @return null|string
+     */
+    final protected function prepareDefault($val)/*: null|string*/ {
+        if (empty($val))
+            return $val;
+        if (strcmp($val[0], "\"") === 0) {
+            if (strlen($val) > 1) {
+                $val = ltrim($val, "\"");
+                $val = $this->prepareDefault($val);
+            } else {
+                $val = "";
+            }
+        } else if (strcmp($val[strlen($val) - 1], "\"") === 0) {
+            if (strlen($val) > 1) {
+                $val = substr($val, 0, -1);
+                $val = $this->prepareDefault($val);
+            } else {
+                $val = "";
+            }
+        }
+        return $val;
     }
 }

@@ -375,8 +375,8 @@ abstract class ActiveRecord
             $tmpColumn = $key;
             if ($prepareNames === true)
                 $tmpColumn = CoreHelper::underscore($key);
-            $tmpWhere .= " ".$db->quoteTableName("$tName.$tmpColumn")." = :$tmpKey";
-            $tmpWhereVal[$tmpKey] = $val;
+            $tmpWhere .= " ".$db->quoteTableName("$tName.$tmpColumn")." = :key_$tmpKey";
+            $tmpWhereVal[":key_".$tmpKey] = $val;
         }
         $tmpWhere = trim($tmpWhere);
         try {
@@ -401,7 +401,7 @@ abstract class ActiveRecord
      * @return bool
      * @throws
      */
-    final public static function exists($pkVal) {
+    final public static function exists($pkVal): bool {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -442,7 +442,7 @@ abstract class ActiveRecord
      *
      * Вернет true если из набора значений в БД есть хотя бы одно.
      */
-    final public static function existsSome(string $column, array $values, bool $prepareNames = true) {
+    final public static function existsSome(string $column, array $values, bool $prepareNames = true): bool {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -462,8 +462,8 @@ abstract class ActiveRecord
             $tmpKey = CoreHelper::underscore($key);
             if (!empty($tmpWhere))
                 $tmpWhere .= ",";
-            $tmpWhere .= " :$tmpKey";
-            $tmpWhereVal[$tmpKey] = $val;
+            $tmpWhere .= " :key_$tmpKey";
+            $tmpWhereVal[":key_$tmpKey"] = $val;
         }
         $tmpWhere = trim($tmpWhere);
         $tmpColumn = $column;

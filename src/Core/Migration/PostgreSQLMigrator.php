@@ -454,6 +454,29 @@ EOT;
         return $tmpList;
     }
 
+    /**
+     * Преобразование типа колонки в тип базы данных
+     * @param string $name - имя типа
+     * @param int|null $limit - размер данных
+     * @return string
+     *
+     * NOTE: override this method for correct implementation.
+     */
+    final protected function toDatabaseType(string $name, int $limit = null): string {
+        $name = str_replace("unsigned", "", $name);
+        $name = str_replace("UNSIGNED", "", $name);
+        $name = trim($name);
+        if (strcmp($name, 'string') === 0) {
+            if (isset($limit))
+                return "varchar ($limit)";
+            else
+                return "text";
+        }
+        if (isset($limit))
+            return "$name ($limit)";
+        return $name;
+    }
+
     // --- private ---
 
     /**

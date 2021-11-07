@@ -191,7 +191,7 @@ abstract class BaseMigrator
      * Supported Keys:
      *
      * [bool]     if_not_exists  - добавить флаг 'IF NOT EXISTS' (только для таблицы)
-     * [bool]     id             - использовать колонку ID или нет
+     * [bool]     id             - использовать колонку ID или нет (будет задана как первичный ключ)
      * [string]   type           - тип данных колонки (обязательный)
      * [integer]  limit          - размер данных колонки
      * [bool]     null           - может ли быть NULL
@@ -199,6 +199,9 @@ abstract class BaseMigrator
      * [bool]     primary_key    - использовать как первичный ключ
      * [bool]     unique         - является уникальным
      * [string]   unique_group   - является уникальной группой (значение: имя группы)
+     *
+     * NOTE:
+     * id - serial not NULL (for MySQL: bigint unsigned)
      *
      * createTable('test', [ 'id' => false,
      *                       'if_not_exists' => true,
