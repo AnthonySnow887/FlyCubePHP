@@ -17,6 +17,7 @@ include_once 'BaseSchema.php';
 include_once 'SchemaDumper.php';
 include_once 'SQLiteMigrator.php';
 include_once 'PostgreSQLMigrator.php';
+include_once 'MySQLMigrator.php';
 
 use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
@@ -49,6 +50,8 @@ class MigrationsCore
         $this->registerMigrator('sqlite', 'FlyCubePHP\Core\Migration\SQLiteMigrator');
         $this->registerMigrator('sqlite3', 'FlyCubePHP\Core\Migration\SQLiteMigrator');
         $this->registerMigrator('postgresql', 'FlyCubePHP\Core\Migration\PostgreSQLMigrator');
+        $this->registerMigrator('mysql', 'FlyCubePHP\Core\Migration\MySQLMigrator');
+        $this->registerMigrator('mariadb', 'FlyCubePHP\Core\Migration\MySQLMigrator');
 
         // --- load models ---
         $modelsFolder = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::MODELS_DIR);
@@ -642,7 +645,7 @@ class MigrationsCore
             return true;
         $sql = <<<EOT
         CREATE TABLE schema_migrations (
-            version character varying NOT NULL,
+            version VARCHAR(128) NOT NULL,
             CONSTRAINT schema_migrations_pkey PRIMARY KEY (version)
         )
 EOT;

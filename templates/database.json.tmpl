@@ -13,6 +13,7 @@
     "adapter": "postgresql",
     "database": "fly_cube_php_dev",
     "host": "127.0.0.1",
+    "port": 5432,
     "username": "postgres",
     "password": "postgres"
   },
@@ -21,8 +22,59 @@
     "adapter": "postgresql",
     "database": "fly_cube_php_prod",
     "host": "127.0.0.1",
+    "port": 5432,
     "username": "postgres",
     "password": "postgres"
+  },
+
+  "default_postgresql_unix_dev": {
+    "adapter": "postgresql",
+    "database": "fly_cube_php_dev",
+    "unix_socket_dir": "/var/run/postgresql",
+    "username": "postgres",
+    "password": "postgres"
+  },
+
+  "default_postgresql_unix_prod": {
+    "adapter": "postgresql",
+    "database": "fly_cube_php_prod",
+    "unix_socket_dir": "/var/run/postgresql",
+    "username": "postgres",
+    "password": "postgres"
+  },
+
+  "default_mysql_dev": {
+    "adapter": "mysql",
+    "database": "fly_cube_php_dev",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "root"
+  },
+
+  "default_mysql_prod": {
+    "adapter": "mysql",
+    "database": "fly_cube_php_prod",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "root"
+  },
+
+  "default_mysql_unix_dev": {
+    "adapter": "mysql",
+    "database": "fly_cube_php_dev",
+    "unix_socket": "/run/mysql/mysql.sock",
+    "username": "root",
+    "password": "root"
+  },
+
+  "default_mysql_unix_prod": {
+    "adapter": "mysql",
+    "database": "fly_cube_php_prod",
+    "unix_socket": "/run/mysql/mysql.sock",
+    "username": "root",
+    "password": "root"
   },
 
   "production": "default_sqlite_prod",

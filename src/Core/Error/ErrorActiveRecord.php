@@ -80,7 +80,7 @@ class ErrorActiveRecord extends Error
         $activeRMethod = "";
         if (isset($options['active-r-method']))
             $activeRMethod = $options['active-r-method'];
-        $errorDB = "";
+        $errorDB = null;
         if (isset($options['error-database'])
             && is_subclass_of($options['error-database'], '\FlyCubePHP\Core\Error\ErrorDatabase'))
             $errorDB = $options['error-database'];

@@ -458,24 +458,4 @@ abstract class Migration
             return; // TODO throw new \RuntimeException('Migration -> execute: invalid database migrator (NULL)!');
         $this->_migrator->execute($sql);
     }
-
-// TODO delete...
-//    // --- private ---
-//
-//    /**
-//     * Метод создания мигратора
-//     * @return BaseMigrator|null
-//     */
-//    final private function createMigrator() {
-//        if (is_null($this->_dbAdapter))
-//            return null;
-//        $connectorName = strtolower($this->_dbAdapter->name());
-//        if (strcmp($connectorName, 'sqlite') === 0
-//            || strcmp($connectorName, 'sqlite3') === 0)
-//            return new SQLiteMigrator($this->_dbAdapter);
-//        elseif (strcmp($connectorName, 'postgresql') === 0)
-//            return new PostgreSQLMigrator($this->_dbAdapter);
-//
-//        return null;
-//    }
 }

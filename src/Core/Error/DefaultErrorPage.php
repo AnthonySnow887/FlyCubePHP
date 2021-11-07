@@ -14,6 +14,8 @@ include_once 'BaseErrorHandler.php';
 
 class DefaultErrorPage extends BaseErrorHandler
 {
+    private $_isRendered = false;
+
     /**
      * Метод обработки ошибки
      * @param int $errCode - код ошибки
@@ -246,6 +248,10 @@ EOT;
     final private function renderError(string $title = "FlyCubePHP Error",
                                        string $title2 = "",
                                        string $errorBody) {
+        if ($this->_isRendered)
+            return;
+        $this->_isRendered = true;
+
         $html = <<<EOT
 <!DOCTYPE html>
 <html>

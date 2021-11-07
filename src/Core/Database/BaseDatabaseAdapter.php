@@ -41,12 +41,12 @@ abstract class BaseDatabaseAdapter
                 throw ErrorDatabase::makeError([
                     'tag' => 'database',
                     'message' => "Invalid DSN!",
-                    'adapter-class' => $this->objectName(),
-                    'adapter-method' => __FUNCTION__,
+                    'class-name' => $this->objectName(),
+                    'class-method' => __FUNCTION__,
                     'adapter-name' => $this->name()
                 ]);
 
-            if ($this->userPassTransferToPDO())
+            if ($this->authSettingsTransferToPDO())
                 $this->_pdoObject = new \PDO($dsn, $this->_settings['username'], $this->_settings['password']);
             else
                 $this->_pdoObject = new \PDO($dsn);
@@ -56,8 +56,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name()
             ]);
         }
@@ -96,6 +96,16 @@ abstract class BaseDatabaseAdapter
     }
 
     /**
+     * Получить имя текущей базы данных из настроек
+     * @return string
+     */
+    final public function database(): string {
+        if (isset($this->_settings['database']))
+            return $this->_settings['database'];
+        return "";
+    }
+
+    /**
      * Метод выполнения запроса к базе данных
      * @param string $sql - SQL запрос
      * @param array $params - параметры запроса
@@ -111,8 +121,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => 'Database adapter is not valid!',
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -127,8 +137,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -157,8 +167,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => 'Database adapter is not valid!',
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -176,8 +186,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => $this->objectName(),
-                'adapter-method' => __FUNCTION__,
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name(),
                 'sql-query' => $sql,
                 'sql-params' => $params
@@ -237,6 +247,12 @@ abstract class BaseDatabaseAdapter
     }
 
     /**
+     * Метод запроса версии сервера базы данных
+     * @return string
+     */
+    abstract public function serverVersion(): string;
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      */
@@ -249,6 +265,13 @@ abstract class BaseDatabaseAdapter
     abstract public function name(): string;
 
     /**
+     * Получить корректное экранированное имя таблицы
+     * @param string $name
+     * @return string
+     */
+    abstract public function quoteTableName(string $name): string;
+
+    /**
      * Метод создания строки с настройками подключения
      * @param array $settings - массив настроек
      * @return string
@@ -259,7 +282,7 @@ abstract class BaseDatabaseAdapter
      * Передавать логин и пароль в PDO при его создании как аргументы
      * @return bool
      */
-    protected function userPassTransferToPDO(): bool {
+    protected function authSettingsTransferToPDO(): bool {
         return false;
     }
 
@@ -276,8 +299,8 @@ abstract class BaseDatabaseAdapter
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
                 'message' => $e->getMessage(),
-                'adapter-class' => __CLASS__,
-                'adapter-method' => __FUNCTION__,
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
                 'adapter-name' => $this->name()
             ]);
         }
