@@ -41,6 +41,7 @@ Supported databases
 
 - SQLite 3;
 - PostgreSQL 9.6 or later.
+- MySQL/MariaDB (tested on MariaDB 10.2.36)
 
 Third-party dependencies
 ------------------------
