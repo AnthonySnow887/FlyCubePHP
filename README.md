@@ -120,6 +120,7 @@ Additional required PHP modules
 - php7-ctype
 - php7-json
 - php7-mbstring
+- php7-mysql
 - php7-openssl
 - php7-pdo
 - php7-pgsql

@@ -413,12 +413,13 @@ class AssetPipeline
             $fType = "javascript";
 
         $cType = "text/$fType";
-        if (strcmp($fType, "svg") === 0
-            || strcmp($fType, "png") === 0
+        if (strcmp($fType, "png") === 0
             || strcmp($fType, "jpg") === 0
             || strcmp($fType, "jpeg") === 0
             || strcmp($fType, "gif") === 0)
             $cType = "image/$fType";
+        if (strcmp($fType, "svg") === 0)
+            $cType = "image/svg+xml";
 
         if (file_exists($realPath)) {
             if (!is_readable($realPath)) {
