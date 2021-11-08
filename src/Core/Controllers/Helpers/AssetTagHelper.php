@@ -562,7 +562,7 @@ class AssetTagHelper extends BaseControllerHelper
             $this->_mimeTypes = $this->systemExtensionMimeTypes();
 
         $ext = strtolower(trim($ext));
-        return isset($this->_mimeTypes[$ext]) ? $this->_mimeTypes[$ext] : null;
+        return isset($this->_mimeTypes[$ext]) ? $this->_mimeTypes[$ext] : "";
     }
 
     private function assetPath(string $name, bool $skipError = false): string {

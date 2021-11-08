@@ -228,7 +228,8 @@ class ComponentsManager
      * @return BaseComponent|null
      */
     public function pluginByClassName(string $class_name)/*: BaseComponent|null*/ {
-        return $this->getSuccessPlugin($this->searchPluginByClassName($class_name));
+        $plugin = $this->searchPluginByClassName($class_name);
+        return $this->getSuccessPlugin($plugin);
     }
 
     /**
@@ -237,7 +238,8 @@ class ComponentsManager
      * @return BaseComponent|null
      */
     public function pluginByControllerName(string $controller_name)/*: BaseComponent|null*/ {
-        return $this->getSuccessPlugin($this->searchPluginByControllerName($controller_name));
+        $plugin = $this->searchPluginByControllerName($controller_name);
+        return $this->getSuccessPlugin($plugin);
     }
 
     /**
@@ -737,7 +739,7 @@ class ComponentsManager
      * @param BaseComponent $plugin
      * @return BaseComponent|null
      */
-    private function getSuccessPlugin(BaseComponent &$plugin)/*: BaseComponent|null*/ {
+    private function getSuccessPlugin(/*BaseComponent*/ &$plugin)/*: BaseComponent|null*/ {
         if (!is_null($plugin) && $plugin->state() == BCState::INIT_SUCCESS)
             return $plugin;
         return null;
