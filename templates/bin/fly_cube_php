@@ -345,10 +345,15 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
 
 
 const URL_TWIG = "https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip";
-const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.1.0.zip";
-const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.5.2.zip";
+const DIR_TWIG = "Twig-2.12.5";
+const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip";
+const DIR_JSHRINK = "JShrink-1.4.0";
+const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.8.1.zip";
+const DIR_SCSS_PHP = "scssphp-1.8.1";
 const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip";
+const DIR_PSR_LOG = "log-1.1.4";
 const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
+const DIR_MONOLOG = "monolog-1.26.1";
 
 /**
  * Вывести справку приложения
@@ -414,32 +419,35 @@ Options include:
     
 Examples:
 
-1. Create new FlyCubePHP project:
-    $app --new --project --name=MyProject
+ 1. Create new FlyCubePHP project:
+     $app --new --project --name=MyProject
 
-2. Create new controller without actions:
-    $app --new --controller --name=Example
+ 2. Create new controller without actions:
+     $app --new --controller --name=Example
 
-3. Create new controller with actions:
-    $app --new --controller --name=Example --actions=act_1,act_2
+ 3. Create new controller with actions:
+     $app --new --controller --name=Example --actions=act_1,act_2
     
-4. Create new plugin:
-    $app --new --plugin --name=ExamplePlugin
+ 4. Create new plugin:
+     $app --new --plugin --name=ExamplePlugin
     
-5. Create new plugin controller:
-    $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
+ 5. Create new gui plugin:
+     $app --new --plugin-gui --name=ExamplePlugin
     
-6. Install all migrations:
-    $app --db-migrate
+ 6. Create new plugin controller:
+     $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
+    
+ 7. Install all migrations:
+     $app --db-migrate
 
-7. Install needed migrations:
-    $app --db-migrate --to-version=20210309092620
+ 8. Install needed migrations:
+     $app --db-migrate --to-version=20210309092620
     
-8. Uninstall last migration:
-    $app --db-rollback
+ 9. Uninstall last migration:
+     $app --db-rollback
     
-9. Uninstall last N-steps migrations:
-    $app --db-rollback --step=3
+10. Uninstall last N-steps migrations:
+     $app --db-rollback --step=3
 
 
 EOT;
@@ -1243,13 +1251,13 @@ function createNewProject(string $name,
             echo "       Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5"))
-            || !is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_TWIG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_TWIG, "src"))) {
             echo "FAILED\r\n";
             echo "ERROR: Invalid unzipped required folders for Twig!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "Twig-2.12.5"),
+        rename(buildPath($tmpPath, "vendor", DIR_TWIG),
                buildPath($tmpPath, "vendor", "Twig-2.x"));
         rename(buildPath($tmpPath, "vendor", "Twig-2.x", "src"),
                buildPath($tmpPath, "vendor", "Twig-2.x", "Twig"));
@@ -1265,13 +1273,13 @@ function createNewProject(string $name,
             echo "       Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0"))
-            || !is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_JSHRINK))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_JSHRINK, "src"))) {
             echo "FAILED\r\n";
             echo "ERROR: Invalid unzipped required folders for JShrink!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "JShrink-1.1.0"),
+        rename(buildPath($tmpPath, "vendor", DIR_JSHRINK),
                buildPath($tmpPath, "vendor", "JShrink"));
         rename(buildPath($tmpPath, "vendor", "JShrink", "src"),
                buildPath($tmpPath, "vendor", "JShrink", "JShrink"));
@@ -1287,13 +1295,13 @@ function createNewProject(string $name,
             echo "       Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2"))
-            || !is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_SCSS_PHP))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_SCSS_PHP, "src"))) {
             echo "FAILED\r\n";
             echo "ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "scssphp-1.5.2"),
+        rename(buildPath($tmpPath, "vendor", DIR_SCSS_PHP),
                buildPath($tmpPath, "vendor", "ScssPhp"));
         rename(buildPath($tmpPath, "vendor", "ScssPhp", "src"),
                buildPath($tmpPath, "vendor", "ScssPhp", "ScssPhp"));
@@ -1309,13 +1317,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "log-1.1.4"))
-            || !is_dir(buildPath($tmpPath, "vendor", "log-1.1.4", "Psr"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_PSR_LOG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_PSR_LOG, "Psr"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "log-1.1.4"),
+        rename(buildPath($tmpPath, "vendor", DIR_PSR_LOG),
                buildPath($tmpPath, "vendor", "Psr"));
         unlink($fPath);
         echo "OK\r\n";
@@ -1329,13 +1337,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1"))
-            || !is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_MONOLOG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_MONOLOG, "src"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "monolog-1.26.1"),
+        rename(buildPath($tmpPath, "vendor", DIR_MONOLOG),
                buildPath($tmpPath, "vendor", "Monolog"));
         rename(buildPath($tmpPath, "vendor", "Monolog", "src"),
                buildPath($tmpPath, "vendor", "Monolog", "Monolog"));
@@ -2008,6 +2016,30 @@ function createPluginController($pluginName, $name, $actions, bool $isAPI = fals
     if (!is_dir($tmpPath)) {
         echo "ERROR: Not found plugin directory (path: $tmpPath)!\r\n";
         return;
+    }
+
+    // --- check needed gui folders ---
+    if ($isAPI === false) {
+        $hlpPath = buildPath($tmpPath, "app", "helpers");
+        if (!is_dir($hlpPath)) {
+            echo "ERROR: Plugin helpers directory not found! This is GUI plugin? (path: $hlpPath)\r\n";
+            return;
+        }
+        $jsPath = buildPath($tmpPath, "app", "assets", "javascripts");
+        if (!is_dir($jsPath)) {
+            echo "ERROR: Plugin javascripts directory not found! This is GUI plugin? (path: $jsPath)\r\n";
+            return;
+        }
+        $cssPath = buildPath($tmpPath, "app", "assets", "stylesheets");
+        if (!is_dir($cssPath)) {
+            echo "ERROR: Plugin stylesheets directory not found! This is GUI plugin? (path: $cssPath)\r\n";
+            return;
+        }
+        $viewsPath = buildPath($tmpPath, "app", "views");
+        if (!is_dir($viewsPath)) {
+            echo "ERROR: Plugin views directory not found! This is GUI plugin? (path: $viewsPath)\r\n";
+            return;
+        }
     }
 
     $actionsData = "";

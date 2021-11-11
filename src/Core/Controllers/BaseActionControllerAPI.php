@@ -55,6 +55,7 @@ class BaseActionControllerAPI extends BaseController
         $defVal = !Config::instance()->isProduction();
         $this->_enableActionOutput = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ACTION_OUTPUT, $defVal));
         $this->_params = RouteCollector::currentRouteArgs();
+        $this->_params['controller-class'] = $this->controllerClassName();
         $this->_params['controller'] = $this->controllerName();
         $this->_params['action'] = $action;
 

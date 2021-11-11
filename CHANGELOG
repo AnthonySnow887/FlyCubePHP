@@ -1,3 +1,13 @@
+# 1.1.1 (11.11.2021)
+
+ * Update fly_cube_php binary (add check for plugin-create)
+ * Update dependencies version (JShrink -> v1.4.0; ScssPhp -> v1.8.1)
+ * Fix load needed library (invalid autoloader include)
+ * Fix JS/CSS builders (fix multiline comments errors)
+ * Update BaseController (add controllerClassName + fix controllerName)
+ * Update BaseActionController + BaseActionControllerAPI (add _params['controller-class'])
+ * Fix Components Manger (fix dependency tree load errors)
+
 # 1.1.0 (08.11.2021)
 
  * Add MySQL support (database adapter + migrator)

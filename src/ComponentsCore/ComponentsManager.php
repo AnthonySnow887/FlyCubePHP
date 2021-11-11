@@ -32,7 +32,7 @@ class ComponentsManager
 {
     private static $_instance = null;
 
-    private $_version = "2.0.0";
+    private $_version = "2.0.1";
     private $_state = CMState::NOT_LOADED;
     private $_plugins_dir = "";
     private $_plugins = array();
@@ -212,7 +212,7 @@ class ComponentsManager
             if (!preg_match("/^.*Controller\.php$/", $controller))
                 continue;
             $ctrlCName = CoreHelper::fileName($controller, true);
-            $ctrlName = CoreHelper::fileName($controller);
+            $ctrlName = substr($ctrlCName, 0, strlen($ctrlCName) - 10);
             $ctrlPath = $controller;
             $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
             include_once $controller;
@@ -613,7 +613,11 @@ class ComponentsManager
                 }
             }
             $tmp_child = new DependencyTreeElement($dep_plugin->name(), $dep_plugin->version(), $current_plugin_node->nodeLevel() + 1);
-            $current_dep_node->appendChild($tmp_child);
+            if (is_null($current_dep_node))
+                $tree->appendChild($tmp_child);
+            else
+                $current_dep_node->appendChild($tmp_child);
+
             if (!$this->loadPluginDependencyTree($dep_plugin, $tree))
                 return false;
         }
@@ -645,7 +649,11 @@ class ComponentsManager
             }
             $tmp_child = new DependencyTreeElement($dep_plugin->name(), $dep_plugin->version(), $current_plugin_node->nodeLevel() + 1);
             $tmp_child->setIsOptional(true);
-            $current_dep_node->appendChild($tmp_child);
+            if (is_null($current_dep_node))
+                $tree->appendChild($tmp_child);
+            else
+                $current_dep_node->appendChild($tmp_child);
+
             if (!$this->loadPluginDependencyTree($dep_plugin, $tree))
                 return false;
         }
@@ -662,11 +670,11 @@ class ComponentsManager
         if (is_null($tree))
             return "";
         $prefix = " ";
-        str_pad($prefix, ($level * 2));
+        $prefix = str_pad($prefix, ($level * 4));
         if ($level == 0)
-            $prefix = "${prefix}|--";
+            $prefix = "$prefix|--";
         else
-            $prefix = "${prefix}|-->";
+            $prefix = "$prefix|-->";
         $type_prefix = "";
         if (!$tree->isOptional() && $level > 0)
             $type_prefix = "[Req]";

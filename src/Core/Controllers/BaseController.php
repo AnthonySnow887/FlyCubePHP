@@ -202,6 +202,18 @@ abstract class BaseController
      * @throws
      */
     final protected function controllerName(): string {
+        $tmpName = $this->controllerClassName();
+        if (preg_match("/.*Controller$/", $tmpName))
+            $tmpName = substr($tmpName, 0, strlen($tmpName) - 10);
+        return $tmpName;
+    }
+
+    /**
+     * Имя класса текущего контроллера
+     * @return string
+     * @throws
+     */
+    final protected function controllerClassName(): string {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);

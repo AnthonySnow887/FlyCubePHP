@@ -14,10 +14,15 @@ if (version_compare(PHP_VERSION, '7.0') < 0) {
 }
 
 const URL_TWIG = "https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip";
-const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.1.0.zip";
-const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.5.2.zip";
+const DIR_TWIG = "Twig-2.12.5";
+const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip";
+const DIR_JSHRINK = "JShrink-1.4.0";
+const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.8.1.zip";
+const DIR_SCSS_PHP = "scssphp-1.8.1";
 const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip";
+const DIR_PSR_LOG = "log-1.1.4";
 const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
+const DIR_MONOLOG = "monolog-1.26.1";
 
 if (is_file(__DIR__."/../FlyCubePHP/FlyCubePHPVersion.php"))
     include_once __DIR__."/../FlyCubePHP/FlyCubePHPVersion.php";
@@ -836,13 +841,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5"))
-            || !is_dir(buildPath($tmpPath, "vendor", "Twig-2.12.5", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_TWIG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_TWIG, "src"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for Twig!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "Twig-2.12.5"),
+        rename(buildPath($tmpPath, "vendor", DIR_TWIG),
                buildPath($tmpPath, "vendor", "Twig-2.x"));
         rename(buildPath($tmpPath, "vendor", "Twig-2.x", "src"),
                buildPath($tmpPath, "vendor", "Twig-2.x", "Twig"));
@@ -858,13 +863,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0"))
-            || !is_dir(buildPath($tmpPath, "vendor", "JShrink-1.1.0", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_JSHRINK))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_JSHRINK, "src"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for JShrink!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "JShrink-1.1.0"),
+        rename(buildPath($tmpPath, "vendor", DIR_JSHRINK),
                buildPath($tmpPath, "vendor", "JShrink"));
         rename(buildPath($tmpPath, "vendor", "JShrink", "src"),
                buildPath($tmpPath, "vendor", "JShrink", "JShrink"));
@@ -880,13 +885,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2"))
-            || !is_dir(buildPath($tmpPath, "vendor", "scssphp-1.5.2", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_SCSS_PHP))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_SCSS_PHP, "src"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "scssphp-1.5.2"),
+        rename(buildPath($tmpPath, "vendor", DIR_SCSS_PHP),
                buildPath($tmpPath, "vendor", "ScssPhp"));
         rename(buildPath($tmpPath, "vendor", "ScssPhp", "src"),
                buildPath($tmpPath, "vendor", "ScssPhp", "ScssPhp"));
@@ -902,13 +907,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "log-1.1.4"))
-            || !is_dir(buildPath($tmpPath, "vendor", "log-1.1.4", "Psr"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_PSR_LOG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_PSR_LOG, "Psr"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "log-1.1.4"),
+        rename(buildPath($tmpPath, "vendor", DIR_PSR_LOG),
                buildPath($tmpPath, "vendor", "Psr"));
         unlink($fPath);
         echo "OK\r\n";
@@ -922,13 +927,13 @@ function createNewProject(string $name,
             echo "           Message: $errorStr\r\n";
             return false;
         }
-        if (!is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1"))
-            || !is_dir(buildPath($tmpPath, "vendor", "monolog-1.26.1", "src"))) {
+        if (!is_dir(buildPath($tmpPath, "vendor", DIR_MONOLOG))
+            || !is_dir(buildPath($tmpPath, "vendor", DIR_MONOLOG, "src"))) {
             echo "FAILED\r\n";
             echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
             return false;
         }
-        rename(buildPath($tmpPath, "vendor", "monolog-1.26.1"),
+        rename(buildPath($tmpPath, "vendor", DIR_MONOLOG),
                buildPath($tmpPath, "vendor", "Monolog"));
         rename(buildPath($tmpPath, "vendor", "Monolog", "src"),
                buildPath($tmpPath, "vendor", "Monolog", "Monolog"));
