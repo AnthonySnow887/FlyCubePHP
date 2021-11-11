@@ -48,8 +48,8 @@ Third-party dependencies
 
 These dependencies are required for the framework to work correctly: 
 - Twig-2.x - used to generate and render templates for web pages (https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip);
-- JShrink - used to build * .min.js files in production mode (https://github.com/tedious/JShrink/archive/refs/tags/v1.1.0.zip);
-- ScssPhp - used to build from Sass Stylesheets files to css (https://github.com/scssphp/scssphp/archive/refs/tags/v1.5.2.zip);
+- JShrink - used to build * .min.js files in production mode (https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip);
+- ScssPhp - used to build from Sass Stylesheets files to css (https://github.com/scssphp/scssphp/archive/refs/tags/v1.8.1.zip);
 - Monolog - used to application logging (https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip).
 
 NOTE: required third party dependencies will be automatically downloaded when creating a new FlyCubePHP project. 

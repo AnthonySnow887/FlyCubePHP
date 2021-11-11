@@ -333,7 +333,8 @@ class CSSBuilder
             return "";
         if (!file_exists($path))
             return "";
-        if (in_array($path, $readFiles))
+        $neededPath = $this->makeFilePathWithoutExt($path);
+        if (in_array($neededPath, $readFiles))
             return "";
 
         // --- get last modified and check ---
@@ -351,7 +352,8 @@ class CSSBuilder
         $isMLineComment = false;
         $tmpCSS = "";
         if ($file = fopen($path, "r")) {
-            $readFiles[] = $path;
+            $readFiles[] = $neededPath;
+            $readFiles[] = $this->makeFilePathWithoutExt($path); // if used pre-build
             $currentLine = 0;
             while (!feof($file)) {
                 $currentLine += 1;
@@ -763,5 +765,18 @@ class CSSBuilder
                 'class-method' => __FUNCTION__
             ]);
         }
+    }
+
+    /**
+     * Получить путь до файла без расширения
+     * @param string $path - путь до файла
+     * @return string
+     */
+    private function makeFilePathWithoutExt(string $path): string {
+        if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css)$/", $path) === 1)
+            $path = substr($path, 0, strlen($path) - 4);
+        elseif (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $path) === 1)
+            $path = substr($path, 0, strlen($path) - 5);
+        return $path;
     }
 }

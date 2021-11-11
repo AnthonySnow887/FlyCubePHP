@@ -300,6 +300,7 @@ abstract class BaseActionController extends BaseController
         $defVal = !Config::instance()->isProduction();
         $this->_enableActionOutput = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ACTION_OUTPUT, $defVal));
         $this->_params = RouteCollector::currentRouteArgs();
+        $this->_params['controller-class'] = $this->controllerClassName();
         $this->_params['controller'] = $this->controllerName();
         $this->_params['action'] = $action;
 
@@ -390,20 +391,7 @@ abstract class BaseActionController extends BaseController
      * @throws ErrorController
      */
     final private function viewsDirectory(): string {
-        $tmpRef = null;
-        try {
-            $tmpRef = new \ReflectionClass($this);
-        } catch (\Exception $e) {
-            throw ErrorController::makeError([
-                'tag' => 'app-controller-base',
-                'message' => $e->getMessage(),
-                'controller' => $this->controllerName(),
-                'method' => __FUNCTION__
-            ]);
-        }
-        $shortName = $tmpRef->getShortName();
-        unset($tmpRef);
-        $shortName = str_replace("Controller", "", $shortName);
+        $shortName = $this->controllerName();
         return CoreHelper::buildAppPath($this->controllerDirectory(), "views", CoreHelper::underscore($shortName));
     }
 
@@ -436,23 +424,10 @@ abstract class BaseActionController extends BaseController
     /**
      * Имя текущего хелпера
      * @return string
-     * @throws ErrorController
      */
     final private function helperName(): string {
-        $tmpRef = null;
-        try {
-            $tmpRef = new \ReflectionClass($this);
-        } catch (\Exception $e) {
-            throw ErrorController::makeError([
-                'tag' => 'app-controller-base',
-                'message' => $e->getMessage(),
-                'controller' => $this->controllerName(),
-                'method' => __FUNCTION__
-            ]);
-        }
-        $shortName = $tmpRef->getShortName();
-        unset($tmpRef);
-        return str_replace("Controller", "Helper", $shortName);
+        $shortName = $this->controllerName();
+        return $shortName . "Helper";
     }
 
     /**

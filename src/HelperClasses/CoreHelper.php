@@ -384,6 +384,15 @@ class CoreHelper
     }
 
     /**
+     * Преобразовать значение bool в строку
+     * @param bool|int|string $val
+     * @return string
+     */
+    static public function boolToStr($val): string {
+        return CoreHelper::toBool($val) ? "true" : "false";
+    }
+
+    /**
      * Сгенерировать UUID
      * @return string
      */
