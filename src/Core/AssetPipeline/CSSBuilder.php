@@ -630,7 +630,7 @@ class CSSBuilder
         // --- write file ---
         $fName = basename($path);
         $fName = substr($fName, 0, strlen($fName) - 5) . ".css"; // delete .scss and add .css
-        $fDir = $this->_cacheDir.JSBuilder::PRE_BUILD_DIR;
+        $fDir = $this->_cacheDir.CSSBuilder::PRE_BUILD_DIR;
         $fPath = $fDir.DIRECTORY_SEPARATOR.basename($fName);
         if (!CoreHelper::makeDir($fDir, 0777, true))
             throw ErrorAssetPipeline::makeError([
