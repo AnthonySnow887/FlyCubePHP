@@ -140,7 +140,7 @@ Operating systems tested
 Releases
 --------
 
-Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP).
+Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP/releases).
 
 License
 -------
