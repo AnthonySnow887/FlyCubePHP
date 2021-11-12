@@ -410,14 +410,17 @@ class RouteCollector
 
     /**
      * Получить массив HTTP заголовоков текущего запроса
+     * @param bool $namesToLower - преобразовывать имена заголовков в нижний регистр
      * @return array
      */
-    static public function currentRouteHeaders(): array {
+    static public function currentRouteHeaders(bool $namesToLower = false): array {
         $headers = array();
         foreach ($_SERVER as $key => $value) {
             if (strcmp(substr($key, 0, 5),'HTTP_') !== 0)
                 continue;
             $header = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
+            if ($namesToLower === true)
+                $header = strtolower($header);
             $headers[$header] = $value;
         }
         return $headers;
@@ -429,7 +432,8 @@ class RouteCollector
      * @return mixed|null
      */
     static public function currentRouteHeader(string $name) {
-        $headers = RouteCollector::currentRouteHeaders();
+        $name = strtolower($name);
+        $headers = RouteCollector::currentRouteHeaders(true);
         if (isset($headers[$name]))
             return $headers[$name];
 
