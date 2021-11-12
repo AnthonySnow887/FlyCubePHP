@@ -24,6 +24,7 @@ abstract class ActiveRecord
     private $_primaryKey = "id";
     private $_newRecord = true;
     private $_dataHash = array();
+    private $_columnMappings = array();
 
     /**
      * ActiveRecord constructor.
@@ -70,6 +71,45 @@ abstract class ActiveRecord
      */
     final protected function setPrimaryKey(string $name) {
         $this->_primaryKey = $name;
+    }
+
+    /**
+     * Задано ли сопоставление параметра класса реальному названию колонки в таблице
+     * @param string $classParam
+     * @return bool
+     */
+    final protected function hasColumnMapping(string $classParam): bool {
+        return array_key_exists($classParam, $this->_columnMappings);
+    }
+
+    /**
+     * Сопоставление параметра класса реальному названию колонки в таблице
+     * @param string $classParam
+     * @return string
+     */
+    final protected function columnMapping(string $classParam): string {
+        if (array_key_exists($classParam, $this->_columnMappings))
+            return $this->_columnMappings[$classParam];
+        return "";
+    }
+
+    /**
+     * Массив сопоставлений параметров класса реальным названиям колонок в таблице
+     * @return array
+     */
+    final protected function columnMappings():array {
+        return $this->_columnMappings;
+    }
+
+    /**
+     * Задать сопоставление параметра класса реальному названию колонки в таблице
+     * @param string $classParam
+     * @param string $columnName
+     */
+    final protected function setColumnMapping(string $classParam, string $columnName) {
+        if (empty($classParam) || empty($columnName))
+            return;
+        $this->_columnMappings[$classParam] = $columnName;
     }
 
     /**
@@ -694,8 +734,13 @@ abstract class ActiveRecord
                 continue; // skip not changed value
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
-            $dataColumns[] = $tmpKey;
-            $dataValues4Upd[] = $db->quoteTableName($tmpKey)." = $tmpName";
+
+            $tmpColumnName = $tmpKey;
+            if ($this->hasColumnMapping($key) === true)
+                $tmpColumnName = $this->columnMapping($key);
+
+            $dataColumns[] = $tmpColumnName;
+            $dataValues4Upd[] = $db->quoteTableName($tmpColumnName)." = $tmpName";
             $dataValues[$tmpName] = $tmpValue;
         }
         $objectProps = $this->objectProperties();
@@ -707,8 +752,13 @@ abstract class ActiveRecord
                 continue; // skip not changed value
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
-            $dataColumns[] = $tmpKey;
-            $dataValues4Upd[] = $db->quoteTableName($tmpKey)." = $tmpName";
+
+            $tmpColumnName = $tmpKey;
+            if ($this->hasColumnMapping($key) === true)
+                $tmpColumnName = $this->columnMapping($key);
+
+            $dataColumns[] = $tmpColumnName;
+            $dataValues4Upd[] = $db->quoteTableName($tmpColumnName)." = $tmpName";
             $dataValues[$tmpName] = $tmpValue;
         }
     }
