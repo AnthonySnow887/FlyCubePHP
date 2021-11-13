@@ -9,6 +9,7 @@
 namespace FlyCubePHP\Core\Routes;
 
 include_once 'Route.php';
+include_once 'RouteStreamParser.php';
 include_once __DIR__.'/../Config/ConfigHelper.php';
 include_once __DIR__ . '/../Controllers/BaseActionController.php';
 include_once __DIR__ . '/../Controllers/BaseActionControllerAPI.php';
