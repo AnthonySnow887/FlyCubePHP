@@ -1,3 +1,7 @@
+# 1.1.2 (15.11.2021)
+
+ * Fix Route Collector (fixed error in parsing input data for post/put/patch/delete requests)
+
 # 1.1.1 (12.11.2021)
 
  * Update fly_cube_php binary (add check for plugin-create)
