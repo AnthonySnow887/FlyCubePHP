@@ -15,13 +15,20 @@ class RouteStreamParser
         $this->_input = file_get_contents('php://input');
     }
 
+    /**
+     * Метод разбора входных данных
+     * @return array|array[]
+     */
     public static function parseInputData(): array {
         $parser = new static();
+        if (empty($parser->_input))
+            return [ 'args'=>[], 'files'=>[] ];
+
         $boundary = $parser->formBoundary();
-        if (!strlen($boundary)) {
+        if (empty($boundary)) {
             $data = [
-                'post' => $parser->parseDataBody(),
-                'file' => []
+                'args' => $parser->parseDataBody(),
+                'files' => []
             ];
         } else {
             $blocks = $parser->selectDataBlocks($boundary);
@@ -35,7 +42,7 @@ class RouteStreamParser
      * @returns string
      */
     private function formBoundary(): string {
-        if(!isset($_SERVER['CONTENT_TYPE']))
+        if (!isset($_SERVER['CONTENT_TYPE']))
             return "";
         preg_match('/boundary=(.*)$/', $_SERVER['CONTENT_TYPE'], $matches);
         if (!empty($matches))
@@ -48,15 +55,37 @@ class RouteStreamParser
      * @returns array
      */
     private function parseDataBody(): array {
-        $request = array();
+        if (!isset($_SERVER['CONTENT_TYPE']))
+            return [];
+        if (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
+            return json_decode(urldecode($this->_input), true);
+
+        // NOTE! Не использовать parse_str($postData, $postArray),
+        //       т.к. данный метод портит Base64 строки!
+
+        $request = [];
         $requestData = urldecode($this->_input);
         if (!empty($requestData)) {
             $requestKeyValueArray = explode('&', $requestData);
             foreach ($requestKeyValueArray as $keyValue) {
                 $keyValueArray = explode('=', $keyValue);
-                $keyData = $keyValueArray[0];
-                $valueData = str_replace($keyData . "=", "", $keyValue);
-                $request[$keyData] = $valueData;
+                if (count($keyValueArray) < 2) {
+                    $request[] = $keyValue;
+                } else {
+                    $keyData = $keyValueArray[0];
+                    $valueData = str_replace($keyData . "=", "", $keyValue);
+                    if (preg_match('/(.*?)\[(.*?)\]/i', $keyData, $tmp)) {
+                        if (empty($tmp)) {
+                            $request[$keyData] = $valueData;
+                        } else {
+                            if (!isset($request[$tmp[1]]))
+                                $request[$tmp[1]] = [];
+                            $request[$tmp[1]][$tmp[2]] = $valueData;
+                        }
+                    } else {
+                        $request[$keyData] = $valueData;
+                    }
+                }
             }
         }
         return $request;
@@ -80,45 +109,43 @@ class RouteStreamParser
      */
     private function parseDataBlocks(array $dataBlocks): array {
         $results = [
-            'post' => [],
-            'file' => []
+            'args' => [],
+            'files' => []
         ];
 
-        foreach($dataBlocks as $value) {
+        foreach ($dataBlocks as $value) {
             if (empty($value))
                 continue;
-
             $block = $this->parseDataBlock($value);
-            if (count($block['post']) > 0)
-                array_push($results['post'], $block['post']);
-            if (count($block['file']) > 0)
-                array_push($results['file'], $block['file']);
+            if (count($block['args']) > 0)
+                array_push($results['args'], $block['args']);
+            if (count($block['files']) > 0)
+                array_push($results['files'], $block['files']);
         }
-        return $this->merge($results);
+        return $this->resultToSimpleForm($results);
     }
 
     /**
-     * @function decide
+     * Разобрать тело блока
      * @param string $string
-     * @returns array
+     * @return array
      */
     private function parseDataBlock(string $string): array {
         if (strpos($string, 'application/octet-stream') !== false) {
             return [
-                'post' => $this->parseFile($string),
-                'file' => []
+                'args' => $this->parseFile($string),
+                'files' => []
             ];
         }
         if (strpos($string, 'filename') !== false) {
             return [
-                'post' => [],
-                'file' => $this->parseFileStream($string)
+                'args' => [],
+                'files' => $this->parseFileStream($string)
             ];
         }
-
         return [
-            'post' => $this->parseData($string),
-            'file' => []
+            'args' => $this->parseData($string),
+            'files' => []
         ];
     }
 
@@ -131,7 +158,7 @@ class RouteStreamParser
         preg_match('/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s', $string, $match);
         if (!empty($match))
             return [
-                $match[1] => (!empty($match[2]) ? $match[2] : '')
+                $match[1] => (isset($match[2]) && !empty($match[2]) ? $match[2] : '')
             ];
 
         return [];
@@ -143,29 +170,26 @@ class RouteStreamParser
      * @return array
      */
     private function parseFileStream(string $string): array {
-        $data = [];
-
         preg_match('/name=\"([^\"]*)\"; filename=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $string, $match);
+        if (count($match) < 4)
+            return [];
         preg_match('/Content-Type: (.*)?/', $match[3], $mime);
-
+        if (count($mime) < 2)
+            return [];
         $image = preg_replace('/Content-Type: (.*)[^\n\r]/', '', $match[3]);
-
         $path = sys_get_temp_dir().'/php'.substr(sha1(rand()), 0, 6);
-
         $err = file_put_contents($path, ltrim($image));
-
-        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp)) {
+        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp))
             $index = $tmp[1];
-        } else {
+        else
             $index = $match[1];
-        }
 
-        $data[$index]['name'][] = $match[2];
-        $data[$index]['type'][] = $mime[1];
+        $data = [];
+        $data[$index]['name'][] = trim($match[2]);
+        $data[$index]['type'][] = trim($mime[1]);
         $data[$index]['tmp_name'][] = $path;
         $data[$index]['error'][] = ($err === FALSE) ? $err : 0;
         $data[$index]['size'][] = filesize($path);
-
         return $data;
     }
 
@@ -177,63 +201,64 @@ class RouteStreamParser
     private function parseData(string $blockData): array {
         $data = [];
         preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $blockData, $match);
-        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp))
-            $data[$tmp[1]][] = (!empty($match[2]) ? $match[2] : '');
-        else
-            $data[$match[1]] = (!empty($match[2]) ? $match[2] : '');
+        if (empty($match))
+            return [];
+        if (preg_match('/(.*?)\[(.*?)\]/i', $match[1], $tmp)) {
+            if (empty($tmp)) {
+                $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+            } else {
+                $data[$tmp[1]] = [];
+                $data[$tmp[1]][$tmp[2]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+            }
+        } else {
+            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+        }
+
+//        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp))
+//            $data[$tmp[1]][] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+//        else
+//            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
 
         return $data;
     }
 
     /**
-     * @function merge
-     * @param $array array
-     *
-     * Ugly ugly ugly
-     *
-     * @returns array
-     *
-     * TODO WTF??? нахрена? переписать или вообще удалить!
+     * Метод преобразования результата в корректный вид
+     * @param array $data
+     * @return array
      */
-    private function merge($array)
-    {
+    private function resultToSimpleForm(array &$data): array {
         $results = [
-            'post' => [],
-            'file' => []
+            'args' => [],
+            'files' => []
         ];
 
-        if (count($array['post']) > 0) {
-            foreach($array['post'] as $key => $value) {
-                foreach($value as $k => $v) {
-                    if (is_array($v)) {
-                        foreach($v as $kk => $vv) {
-                            $results['post'][$k][] = $vv;
-                        }
-                    } else {
-                        $results['post'][$k] = $v;
-                    }
+        foreach ($data['args'] as $dValue) {
+            foreach ($dValue as $key => $val) {
+                if (is_array($val)) {
+                    if (!isset($results['args'][$key]))
+                        $results['args'][$key] = [];
+                    foreach ($val as $kk => $vv)
+                        $results['args'][$key][$kk] = $vv;
+                } else {
+                    $results['args'][$key] = $val;
                 }
             }
         }
-
-        if (count($array['file']) > 0) {
-            foreach($array['file'] as $key => $value) {
-                foreach($value as $k => $v) {
-                    if (is_array($v)) {
-                        foreach($v as $kk => $vv) {
-                            if(is_array($vv) && (count($vv) === 1)) {
-                                $results['file'][$k][$kk] = $vv[0];
-                            } else {
-                                $results['file'][$k][$kk][] = $vv[0];
-                            }
-                        }
-                    } else {
-                        $results['file'][$k][$key] = $v;
+        foreach ($data['files'] as $dKey => $dValue) {
+            foreach ($dValue as $key => $val) {
+                if (is_array($val)) {
+                    foreach ($val as $kk => $vv) {
+                        if (is_array($vv) && (count($vv) === 1))
+                            $results['files'][$key][$kk] = $vv[0];
+                        else
+                            $results['files'][$key][$kk][] = $vv[0];
                     }
+                } else {
+                    $results['files'][$key][$dKey] = $val;
                 }
             }
         }
-
         return $results;
     }
 }

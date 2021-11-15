@@ -44,9 +44,11 @@ class RouteCollector
 
     function __destruct() {
         $args = RouteCollector::currentRouteArgs();
-        if (isset($args['file'])) {
+        if (isset($args['file']) && is_array($args['file'])) {
             foreach ($args['file'] as $fInfo) {
-                if (!empty($fInfo['tmp_name']) && is_file($fInfo['tmp_name']))
+                if (isset($fInfo['tmp_name'])
+                    && !empty($fInfo['tmp_name'])
+                    && is_file($fInfo['tmp_name']))
                     unlink($fInfo['tmp_name']);
             }
         }
@@ -300,113 +302,68 @@ class RouteCollector
     }
 
     /**
-     * Получить массив входных аргументов для текущего запроса
+     * Получить массив входных аргументов для текущего запроса (включая файлы)
      * @return array
      */
     static public function currentRouteArgs(): array {
         if (!isset($_SERVER['REQUEST_METHOD']))
             return array();
+
         $tmpArgs = array();
         $tmpMethod = strtolower($_SERVER['REQUEST_METHOD']);
         if ($tmpMethod === 'get') {
             $tmpArgs = $_GET;
-
-        } elseif ($tmpMethod === 'post') {
-            // NOTE! Не использовать parse_str($postData, $postArray),
-            //       т.к. данный метод портит Base64 строки!
-            $requestArray = $_POST;
-            if (count($requestArray) == 0) {
-                $requestArray = array();
-                $requestData = file_get_contents("php://input");
-                if (!empty($requestData)) {
-                    $requestKeyValueArray = explode('&', $requestData);
-                    foreach ($requestKeyValueArray as $keyValue) {
-                        $keyValueArray = explode('=', $keyValue);
-                        $keyData = $keyValueArray[0];
-                        $valueData = str_replace($keyData . "=", "", $keyValue);
-                        $requestArray[$keyData] = $valueData;
-                    }
-                }
+        } elseif ($tmpMethod === 'post'
+                  || $tmpMethod === 'put'
+                  || $tmpMethod === 'patch'
+                  || $tmpMethod === 'delete') {
+            if (empty($_POST)) {
+                $inData = RouteStreamParser::parseInputData();
+                $_POST = $inData['args'];
+                if (empty($_FILES))
+                    $_FILES = $inData['files'];
+                else
+                    $_FILES = array_merge($_FILES, $inData['files']);
             }
-            $tmpArgs = $requestArray;
-
-            // --- check input files ---
-            $buffKeys = array_keys($_FILES);
-            $tmpFiles = [];
-            foreach ($buffKeys as $key) {
-                if (!empty($_FILES[$key]['tmp_name'])) {
-                    if (is_string($_FILES[$key]['tmp_name'])) {
-                        $tmpFiles[$key] = $_FILES[$key];
-                    } else if (is_array($_FILES[$key]['tmp_name'])) {
-                        for ($i = 0; $i < count($_FILES[$key]['tmp_name']); $i++) {
-                            $fName = $_FILES[$key]['name'][$i];
-                            $fType = $_FILES[$key]['type'][$i];
-                            $fTmpName = $_FILES[$key]['tmp_name'][$i];
-                            $fError = $_FILES[$key]['error'][$i];
-                            $fSize = $_FILES[$key]['size'][$i];
-                            $tmpKey = "$key" . "[" . $fName . "]";
-                            $tmpFiles[$tmpKey] = [
-                                'name' => $fName,
-                                'type' => $fType,
-                                'tmp_name' => $fTmpName,
-                                'error' => $fError,
-                                'size' => $fSize
-                            ];
-                        }
-                    }
-                }
-            }
-            if (!empty($tmpFiles))
-                $tmpArgs["file"] = $tmpFiles;
-
-        } elseif ($tmpMethod === 'put'
-            || $tmpMethod === 'patch'
-            || $tmpMethod === 'delete') {
-            // NOTE! Не использовать parse_str($postData, $postArray),
-            //       т.к. данный метод портит Base64 строки!
-            $requestArray = array();
-            $requestData = file_get_contents("php://input");
-            if (!empty($requestData)) {
-                $requestKeyValueArray = explode('&', $requestData);
-                foreach ($requestKeyValueArray as $keyValue) {
-                    $keyValueArray = explode('=', $keyValue);
-                    $keyData = $keyValueArray[0];
-                    $valueData = str_replace($keyData . "=", "", $keyValue);
-                    $requestArray[$keyData] = $valueData;
-                }
-            }
-            $tmpArgs = $requestArray;
-
-            // --- check input files ---
-            $buffKeys = array_keys($_FILES);
-            $tmpFiles = [];
-            foreach ($buffKeys as $key) {
-                if (!empty($_FILES[$key]['tmp_name'])) {
-                    if (is_string($_FILES[$key]['tmp_name'])) {
-                        $tmpFiles[$key] = $_FILES[$key];
-                    } else if (is_array($_FILES[$key]['tmp_name'])) {
-                        for ($i = 0; $i < count($_FILES[$key]['tmp_name']); $i++) {
-                            $fName = $_FILES[$key]['name'][$i];
-                            $fType = $_FILES[$key]['type'][$i];
-                            $fTmpName = $_FILES[$key]['tmp_name'][$i];
-                            $fError = $_FILES[$key]['error'][$i];
-                            $fSize = $_FILES[$key]['size'][$i];
-                            $tmpKey = "$key" . "[" . $fName . "]";
-                            $tmpFiles[$tmpKey] = [
-                                'name' => $fName,
-                                'type' => $fType,
-                                'tmp_name' => $fTmpName,
-                                'error' => $fError,
-                                'size' => $fSize
-                            ];
-                        }
-                    }
-                }
-            }
+            $tmpArgs = $_POST;
+            $tmpFiles = RouteCollector::currentRouteFiles();
             if (!empty($tmpFiles))
                 $tmpArgs["file"] = $tmpFiles;
         }
         return $tmpArgs;
+    }
+
+    /**
+     * Получить массив входных файлов для текущего запроса
+     * @return array
+     */
+    static public function currentRouteFiles(): array {
+        $buffKeys = array_keys($_FILES);
+        $tmpFiles = [];
+        foreach ($buffKeys as $key) {
+            if (empty($_FILES[$key]['tmp_name']))
+                continue;
+            if (is_string($_FILES[$key]['tmp_name'])) {
+                $tmpFiles[$key] = $_FILES[$key];
+            } else if (is_array($_FILES[$key]['tmp_name'])) {
+                for ($i = 0; $i < count($_FILES[$key]['tmp_name']); $i++) {
+                    $fName = $_FILES[$key]['name'][$i];
+                    $fType = $_FILES[$key]['type'][$i];
+                    $fTmpName = $_FILES[$key]['tmp_name'][$i];
+                    $fError = $_FILES[$key]['error'][$i];
+                    $fSize = $_FILES[$key]['size'][$i];
+                    $tmpKey = "$key" . "[" . $fName . "]";
+                    $tmpFiles[$tmpKey] = [
+                        'name' => $fName,
+                        'type' => $fType,
+                        'tmp_name' => $fTmpName,
+                        'error' => $fError,
+                        'size' => $fSize
+                    ];
+                }
+            }
+        }
+        return $tmpFiles;
     }
 
     /**
