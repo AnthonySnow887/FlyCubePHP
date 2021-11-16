@@ -356,7 +356,7 @@ EOT;
             AND tc.table_schema = '$tableLst[0]'
             AND tc.table_name = '$tableLst[1]'
             AND tc.constraint_type = 'PRIMARY KEY'
-            WHERE pg_class.oid = '$tableLst[0]$tableLst[1]'::regclass
+            WHERE pg_class.oid = '$tableLst[0].$tableLst[1]'::regclass
             AND indrelid = pg_class.oid 
             AND pg_class.relnamespace = pg_namespace.oid
             AND pg_attribute.attrelid = pg_class.oid 
