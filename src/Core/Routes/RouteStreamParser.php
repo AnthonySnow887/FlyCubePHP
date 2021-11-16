@@ -7,6 +7,8 @@ namespace FlyCubePHP\Core\Routes;
 // "------WebKitFormBoundarycpuJ7AJCw5FmD2Aj\r\nContent-Disposition: form-data; name":"\"output\"\r\n\r\njson\r\n\"name\"\r\n\r\nтестовое имя\r\n------WebKitFormBoundarycpuJ7AJCw5FmD2Aj--\r\n"
 //
 
+use FlyCubePHP\Core\Logger\Logger;
+
 class RouteStreamParser
 {
     private $_input;    //!< php raw input stream
@@ -185,11 +187,11 @@ class RouteStreamParser
             $index = $match[1];
 
         $data = [];
-        $data[$index]['name'][] = trim($match[2]);
-        $data[$index]['type'][] = trim($mime[1]);
-        $data[$index]['tmp_name'][] = $path;
-        $data[$index]['error'][] = ($err === FALSE) ? $err : 0;
-        $data[$index]['size'][] = filesize($path);
+        $data[$index]['name'] = trim($match[2]);
+        $data[$index]['type'] = trim($mime[1]);
+        $data[$index]['tmp_name'] = $path;
+        $data[$index]['error'] = ($err === FALSE) ? $err : 0;
+        $data[$index]['size'] = filesize($path);
         return $data;
     }
 
@@ -249,10 +251,19 @@ class RouteStreamParser
             foreach ($dValue as $key => $val) {
                 if (is_array($val)) {
                     foreach ($val as $kk => $vv) {
-                        if (is_array($vv) && (count($vv) === 1))
-                            $results['files'][$key][$kk] = $vv[0];
+                        // --- change to array ---
+                        if (isset($results['files'][$key][$kk])
+                            && !is_array($results['files'][$key][$kk])) {
+                            $oldValue = $results['files'][$key][$kk];
+                            $results['files'][$key][$kk] = [];
+                            $results['files'][$key][$kk][] = $oldValue;
+                        }
+                        // --- append info ---
+                        if (isset($results['files'][$key][$kk])
+                            && is_array($results['files'][$key][$kk]))
+                            $results['files'][$key][$kk][] = $vv;
                         else
-                            $results['files'][$key][$kk][] = $vv[0];
+                            $results['files'][$key][$kk] = $vv;
                     }
                 } else {
                     $results['files'][$key][$dKey] = $val;

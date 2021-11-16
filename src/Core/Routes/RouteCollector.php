@@ -43,13 +43,22 @@ class RouteCollector
     }
 
     function __destruct() {
-        $args = RouteCollector::currentRouteArgs();
-        if (isset($args['file']) && is_array($args['file'])) {
-            foreach ($args['file'] as $fInfo) {
-                if (isset($fInfo['tmp_name'])
-                    && !empty($fInfo['tmp_name'])
-                    && is_file($fInfo['tmp_name']))
-                    unlink($fInfo['tmp_name']);
+        // --- init args ---
+        RouteCollector::currentRouteArgs();
+        // --- select files ---
+        $files = RouteCollector::currentRouteFiles();
+        foreach ($files as $fInfo) {
+            if (isset($fInfo['tmp_name'])
+                && !empty($fInfo['tmp_name'])
+                && is_file($fInfo['tmp_name'])) {
+                unlink($fInfo['tmp_name']);
+            } else if (is_array($fInfo)) {
+                foreach ($fInfo as $info) {
+                    if (isset($info['tmp_name'])
+                        && !empty($info['tmp_name'])
+                        && is_file($info['tmp_name']))
+                        unlink($info['tmp_name']);
+                }
             }
         }
         unset($this->_routes);
@@ -328,7 +337,7 @@ class RouteCollector
             $tmpArgs = $_POST;
             $tmpFiles = RouteCollector::currentRouteFiles();
             if (!empty($tmpFiles))
-                $tmpArgs["file"] = $tmpFiles;
+                $tmpArgs = array_merge($tmpFiles, $tmpArgs);
         }
         return $tmpArgs;
     }
@@ -346,6 +355,7 @@ class RouteCollector
             if (is_string($_FILES[$key]['tmp_name'])) {
                 $tmpFiles[$key] = $_FILES[$key];
             } else if (is_array($_FILES[$key]['tmp_name'])) {
+                $tmpFiles[$key] = [];
                 for ($i = 0; $i < count($_FILES[$key]['tmp_name']); $i++) {
                     $fName = $_FILES[$key]['name'][$i];
                     $fType = $_FILES[$key]['type'][$i];
@@ -353,7 +363,7 @@ class RouteCollector
                     $fError = $_FILES[$key]['error'][$i];
                     $fSize = $_FILES[$key]['size'][$i];
                     $tmpKey = "$key" . "[" . $fName . "]";
-                    $tmpFiles[$tmpKey] = [
+                    $tmpFiles[$key][$tmpKey] = [
                         'name' => $fName,
                         'type' => $fType,
                         'tmp_name' => $fTmpName,
