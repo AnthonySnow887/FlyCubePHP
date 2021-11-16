@@ -1,4 +1,4 @@
-# 1.1.2 (15.11.2021)
+# 1.1.2 (16.11.2021)
 
  * Fix Route Collector (fixed error in parsing input data for post/put/patch/delete requests)
 
@@ -10,7 +10,7 @@
  * Fix JS/CSS builders (fix multiline comments errors)
  * Update BaseController (add controllerClassName + fix controllerName)
  * Update BaseActionController + BaseActionControllerAPI (add _params['controller-class'])
- * Fix Components Manger (fix dependency tree load errors)
+ * Fix Components Manager (fix dependency tree load errors)
  * Fix Route Collector (fix http headers names)
  * Update ActiveRecord (add column mapping)
 
@@ -21,12 +21,12 @@
  * Fix Logger (fail if not found log folder)
  * Fix Default error page (output multiple unreadable errors)
  * Fix Asset Pipeline (fix send svg files)
- * Fix Components Manger
+ * Fix Components Manager
 
 # 1.0.1 (31.10.2021)
 
  * Fix Config loader (fail if value is empty)  
- * Fix JS/CSS bulder (fail if load invalid files [not *.js/.*css]) 
+ * Fix JS/CSS builder (fail if load invalid files [not *.js/.*css])
  * Fix invalid current route uri (change str_replace to substr_replace) 
 
 # 1.0.0 (20.10.2021)
