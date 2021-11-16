@@ -63,7 +63,7 @@ class EncryptedCookieBuilder
             $ciphertext = openssl_encrypt($cookieValue, $this->_cipher, $tmpKey, $options = 0, $iv, $tag);
 
         if ($ciphertext === false)
-            return null;
+            trigger_error("Encrypt cookie failed! Error: ".openssl_error_string(), E_USER_ERROR);
 
         // --- build output data ---
         $outData = base64_encode($ciphertext);
