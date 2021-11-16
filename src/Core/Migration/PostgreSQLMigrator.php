@@ -121,11 +121,35 @@ class PostgreSQLMigrator extends BaseMigrator
             return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid scheme name!');
         if (is_null($this->_dbAdapter))
             return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid database connector (NULL)!');
-        $sql = "DROP SCHEMA \"$name\"";
+        $if_exists = "";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
-            $sql .= " IF EXISTS";
-        $sql .= " CASCADE";
-        $this->_dbAdapter->query("$sql;");
+            $if_exists .= "IF EXISTS";
+        $this->_dbAdapter->query("DROP SCHEMA $if_exists \"$name\" CASCADE;");
+    }
+
+    /**
+     * Удалить таблицу
+     * @param string $name - название
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_exists - добавить флаг 'IF EXISTS'
+     * [bool] cascade   - добавить флаг 'CASCADE'
+     */
+    final public function dropTable(string $name, array $props = []) {
+        if (empty($name))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid table name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid database connector (NULL)!');
+        $name = $this->_dbAdapter->quoteTableName($name);
+        $if_exists = "";
+        if (isset($props['if_exists']) && $props['if_exists'] === true)
+            $if_exists .= "IF EXISTS";
+        $cascade = "";
+        if (isset($props['cascade']) && $props['cascade'] === true)
+            $cascade = "CASCADE";
+        $this->_dbAdapter->query("DROP TABLE $if_exists $name $cascade;");
     }
 
     /**
@@ -293,7 +317,7 @@ EOT;
             ON tc.table_schema = pg_namespace.nspname
             AND tc.table_name = '$table'
             AND tc.constraint_type = 'PRIMARY KEY'
-            WHERE pg_class.oid = tc.table_name::regclass
+            WHERE pg_class.oid = '$table'::regclass
             AND indrelid = pg_class.oid 
             AND pg_class.relnamespace = pg_namespace.oid
             AND pg_attribute.attrelid = pg_class.oid 
@@ -332,7 +356,7 @@ EOT;
             AND tc.table_schema = '$tableLst[0]'
             AND tc.table_name = '$tableLst[1]'
             AND tc.constraint_type = 'PRIMARY KEY'
-            WHERE pg_class.oid = tc.table_name::regclass
+            WHERE pg_class.oid = '$tableLst[0]$tableLst[1]'::regclass
             AND indrelid = pg_class.oid 
             AND pg_class.relnamespace = pg_namespace.oid
             AND pg_attribute.attrelid = pg_class.oid 
