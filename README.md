@@ -2,9 +2,7 @@
 
 <p align="left">
   <img alt="Licence" src="https://img.shields.io/github/license/AnthonySnow887/FlyCubePHP">
-  <a href="https://github.com/AnthonySnow887/FlyCubePHP/releases/">
-    <img alt="Releases" src="https://img.shields.io/github/v/release/AnthonySnow887/FlyCubePHP?label=release&logo=DocuSign&logoColor=%23fff" />
-  </a>
+  <img alt="Release" src="https://img.shields.io/github/v/release/AnthonySnow887/FlyCubePHP?label=release" />
   <img alt="Downloads" src="https://img.shields.io/github/downloads/AnthonySnow887/FlyCubePHP/total" />  
   <img alt="Last Commit" src="https://img.shields.io/github/last-commit/AnthonySnow887/FlyCubePHP" />
 </p>
