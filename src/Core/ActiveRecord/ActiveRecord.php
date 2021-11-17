@@ -114,6 +114,24 @@ abstract class ActiveRecord
     }
 
     /**
+     * Задать сопоставление параметров класса реальным названиям колонок в таблице
+     * @param array $columnMappings
+     *
+     * ПРИМЕЧАНИЕ:
+     * $columnMappings должен иметь следующий вид:
+     *   * key    - название параметра класса
+     *   * value  - название колнки в таблице
+     *
+     * Example:
+     * setColumnMappings([ 'name' => 'name_', 'password' => 'password_' ])
+     */
+    final protected function setColumnMappings(array $columnMappings) {
+        if (empty($columnMappings))
+            return;
+        $this->_columnMappings = $columnMappings;
+    }
+
+    /**
      * Имя колонки с паролем
      * @return string
      */
