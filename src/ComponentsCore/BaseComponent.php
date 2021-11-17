@@ -144,7 +144,7 @@ abstract class BaseComponent
      * @return bool
      */
     public function hasWarnings(): bool {
-        return count($this->_warnings) > 0 ? true : false;
+        return (count($this->_warnings) > 0);
     }
 
     /**
@@ -170,7 +170,7 @@ abstract class BaseComponent
      * @param string $warning
      */
     public function setLastWarning(string $warning) {
-        if (is_null($warning) || empty($warning))
+        if (empty($warning))
             return;
         $this->_warnings[] = $warning;
     }
@@ -180,7 +180,7 @@ abstract class BaseComponent
      * @return bool
      */
     public function hasErrors(): bool {
-        return count($this->_errors) > 0 ? true : false;
+        return (count($this->_errors) > 0);
     }
 
     /**
@@ -206,7 +206,7 @@ abstract class BaseComponent
      * @param string $error
      */
     public function setLastError(string $error) {
-        if (is_null($error) || empty($error))
+        if (empty($error))
             return;
         $this->_errors[] = $error;
     }
@@ -224,7 +224,7 @@ abstract class BaseComponent
      * @param string $directory
      */
     public function setDirectory(string $directory) {
-        if (is_null($directory) || empty($directory))
+        if (empty($directory))
             return;
         $this->_directory = $directory;
     }
@@ -234,7 +234,7 @@ abstract class BaseComponent
      * @return bool
      */
     public function hasControllers(): bool {
-        return count($this->_controllers) > 0 ? true : false;
+        return (count($this->_controllers) > 0);
     }
 
     /**
@@ -260,7 +260,7 @@ abstract class BaseComponent
      * @param array $controllers
      */
     public function setControllers(array $controllers) {
-        if (is_null($controllers) || !is_array($controllers))
+        if (!is_array($controllers))
             return;
         unset ($this->_controllers);
         $this->_controllers = $controllers;

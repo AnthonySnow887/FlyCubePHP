@@ -32,7 +32,6 @@ class ComponentsManager
 {
     private static $_instance = null;
 
-    private $_version = "2.0.1";
     private $_state = CMState::NOT_LOADED;
     private $_plugins_dir = "";
     private $_plugins = array();
@@ -75,14 +74,6 @@ class ComponentsManager
      */
     public function __wakeup() {
         throw new \Exception("Cannot unserialize singleton");
-    }
-
-    /**
-     * Версия ядра менеджера компонентов
-     * @return string
-     */
-    public function version(): string {
-        return $this->_version;
     }
 
     /**
@@ -154,22 +145,15 @@ class ComponentsManager
      * @throws
      */
     public function appendPlugin(BaseComponent &$plugin) {
-        if (!isset($plugin)) {
+        if (!isset($plugin))
             trigger_error("[ComponentsManager] Append plugin failed! Plugin is NULL!", E_USER_ERROR);
-            return;
-        }
-        if (!$plugin instanceof BaseComponent) {
+        if (!$plugin instanceof BaseComponent)
             trigger_error("[ComponentsManager] Append plugin failed! Invalid plugin class!", E_USER_ERROR);
-            return;
-        }
-        if (empty($plugin->name())) {
+        if (empty($plugin->name()))
             trigger_error("[ComponentsManager] Append plugin failed! Invalid plugin name (empty)!", E_USER_ERROR);
-            return;
-        }
         if (array_key_exists($plugin->name(), $this->_plugins)) {
             $plName = $plugin->name();
             trigger_error("[ComponentsManager] Append plugin failed! Plugin with name \"$plName\" already added!", E_USER_ERROR);
-            return;
         }
 
         $tmpRef = new \ReflectionClass($plugin);
@@ -282,7 +266,7 @@ class ComponentsManager
         $checkPlCount = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_CHECK_PLUGINS_COUNT, true));
         if ($checkPlCount === false)
             return true;
-        return count($this->_plugins) > 0 ? true : false;
+        return (count($this->_plugins) > 0);
     }
 
     /**
@@ -308,7 +292,7 @@ class ComponentsManager
             }
         }
         $this->_state = CMState::INITIALIZED;
-        return $init_success > 0 ? true : false;
+        return ($init_success > 0);
     }
 
 
@@ -344,7 +328,7 @@ class ComponentsManager
      * @throws
      */
     private function initPlugin(BaseComponent &$plugin): bool {
-        if (is_null($plugin) || empty($plugin->name()))
+        if (empty($plugin->name()))
             return false;
         if ($plugin->state() == BCState::INIT_FAILED)
             return false;
@@ -557,7 +541,7 @@ class ComponentsManager
             $plVers = $plugin->version();
             $this->logMessage(Logger::ERROR, "Init plugin $plName (ver. $plVers) FAILED!\n" . $plugin->lastError());
         }
-        return $plugin->state() == BCState::INIT_SUCCESS ? true : false;
+        return ($plugin->state() == BCState::INIT_SUCCESS);
     }
 
     /**
@@ -567,9 +551,7 @@ class ComponentsManager
      * @return bool
      */
     private function loadPluginDependencyTree(BaseComponent &$plugin, DependencyTreeElement &$tree): bool {
-        if (is_null($tree))
-            return false;
-        if (is_null($plugin) || empty($plugin->name())) {
+        if (empty($plugin->name())) {
             $tree->setError("Plugin is NULL!");
             return false;
         }
@@ -667,8 +649,6 @@ class ComponentsManager
      * @return string
      */
     private function dependencyTreeToString(DependencyTreeElement &$tree, int $level = 0): string {
-        if (is_null($tree))
-            return "";
         $prefix = " ";
         $prefix = str_pad($prefix, ($level * 4));
         if ($level == 0)

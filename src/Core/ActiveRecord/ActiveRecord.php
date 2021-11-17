@@ -25,6 +25,7 @@ abstract class ActiveRecord
     private $_newRecord = true;
     private $_dataHash = array();
     private $_columnMappings = array();
+    private $_passwordColumn = "password";
 
     /**
      * ActiveRecord constructor.
@@ -113,8 +114,27 @@ abstract class ActiveRecord
     }
 
     /**
+     * Имя колонки с паролем
+     * @return string
+     */
+    final protected function passwordColumn(): string {
+        return $this->_passwordColumn;
+    }
+
+    /**
+     * Задать имя колонки с паролем
+     * @param string $name
+     */
+    final protected function setPasswordColumn(string $name) {
+        $this->_passwordColumn = $name;
+    }
+
+    /**
      * Сохранить/Обновить объект в БД
      * @throws
+     *
+     * ПРИМЕЧАНИЕ:
+     * Колонка с паролем автоматически преобразуется в хэш перед сохранением / обновлением в БД.
      */
     final public function save() {
         if ($this->_newRecord === true)
@@ -136,6 +156,22 @@ abstract class ActiveRecord
                 'active-r-method' => __FUNCTION__
             ]);
         $this->delete();
+    }
+
+    /**
+     * Проверка авторизации
+     * @param string $plainPassword - нешифрованый пароль
+     * @return bool
+     *
+     * ПРИМЕЧАНИЕ:
+     * Проверка выполняется, если в классе присутствует параметр с паролем.
+     * Иначе - false.
+     */
+    final public function isAuthenticated(string $plainPassword): bool {
+        $tmpName = CoreHelper::camelcase($this->_passwordColumn, false);
+        if (!isset($this->$tmpName))
+            return false;
+        return password_verify($plainPassword, $this->$tmpName);
     }
 
     // --- static ---
@@ -208,10 +244,10 @@ abstract class ActiveRecord
 
     /**
      * Запрос первого объекта из таблицы
-     * @return Object|null
+     * @return ActiveRecord|null
      * @throws
      */
-    final public static function first() {
+    final public static function first()/*: ActiveRecord|null*/ {
         try {
             $res = self::limit(1);
         } catch (ErrorActiveRecord $ex) {
@@ -234,7 +270,7 @@ abstract class ActiveRecord
      * @return array|null
      * @throws
      */
-    final public static function limit(int $num) {
+    final public static function limit(int $num)/*: array|null*/ {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -269,7 +305,7 @@ abstract class ActiveRecord
      * @return int
      * @throws
      */
-    final public static function count() {
+    final public static function count(): int {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -302,10 +338,10 @@ abstract class ActiveRecord
     /**
      * Поиск объекта в БД по значению первичного ключа
      * @param $pkVal
-     * @return Object|null
+     * @return ActiveRecord|null
      * @throws
      */
-    final public static function find($pkVal) {
+    final public static function find($pkVal)/*: ActiveRecord|null*/ {
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tPK = $aRec->primaryKey();
@@ -579,7 +615,7 @@ abstract class ActiveRecord
      * @return string
      * @throws
      */
-    private function objectName() {
+    final private function objectName(): string {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);
@@ -596,7 +632,7 @@ abstract class ActiveRecord
      * @return array
      * @throws
      */
-    private function objectProperties(): array {
+    final private function objectProperties(): array {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);
@@ -617,7 +653,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL INSERT
      * @throws
      */
-    private function insert() {
+    final private function insert() {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -651,7 +687,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL UPDATE
      * @throws
      */
-    private function update() {
+    final private function update() {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -687,7 +723,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL DELETE
      * @throws
      */
-    private function delete() {
+    final private function delete() {
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -723,15 +759,22 @@ abstract class ActiveRecord
      * @param array $dataValues4Upd - названия ключей и значений для UPDATE
      * @throws
      */
-    private function prepareData(BaseDatabaseAdapter &$db,
-                                 array &$dataColumns,
-                                 array &$dataValues,
-                                 array &$dataValues4Upd = []) {
+    final private function prepareData(BaseDatabaseAdapter &$db,
+                                       array &$dataColumns,
+                                       array &$dataValues,
+                                       array &$dataValues4Upd = []) {
+        $tmpPassName = CoreHelper::camelcase($this->_passwordColumn, false);
         foreach ($this->_dataHash as $key => $value) {
             $tmpValue = $this->$key;
             if ($this->_newRecord === false
                 && $value === $tmpValue)
                 continue; // skip not changed value
+
+            // --- check is password & build hash ---
+            if (strcmp($key, $tmpPassName) === 0)
+                $tmpValue = $this->encryptPassword($tmpValue);
+
+            // --- other checks ---
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
 
@@ -750,6 +793,12 @@ abstract class ActiveRecord
                 && array_key_exists($key, $this->_dataHash)
                 && $this->_dataHash[$key] === $tmpValue)
                 continue; // skip not changed value
+
+            // --- check is password & build hash ---
+            if (strcmp($key, $tmpPassName) === 0)
+                $tmpValue = $this->encryptPassword($tmpValue);
+
+            // --- check is password & build hash ---
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
 
@@ -767,11 +816,20 @@ abstract class ActiveRecord
      * Метод подготовки значений первичного ключа
      * @return mixed
      */
-    private function preparePKeyValue() {
+    final private function preparePKeyValue() {
         $tPK = $this->primaryKey();
         $tPKParam = CoreHelper::camelcase($tPK, false);
         if (array_key_exists($tPKParam, $this->_dataHash))
             return $this->_dataHash[$tPKParam];
         return $this->$tPKParam;
+    }
+
+    /**
+     * Выполнить преобразование пароля
+     * @param string $val
+     * @return string
+     */
+    final private function encryptPassword(string $val): string {
+        return password_hash($val, PASSWORD_DEFAULT);
     }
 }
