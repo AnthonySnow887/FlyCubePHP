@@ -311,6 +311,21 @@ class RouteCollector
     }
 
     /**
+     * Получить входной аргумент для текущего запроса
+     * @param string $key
+     * @param null $def
+     * @return mixed|null
+     */
+    static public function currentRouteArg(string $key, $def = null) {
+        if (!isset($_SERVER['REQUEST_METHOD']))
+            return $def;
+        $tmpArgs = RouteCollector::currentRouteArgs();
+        if (isset($tmpArgs[$key]))
+            return $tmpArgs[$key];
+        return $def;
+    }
+
+    /**
      * Получить массив входных аргументов для текущего запроса (включая файлы)
      * @return array
      */
