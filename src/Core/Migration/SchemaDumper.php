@@ -169,7 +169,7 @@ EOT;
      * @param string $stream
      */
     private function dumpSchema(string $name, string &$stream) {
-        if (strcmp($name, "public"))
+        if (strcmp($name, "public") === 0)
             return;
         $stream .= "\r\n        \$this->createSchema('$name', [ 'if_not_exists' => true ]);";
     }
@@ -199,10 +199,13 @@ EOT;
 
             $tmpData .= "\r\n            '$cName' => [ 'type' => '$cType', 'null' => $cIsNull, 'primary_key' => $cIsPk";
             if (!is_null($cDefault)) {
-                preg_match("/\'(.*)\'.*/", $cDefault, $matches, PREG_OFFSET_CAPTURE);
-                if (count($matches) >= 2)
-                    $cDefault = "'" . $matches[1][0] . "'";
-
+                if (preg_match("/\'(.*)\'.*/", $cDefault, $matches, PREG_OFFSET_CAPTURE)) {
+                    if (count($matches) >= 2)
+                        $cDefault = "'" . $matches[1][0] . "'";
+                } elseif (preg_match("/(.*)\(.*\)/", $cDefault, $matches, PREG_OFFSET_CAPTURE)) {
+                    if (count($matches) >= 2)
+                        $cDefault = "'" . $matches[0][0] . "'";
+                }
                 $tmpData .= ", 'default' => $cDefault ],";
             } else {
                 $tmpData .= " ],";
