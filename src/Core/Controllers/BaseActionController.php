@@ -39,6 +39,7 @@ abstract class BaseActionController extends BaseController
      *
      * - [bool]     layout_support  - отрисовывать или нет базовый слой (default: true)
      * - [string]   layout          - задать базовый layout (должен раполагаться в каталоге: app/views/layouts/)
+     * - [bool]     skip_render     - пропустить отрисовку страницы
      *
      */
     final public function render(string $action = "", array $options = [ 'layout_support' => true ]) {
@@ -47,6 +48,11 @@ abstract class BaseActionController extends BaseController
         if ($this->_isRendered === true)
             return;
         $this->_isRendered = true;
+
+        // --- check skip ---
+        if (isset($options['skip_render'])
+            && $options['skip_render'] === true)
+            return;
 
         if (empty($action)) {
             // --- get caller function ---
