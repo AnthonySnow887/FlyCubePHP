@@ -20,6 +20,14 @@ trait NetworkBase
     private $_used = false;
 
     /**
+     * Get $_used parameter.
+     * @return bool
+     */
+    protected function isNetworkUsed(): bool {
+        return $this->_used;
+    }
+
+    /**
      * Отправить клиенту перенаправление на другой URL
      * @param array $options
      * @throws

@@ -23,8 +23,6 @@ use \FlyCubePHP\Core\Protection\RequestForgeryProtection as RequestForgeryProtec
 
 abstract class BaseController
 {
-    use Extensions\NetworkBase;
-
     protected $_params = [];
 
     private $_isRendered = false;

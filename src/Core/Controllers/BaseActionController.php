@@ -20,10 +20,16 @@ use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
 
 abstract class BaseActionController extends BaseController
 {
+    use Extensions\NetworkBase {
+        isNetworkUsed as private;
+    }
+
     protected $_helper = null;
 
     private $_layout = "application.html";
     private $_layoutSupport = true;
+    private $_skipRenderActions = [];
+    private $_helperMethods = [];
 
     public function __construct() {
         parent::__construct();
@@ -32,7 +38,7 @@ abstract class BaseActionController extends BaseController
     /**
      * Метод отрисовки
      * @param string $action
-     * @param array $options - отрисовывать или нет базовый слой
+     * @param array $options - дополнительные настройки отрисовки
      * @throws
      *
      * ==== Options
@@ -43,17 +49,20 @@ abstract class BaseActionController extends BaseController
      *
      */
     final public function render(string $action = "", array $options = [ 'layout_support' => true ]) {
-        if (!RouteCollector::isCurrentRouteMethodGET())
-            return;
-        if ($this->_isRendered === true)
-            return;
-        $this->_isRendered = true;
-
-        // --- check skip ---
+        // --- check skip in options ---
         if (isset($options['skip_render'])
             && $options['skip_render'] === true)
             return;
-
+        // --- check is already used ---
+        if ($this->_isRendered === true)
+            return;
+        // --- check is Network trait used ---
+        if ($this->isNetworkUsed())
+            return;
+        // --- check in not HTTP GET ---
+        if (!RouteCollector::isCurrentRouteMethodGET())
+            return;
+        // --- check action name & select ---
         if (empty($action)) {
             // --- get caller function ---
             $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -68,6 +77,12 @@ abstract class BaseActionController extends BaseController
 
             $action = $caller;
         }
+        // --- check skip in settings ---
+        if ($this->hasSkipRenderForAction($action))
+            return;
+
+        // --- start render ---
+        $this->_isRendered = true;
 
         // --- create twig ---
         $coreLayoutsDirectory = $this->coreLayoutsDirectory();
@@ -139,6 +154,19 @@ abstract class BaseActionController extends BaseController
         $twig->addExtension($ext);
         if ($twigDebugExt === true)
             $twig->addExtension(new \Twig\Extension\DebugExtension());
+
+        // --- append controller helper methods ---
+        foreach ($this->_helperMethods as $key => $value) {
+            $settingsTwig = [];
+            if ($this->isHelperMethodSafe($key) === true)
+                $settingsTwig['is_safe'] = ['html'];
+            if ($this->isHelperMethodNeedsContext($key) === true)
+                $settingsTwig['need_context'] = true;
+            if ($this->isHelperMethodNeedsEnvironment($key) === true)
+                $settingsTwig['needs_environment'] = true;
+
+            $twig->addFunction(new \Twig\TwigFunction($key, [$this, $key], $settingsTwig));
+        }
 
         // --- render page by twig ---
         $pageData = "";
@@ -336,6 +364,15 @@ abstract class BaseActionController extends BaseController
         $this->processingAfterAction($action);
     }
 
+    /**
+     * Является ли метод вспомогательной функцией
+     * @param string $name
+     * @return bool
+     */
+    final public function isHelperMethod(string $name): bool {
+        return array_key_exists($name, $this->_helperMethods);
+    }
+
     // --- protected ---
 
     /**
@@ -381,7 +418,130 @@ abstract class BaseActionController extends BaseController
         $this->_layoutSupport = $val;
     }
 
+    /**
+     * Добавить название метода, для которого будет пропущен рендеринг страницы
+     * @param string $action - Название метода контроллера
+     * @throws ErrorController
+     */
+    final protected function skipRenderForAction(string $action) {
+        if (!method_exists($this, $action))
+            throw ErrorController::makeError([
+                'tag' => 'app-controller-base',
+                'message' => "Not found action function in controller!",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => $action
+            ]);
+        if (!in_array($action, $this->_skipRenderActions))
+            $this->_skipRenderActions[] = $action;
+    }
+
+    /**
+     * Добавить вспомогательную функцию
+     * @param string $name - название публичного (public) метода
+     * @param array $settings - свойства
+     * @throws ErrorController
+     *
+     * ПРИМЕЧАНИЕ:
+     * Разрешена регистрация только публичных (public) методов!
+     * Публичные статические (static public) методы так же разрешены.
+     *
+     * ПРИМЕЧАНИЕ:
+     * Метод контроллера, заданный как вспомогательная функция, не может быть методом отрисовки страницы
+     * и будет проигнорирован при формировании списка маршрутов!
+     *
+     * ==== Settings
+     *
+     * - safe               - безопасная функция (вывод без экранирования) (default: false)
+     * - need_context       - требуется twig context (default: false)
+     * - needs_environment  - требуется twig environment (default: false)
+     *
+     * ==== Examples
+     *
+     * function __construct() {
+     *    $this->appendHelperMethod('my_f_1', ['safe'=>true]);
+     *    $this->appendHelperMethod('my_f_1_1', ['safe'=>true]);
+     *    $this->appendHelperMethod('my_f_2', ['need_context'=>true]);
+     *    $this->appendHelperMethod('my_f_3', ['need_context'=>true, 'needs_environment'=>true]);
+     * }
+     *
+     * public function my_f_1($a, $b) { ... }
+     * static public function my_f_1_1($a, $b) { ... }
+     * public function my_f_2($context, $a, $b) { ... }
+     * public function my_f_3(\Twig\Environment $env, $context, $string) { ... }
+     *
+     */
+    final protected function appendHelperMethod(string $name, array $settings = []) {
+        if (!method_exists($this, $name))
+            throw ErrorController::makeError([
+                'tag' => 'app-controller-base',
+                'message' => "Not found method in controller for create helper function!",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => $name
+            ]);
+
+        // --- check is public ---
+        $reflection = new \ReflectionMethod($this, $name);
+        if (!$reflection->isPublic())
+            throw ErrorController::makeError([
+                'tag' => 'app-controller-base',
+                'message' => "Controller helper method is not public!",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => $name
+            ]);
+
+        if (!array_key_exists($name, $this->_helperMethods))
+            $this->_helperMethods[$name] = $settings;
+    }
+
     // --- private ---
+
+    /**
+     * Является ли вспомогательнуя функция безопасной
+     * @param string $name
+     * @return bool
+     */
+    final public function isHelperMethodSafe(string $name): bool {
+        if (isset($this->_helperMethods[$name])
+            && isset($this->_helperMethods[$name]["safe"]))
+            return $this->_helperMethods[$name]["safe"];
+        return false;
+    }
+
+    /**
+     * Требуется ли вспомогательной функции twig контекст
+     * @param string $name
+     * @return bool
+     */
+    final public function isHelperMethodNeedsContext(string $name): bool {
+        if (isset($this->_helperMethods[$name])
+            && isset($this->_helperMethods[$name]["need_context"]))
+            return $this->_helperMethods[$name]["need_context"];
+        return false;
+    }
+
+    /**
+     * Требуется ли вспомогательной функции twig environment
+     * @param string $name
+     * @return bool
+     */
+    final public function isHelperMethodNeedsEnvironment(string $name): bool {
+        if (isset($this->_helperMethods[$name])
+            && isset($this->_helperMethods[$name]["needs_environment"]))
+            return $this->_helperMethods[$name]["needs_environment"];
+        return false;
+    }
+
+    /**
+     * Пропускать ли рендеринг страницы для метода контроллера
+     * @param string $action - Название метода контроллера
+     * @return bool
+     */
+    final private function hasSkipRenderForAction(string $action): bool {
+        return in_array($action, $this->_skipRenderActions);
+    }
 
     /**
      * Каталог базовых layouts приложения

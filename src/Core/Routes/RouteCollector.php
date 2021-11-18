@@ -19,6 +19,8 @@ use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Error\ErrorRoutes as ErrorRoutes;
 use \FlyCubePHP\Core\Controllers\BaseController as BaseController;
+use \FlyCubePHP\Core\Controllers\BaseActionController as BaseActionController;
+use FlyCubePHP\Core\Logger\Logger;
 
 class RouteCollector
 {
@@ -83,8 +85,6 @@ class RouteCollector
      * @param Route $route
      */
     public function appendRoute(Route &$route) {
-        if (is_null($route))
-            return;
         $tmpName = RouteType::intToString($route->type()) . "_" . $route->uri();
         if (array_key_exists($tmpName, $this->_routes)) {
             unset($route);
@@ -187,8 +187,11 @@ class RouteCollector
     /**
      * Метод проверки маршрутов на корректность (верно ли заданы контроллеры и их методы)
      * @return bool
+     * @throws ErrorRoutes
+     * @throws \FlyCubePHP\Core\Error\Error
      *
      * Если найден некорректный маршрут, то он удаляется из списка!
+     * Если найден маршрут, ссылающийся на вспомогательный метод класса (helper method), то выбрасывается исключение!
      *
      * Return true if route list is not empty, else - return false.
      */
@@ -198,21 +201,50 @@ class RouteCollector
             $tmpClassName = $value->controller();
             $tmpClassAct = $value->action();
             if (!class_exists($tmpClassName, false)) {
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Not found controller class!'
+                ];
                 continue;
             }
             $tmpController = new $tmpClassName();
             if (!$tmpController instanceof BaseController)
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class is not instance of BaseController!'
+                ];
             elseif (!method_exists($tmpController, $tmpClassAct))
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class does not contain required action!'
+                ];
+            elseif ($tmpController instanceof BaseActionController
+                    && $tmpController->isHelperMethod($tmpClassAct))
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class action is a helper method!'
+                ];
 
             unset($tmpController);
         }
-        foreach ($tmpRemove as $key => $value)
-            unset($this->_routes[$value]);
+        foreach ($tmpRemove as $key => $value) {
+            $route = $value['route'];
+            $msg = $value['msg'];
+            if (Config::instance()->isProduction())
+                Logger::warning("Route '". $route->uri() ."' removed! $msg");
+            else
+                throw ErrorRoutes::makeError([
+                    'tag' => 'check-routes',
+                    'message' => "Invalid route '".$route->uri()."'! $msg",
+                    'url' => $route->uri(),
+                    'route-type' => $route->type(),
+                    'controller' => $route->controller(),
+                    'action' => $route->action()
+                ]);
 
-        return count($this->_routes) > 0 ? true : false;
+            unset($this->_routes[$key]);
+        }
+        return count($this->_routes) > 0;
     }
 
     /**
@@ -239,7 +271,7 @@ class RouteCollector
      * @brief Получить IP текущего клиента
      * @return string
      */
-    static public function currentClientIP() {
+    static public function currentClientIP(): string {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
             return $_SERVER['HTTP_CLIENT_IP'];
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
