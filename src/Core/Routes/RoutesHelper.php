@@ -32,7 +32,7 @@ function root(string $controller, string $action) {
             'url' => '/'
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::GET, "/", $tmpController, $action);
+    $route = new Route(RouteType::GET, "/", [], $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -41,9 +41,10 @@ function root(string $controller, string $action) {
  * @param string $uri
  * @param string $controller
  * @param string $action
+ * @param array $args - key:value array with additional arguments
  * @throws
  */
-function get(string $uri, string $controller, string $action) {
+function get(string $uri, string $controller, string $action, array $args = []) {
     if (empty($uri) || empty($controller) || empty($action))
         throw ErrorRoutes::makeError([
             'tag' => 'route',
@@ -64,7 +65,7 @@ function get(string $uri, string $controller, string $action) {
             'url' => $uri
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::GET, $tmpUri, $tmpController, $action);
+    $route = new Route(RouteType::GET, $tmpUri, $args, $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -73,9 +74,10 @@ function get(string $uri, string $controller, string $action) {
  * @param string $uri
  * @param string $controller
  * @param string $action
+ * @param array $args - key:value array with additional arguments
  * @throws
  */
-function post(string $uri, string $controller, string $action) {
+function post(string $uri, string $controller, string $action, array $args = []) {
     if (empty($uri) || empty($controller) || empty($action))
         throw ErrorRoutes::makeError([
             'tag' => 'route',
@@ -96,7 +98,7 @@ function post(string $uri, string $controller, string $action) {
             'url' => $uri
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::POST, $tmpUri, $tmpController, $action);
+    $route = new Route(RouteType::POST, $tmpUri, $args, $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -105,9 +107,10 @@ function post(string $uri, string $controller, string $action) {
  * @param string $uri
  * @param string $controller
  * @param string $action
+ * @param array $args - key:value array with additional arguments
  * @throws
  */
-function put(string $uri, string $controller, string $action) {
+function put(string $uri, string $controller, string $action, array $args = []) {
     if (empty($uri) || empty($controller) || empty($action))
         throw ErrorRoutes::makeError([
             'tag' => 'route',
@@ -128,7 +131,7 @@ function put(string $uri, string $controller, string $action) {
             'url' => $uri
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::PUT, $tmpUri, $tmpController, $action);
+    $route = new Route(RouteType::PUT, $tmpUri, $args, $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -137,9 +140,10 @@ function put(string $uri, string $controller, string $action) {
  * @param string $uri
  * @param string $controller
  * @param string $action
+ * @param array $args - key:value array with additional arguments
  * @throws
  */
-function patch(string $uri, string $controller, string $action) {
+function patch(string $uri, string $controller, string $action, array $args = []) {
     if (empty($uri) || empty($controller) || empty($action))
         throw ErrorRoutes::makeError([
             'tag' => 'route',
@@ -160,7 +164,7 @@ function patch(string $uri, string $controller, string $action) {
             'url' => $uri
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::PATCH, $tmpUri, $tmpController, $action);
+    $route = new Route(RouteType::PATCH, $tmpUri, $args, $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -169,9 +173,10 @@ function patch(string $uri, string $controller, string $action) {
  * @param string $uri
  * @param string $controller
  * @param string $action
+ * @param array $args - key:value array with additional arguments
  * @throws
  */
-function delete(string $uri, string $controller, string $action) {
+function delete(string $uri, string $controller, string $action, array $args = []) {
     if (empty($uri) || empty($controller) || empty($action))
         throw ErrorRoutes::makeError([
             'tag' => 'route',
@@ -192,6 +197,6 @@ function delete(string $uri, string $controller, string $action) {
             'url' => $uri
         ]);
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::DELETE, $tmpUri, $tmpController, $action);
+    $route = new Route(RouteType::DELETE, $tmpUri, $args, $tmpController, $action);
     RouteCollector::instance()->appendRoute($route);
 }

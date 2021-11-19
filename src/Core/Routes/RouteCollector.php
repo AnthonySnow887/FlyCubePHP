@@ -46,9 +46,9 @@ class RouteCollector
 
     function __destruct() {
         // --- init args ---
-        RouteCollector::currentRouteArgs();
+        self::currentRouteArgsPr();
         // --- select files ---
-        $files = RouteCollector::currentRouteFiles();
+        $files = self::currentRouteFiles();
         foreach ($files as $fInfo) {
             if (isset($fInfo['tmp_name'])
                 && !empty($fInfo['tmp_name'])
@@ -103,7 +103,8 @@ class RouteCollector
         if (empty($method) || empty($uri))
             return false;
         foreach ($this->_routes as $route) {
-            if ($route->type() == RouteType::stringToInt($method) && $route->uri() == $uri)
+            if ($route->type() == RouteType::stringToInt($method)
+                && $route->isRouteMatch($uri) === true)
                 return true;
         }
         return false;
@@ -131,7 +132,9 @@ class RouteCollector
         if (empty($method) || empty($uri))
             return null;
         foreach ($this->_routes as $route) {
-            if ($route->type() == RouteType::stringToInt($method) && $route->uri() == $uri)
+            if ($route->type() == RouteType::stringToInt($method)
+                && $route->isRouteMatch($uri) === true
+                /*&& $route->uri() == $uri*/)
                 return $route;
         }
         return null;
@@ -315,7 +318,7 @@ class RouteCollector
      * @return string
      */
     static public function currentRouteMethod(): string {
-        $tmpArgs = RouteCollector::currentRouteArgs();
+        $tmpArgs = self::currentRouteArgsPr();
         if (array_key_exists("_method", $tmpArgs)) {
             $tmpMethod = strtolower($tmpArgs["_method"]);
             if ($tmpMethod === "get")
@@ -362,31 +365,7 @@ class RouteCollector
      * @return array
      */
     static public function currentRouteArgs(): array {
-        if (!isset($_SERVER['REQUEST_METHOD']))
-            return array();
-
-        $tmpArgs = array();
-        $tmpMethod = strtolower($_SERVER['REQUEST_METHOD']);
-        if ($tmpMethod === 'get') {
-            $tmpArgs = $_GET;
-        } elseif ($tmpMethod === 'post'
-                  || $tmpMethod === 'put'
-                  || $tmpMethod === 'patch'
-                  || $tmpMethod === 'delete') {
-            if (empty($_POST)) {
-                $inData = RouteStreamParser::parseInputData();
-                $_POST = $inData['args'];
-                if (empty($_FILES))
-                    $_FILES = $inData['files'];
-                else
-                    $_FILES = array_merge($_FILES, $inData['files']);
-            }
-            $tmpArgs = $_POST;
-            $tmpFiles = RouteCollector::currentRouteFiles();
-            if (!empty($tmpFiles))
-                $tmpArgs = array_merge($tmpFiles, $tmpArgs);
-        }
-        return $tmpArgs;
+        return self::currentRouteArgsPr(true);
     }
 
     /**
@@ -553,5 +532,48 @@ class RouteCollector
             }
         }
         return $uri;
+    }
+
+    /**
+     * Получить массив входных аргументов для текущего запроса (включая файлы)
+     * @param bool $full - Дополнять ли аргументами маршрута
+     * @return array
+     * @private
+     */
+    static private function currentRouteArgsPr(bool $full = false): array {
+        if (!isset($_SERVER['REQUEST_METHOD']))
+            return array();
+
+        $tmpArgs = array();
+        $tmpMethod = strtolower($_SERVER['REQUEST_METHOD']);
+        if ($tmpMethod === 'get') {
+            $tmpArgs = $_GET;
+        } elseif ($tmpMethod === 'post'
+            || $tmpMethod === 'put'
+            || $tmpMethod === 'patch'
+            || $tmpMethod === 'delete') {
+            if (empty($_POST)) {
+                $inData = RouteStreamParser::parseInputData();
+                $_POST = $inData['args'];
+                if (empty($_FILES))
+                    $_FILES = $inData['files'];
+                else
+                    $_FILES = array_merge($_FILES, $inData['files']);
+            }
+            $tmpArgs = $_POST;
+            $tmpFiles = RouteCollector::currentRouteFiles();
+            if (!empty($tmpFiles))
+                $tmpArgs = array_merge($tmpFiles, $tmpArgs);
+        }
+        if (!$full)
+            return $tmpArgs;
+
+        // --- check & append other route args
+        $route = RouteCollector::instance()->currentRoute();
+        if (!is_null($route) && $route->hasUriArgs() === true) {
+            $tmpArgs = array_merge($tmpArgs, $route->uriArgs());
+            $tmpArgs = array_merge($tmpArgs, $route->routeArgsFromUri(self::currentRouteUri()));
+        }
+        return $tmpArgs;
     }
 }
