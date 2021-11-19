@@ -53,13 +53,16 @@ class RouteType extends \FlyCubePHP\HelperClasses\Enum {
     }
 }
 
+/**
+ * Класс маршрута
+ */
 class Route
 {
-    private $_type;
-    private $_uri;
-    private $_uriArgs = [];
-    private $_controller;
-    private $_action;
+    private $_type;         /**< тип маршрута (get/post/put/patch/delete) */
+    private $_uri;          /**< url маршрута */
+    private $_uriArgs = []; /**< статические аргументы маршрута */
+    private $_controller;   /**< название класса контроллера */
+    private $_action;       /**< название метода контроллера */
 
     function __construct(int $type,
                          string $uri,
@@ -75,10 +78,18 @@ class Route
         $this->_action = $action;
     }
 
+    /**
+     * Тип маршрута
+     * @return int
+     */
     public function type(): int {
         return $this->_type;
     }
 
+    /**
+     * URL маршрута без аргументов
+     * @return string
+     */
     public function uri(): string {
         $tmpURILst = explode('?', $this->_uri);
         $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
@@ -87,10 +98,19 @@ class Route
         return $tmpURI;
     }
 
+    /**
+     * Полный URL маршрута
+     * @return string
+     */
     public function uriFull(): string {
         return $this->_uri;
     }
 
+    /**
+     * Сравнение маршрута с локальной копией
+     * @param string $uri - URL маршрута для сравнения
+     * @return bool
+     */
     public function isRouteMatch(string $uri): bool {
         $localUri = $this->uri();
         if (strcmp($localUri, $uri) === 0)
@@ -115,6 +135,11 @@ class Route
         return true;
     }
 
+    /**
+     * Разобрать аргументы маршрута, если он задан в формате "/ROUTE/:id"
+     * @param string $uri
+     * @return array
+     */
     public function routeArgsFromUri(string $uri): array {
         $localUri = $this->uri();
         if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri))
@@ -136,22 +161,41 @@ class Route
         return $tmpArgs;
     }
 
+    /**
+     * Есть ли у маршрута входные аргументы?
+     * @return bool
+     */
     public function hasUriArgs(): bool {
         return (!empty($this->_uriArgs) || preg_match('/\:([a-zA-Z0-9_]*)/i', $this->uri()));
     }
 
+    /**
+     * Статические аргументы маршрута
+     * @return array
+     */
     public function uriArgs(): array {
         return $this->_uriArgs;
     }
 
+    /**
+     * Название контроллера
+     * @return string
+     */
     public function controller(): string {
         return $this->_controller;
     }
 
+    /**
+     * Название метода контроллера
+     * @return string
+     */
     public function action(): string {
         return $this->_action;
     }
 
+    /**
+     * Метод разбора аргументов
+     */
     private function parseArgs() {
         // NOTE! Не использовать parse_str($postData, $postArray),
         //       т.к. данный метод портит Base64 строки!

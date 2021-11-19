@@ -148,6 +148,7 @@ abstract class BaseActionController extends BaseController
         // --- append global variables ---
         $twig->addGlobal('params', $this->_params);
         $twig->addGlobal('flash', FlashMessages::instance());
+        $twig->addGlobal('router', RouteCollector::instance());
 
         // --- append helper methods ---
         $ext = new ControllerHelperTwigExt($this->_helper);
