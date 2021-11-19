@@ -8,6 +8,8 @@
 
 namespace FlyCubePHP\Core\Routes;
 
+use FlyCubePHP\HelperClasses\CoreHelper;
+
 include_once __DIR__.'/../../HelperClasses/Enum.php';
 
 class RouteType extends \FlyCubePHP\HelperClasses\Enum {
@@ -63,12 +65,14 @@ class Route
     private $_uriArgs = []; /**< статические аргументы маршрута */
     private $_controller;   /**< название класса контроллера */
     private $_action;       /**< название метода контроллера */
+    private $_as;           /**< псевдоним для быстрого доступа к маршруту */
 
     function __construct(int $type,
                          string $uri,
                          array $uriArgs,
                          string $controller,
-                         string $action) {
+                         string $action,
+                         string $as = "") {
         $this->_type = $type;
         $this->_uri = $uri;
         if (count(explode('?', $this->_uri)) > 1)
@@ -76,6 +80,9 @@ class Route
         $this->_uriArgs = array_merge($this->_uriArgs, $uriArgs);
         $this->_controller = $controller;
         $this->_action = $action;
+        if (empty($as))
+            $as = CoreHelper::underscore($controller) . "_" . CoreHelper::underscore($action);
+        $this->_as = $as;
     }
 
     /**
@@ -191,6 +198,14 @@ class Route
      */
     public function action(): string {
         return $this->_action;
+    }
+
+    /**
+     * Псевдоним для быстрого доступа к маршруту
+     * @return string
+     */
+    public function routeAs(): string {
+        return $this->_as;
     }
 
     /**
