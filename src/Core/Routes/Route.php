@@ -75,6 +75,14 @@ class Route
     }
 
     public function uri(): string {
+        $tmpURILst = explode('?', $this->_uri);
+        $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
+        if (empty($tmpURI))
+            $tmpURI = "/";
+        return $tmpURI;
+    }
+
+    public function uriFull(): string {
         return $this->_uri;
     }
 

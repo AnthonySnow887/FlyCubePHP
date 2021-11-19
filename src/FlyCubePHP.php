@@ -44,9 +44,14 @@ function requestProcessing() {
         if (Config::instance()->isDevelopment()) {
             trigger_error("Not found route: [$httpM] $httpUrl", E_USER_ERROR);
         } else {
-            http_response_code(404);
             Core\Logger\Logger::warning("Not found current route (404)! URL: [$httpM] $httpUrl");
-            die();
+            if (!RouteCollector::instance()->containsRoute('GET', '/404')) {
+                http_response_code(404);
+                die();
+            }
+            $tmpCurRoute = RouteCollector::instance()->routeByMethodUri('GET', '/404');
+            if (!isset($_GET['code']))
+                $_GET['code'] = 404;
         }
     }
 
