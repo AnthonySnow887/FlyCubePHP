@@ -38,7 +38,7 @@ function root(string $controller, string $action) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -79,7 +79,7 @@ function get(string $uri, array $args = []) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -120,7 +120,7 @@ function post(string $uri, array $args = []) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -161,7 +161,7 @@ function put(string $uri, array $args = []) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -202,7 +202,7 @@ function patch(string $uri, array $args = []) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -245,7 +245,7 @@ function delete(string $uri, array $args = []) {
  * - [string] to            - The name of the controller and the action separated '#' (Test#show)
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
- * - [string] as            - Alias for quick access to the route
+ * - [string] as            - Alias for quick access to the route (define is automatically generated)
  *
  * Other arguments will be transferred as input parameters.
  *
