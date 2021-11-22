@@ -1,4 +1,4 @@
-# 1.2.0 (??.11.2021)
+# 1.2.0 (22.11.2021)
 
  * Update BaseActionController:
    * add Twig global variable 'router'
