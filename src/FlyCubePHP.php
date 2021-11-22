@@ -33,19 +33,25 @@ function requestProcessing() {
     $httpArgs = RouteCollector::currentRouteArgs();
     $clientIP = RouteCollector::currentClientIP();
     Core\Logger\Logger::info("$httpM $httpUrl (from: $clientIP)");
-    Core\Logger\Logger::info("PARAMS:", $httpArgs);
+    if (empty($httpArgs))
+        Core\Logger\Logger::info("PARAMS: {}");
+    else
+        Core\Logger\Logger::info("PARAMS:", $httpArgs);
 
     // --- check current route ---
     $tmpCurRoute = RouteCollector::instance()->currentRoute();
     if (is_null($tmpCurRoute)) {
         if (Config::instance()->isDevelopment()) {
-            $tmpCurrentUrl = RouteCollector::currentUri();
-            $tmpHttpTypeStr = RouteCollector::currentRouteMethod();
-            trigger_error("Not found route: [$tmpHttpTypeStr] $tmpCurrentUrl", E_USER_ERROR);
+            trigger_error("Not found route: [$httpM] $httpUrl", E_USER_ERROR);
         } else {
-            http_response_code(404);
-            Core\Logger\Logger::warning("Not found current route (404)! URL: $httpUrl");
-            die();
+            Core\Logger\Logger::warning("Not found current route (404)! URL: [$httpM] $httpUrl");
+            if (!RouteCollector::instance()->containsRoute('GET', '/404')) {
+                http_response_code(404);
+                die();
+            }
+            $tmpCurRoute = RouteCollector::instance()->routeByMethodUri('GET', '/404');
+            if (!isset($_GET['code']))
+                $_GET['code'] = 404;
         }
     }
 

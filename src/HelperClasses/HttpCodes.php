@@ -90,7 +90,7 @@ class HttpCodes
      * @return array
      */
     public function codeInfo(int $code): array {
-        if (!isset($c->_codes[$code]))
+        if (!isset($this->_codes[$code]))
             return [];
         return $this->_codes[$code];
     }

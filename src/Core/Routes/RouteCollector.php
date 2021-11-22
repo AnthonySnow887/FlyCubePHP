@@ -19,6 +19,8 @@ use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Error\ErrorRoutes as ErrorRoutes;
 use \FlyCubePHP\Core\Controllers\BaseController as BaseController;
+use \FlyCubePHP\Core\Controllers\BaseActionController as BaseActionController;
+use FlyCubePHP\Core\Logger\Logger;
 
 class RouteCollector
 {
@@ -44,9 +46,9 @@ class RouteCollector
 
     function __destruct() {
         // --- init args ---
-        RouteCollector::currentRouteArgs();
+        self::currentRouteArgsPr();
         // --- select files ---
-        $files = RouteCollector::currentRouteFiles();
+        $files = self::currentRouteFiles();
         foreach ($files as $fInfo) {
             if (isset($fInfo['tmp_name'])
                 && !empty($fInfo['tmp_name'])
@@ -83,8 +85,6 @@ class RouteCollector
      * @param Route $route
      */
     public function appendRoute(Route &$route) {
-        if (is_null($route))
-            return;
         $tmpName = RouteType::intToString($route->type()) . "_" . $route->uri();
         if (array_key_exists($tmpName, $this->_routes)) {
             unset($route);
@@ -103,7 +103,8 @@ class RouteCollector
         if (empty($method) || empty($uri))
             return false;
         foreach ($this->_routes as $route) {
-            if ($route->type() == RouteType::stringToInt($method) && $route->uri() == $uri)
+            if ($route->type() == RouteType::stringToInt($method)
+                && $route->isRouteMatch($uri) === true)
                 return true;
         }
         return false;
@@ -131,7 +132,9 @@ class RouteCollector
         if (empty($method) || empty($uri))
             return null;
         foreach ($this->_routes as $route) {
-            if ($route->type() == RouteType::stringToInt($method) && $route->uri() == $uri)
+            if ($route->type() == RouteType::stringToInt($method)
+                && $route->isRouteMatch($uri) === true
+                /*&& $route->uri() == $uri*/)
                 return $route;
         }
         return null;
@@ -187,8 +190,11 @@ class RouteCollector
     /**
      * Метод проверки маршрутов на корректность (верно ли заданы контроллеры и их методы)
      * @return bool
+     * @throws ErrorRoutes
+     * @throws \FlyCubePHP\Core\Error\Error
      *
      * Если найден некорректный маршрут, то он удаляется из списка!
+     * Если найден маршрут, ссылающийся на вспомогательный метод класса (helper method), то выбрасывается исключение!
      *
      * Return true if route list is not empty, else - return false.
      */
@@ -198,21 +204,55 @@ class RouteCollector
             $tmpClassName = $value->controller();
             $tmpClassAct = $value->action();
             if (!class_exists($tmpClassName, false)) {
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Not found controller class!'
+                ];
                 continue;
             }
             $tmpController = new $tmpClassName();
             if (!$tmpController instanceof BaseController)
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class is not instance of BaseController!'
+                ];
             elseif (!method_exists($tmpController, $tmpClassAct))
-                $tmpRemove[] = $key;
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class does not contain required action!'
+                ];
+            elseif ($tmpController instanceof BaseActionController
+                    && $tmpController->isHelperMethod($tmpClassAct))
+                $tmpRemove[$key] = [
+                    'route' => $value,
+                    'msg' => 'Controller class action is a helper method!'
+                ];
 
+            // --- make route 'as' define ---
+            $tmpAs = $value->routeAs();
+            define($tmpAs."_url", $value->uri());
+
+            // --- clear ---
             unset($tmpController);
         }
-        foreach ($tmpRemove as $key => $value)
-            unset($this->_routes[$value]);
+        foreach ($tmpRemove as $key => $value) {
+            $route = $value['route'];
+            $msg = $value['msg'];
+            if (Config::instance()->isProduction())
+                Logger::warning("Route '". $route->uri() ."' removed! $msg");
+            else
+                throw ErrorRoutes::makeError([
+                    'tag' => 'check-routes',
+                    'message' => "Invalid route '".$route->uri()."'! $msg",
+                    'url' => $route->uri(),
+                    'route-type' => $route->type(),
+                    'controller' => $route->controller(),
+                    'action' => $route->action()
+                ]);
 
-        return count($this->_routes) > 0 ? true : false;
+            unset($this->_routes[$key]);
+        }
+        return count($this->_routes) > 0;
     }
 
     /**
@@ -239,7 +279,7 @@ class RouteCollector
      * @brief Получить IP текущего клиента
      * @return string
      */
-    static public function currentClientIP() {
+    static public function currentClientIP(): string {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
             return $_SERVER['HTTP_CLIENT_IP'];
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
@@ -283,7 +323,7 @@ class RouteCollector
      * @return string
      */
     static public function currentRouteMethod(): string {
-        $tmpArgs = RouteCollector::currentRouteArgs();
+        $tmpArgs = self::currentRouteArgsPr();
         if (array_key_exists("_method", $tmpArgs)) {
             $tmpMethod = strtolower($tmpArgs["_method"]);
             if ($tmpMethod === "get")
@@ -311,35 +351,26 @@ class RouteCollector
     }
 
     /**
+     * Получить входной аргумент для текущего запроса
+     * @param string $key
+     * @param null $def
+     * @return mixed|null
+     */
+    static public function currentRouteArg(string $key, $def = null) {
+        if (!isset($_SERVER['REQUEST_METHOD']))
+            return $def;
+        $tmpArgs = RouteCollector::currentRouteArgs();
+        if (isset($tmpArgs[$key]))
+            return $tmpArgs[$key];
+        return $def;
+    }
+
+    /**
      * Получить массив входных аргументов для текущего запроса (включая файлы)
      * @return array
      */
     static public function currentRouteArgs(): array {
-        if (!isset($_SERVER['REQUEST_METHOD']))
-            return array();
-
-        $tmpArgs = array();
-        $tmpMethod = strtolower($_SERVER['REQUEST_METHOD']);
-        if ($tmpMethod === 'get') {
-            $tmpArgs = $_GET;
-        } elseif ($tmpMethod === 'post'
-                  || $tmpMethod === 'put'
-                  || $tmpMethod === 'patch'
-                  || $tmpMethod === 'delete') {
-            if (empty($_POST)) {
-                $inData = RouteStreamParser::parseInputData();
-                $_POST = $inData['args'];
-                if (empty($_FILES))
-                    $_FILES = $inData['files'];
-                else
-                    $_FILES = array_merge($_FILES, $inData['files']);
-            }
-            $tmpArgs = $_POST;
-            $tmpFiles = RouteCollector::currentRouteFiles();
-            if (!empty($tmpFiles))
-                $tmpArgs = array_merge($tmpFiles, $tmpArgs);
-        }
-        return $tmpArgs;
+        return self::currentRouteArgsPr(true);
     }
 
     /**
@@ -506,5 +537,48 @@ class RouteCollector
             }
         }
         return $uri;
+    }
+
+    /**
+     * Получить массив входных аргументов для текущего запроса (включая файлы)
+     * @param bool $full - Дополнять ли аргументами маршрута
+     * @return array
+     * @private
+     */
+    static private function currentRouteArgsPr(bool $full = false): array {
+        if (!isset($_SERVER['REQUEST_METHOD']))
+            return array();
+
+        $tmpArgs = array();
+        $tmpMethod = strtolower($_SERVER['REQUEST_METHOD']);
+        if ($tmpMethod === 'get') {
+            $tmpArgs = $_GET;
+        } elseif ($tmpMethod === 'post'
+            || $tmpMethod === 'put'
+            || $tmpMethod === 'patch'
+            || $tmpMethod === 'delete') {
+            if (empty($_POST)) {
+                $inData = RouteStreamParser::parseInputData();
+                $_POST = $inData['args'];
+                if (empty($_FILES))
+                    $_FILES = $inData['files'];
+                else
+                    $_FILES = array_merge($_FILES, $inData['files']);
+            }
+            $tmpArgs = $_POST;
+            $tmpFiles = RouteCollector::currentRouteFiles();
+            if (!empty($tmpFiles))
+                $tmpArgs = array_merge($tmpFiles, $tmpArgs);
+        }
+        if (!$full)
+            return $tmpArgs;
+
+        // --- check & append other route args
+        $route = RouteCollector::instance()->currentRoute();
+        if (!is_null($route) && $route->hasUriArgs() === true) {
+            $tmpArgs = array_merge($tmpArgs, $route->uriArgs());
+            $tmpArgs = array_merge($tmpArgs, $route->routeArgsFromUri(self::currentRouteUri()));
+        }
+        return $tmpArgs;
     }
 }

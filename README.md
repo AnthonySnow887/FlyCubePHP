@@ -2,8 +2,7 @@
 
 [![License](https://img.shields.io/github/license/AnthonySnow887/FlyCubePHP)](https://github.com/AnthonySnow887/FlyCubePHP/blob/master/LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/AnthonySnow887/FlyCubePHP?label=release)](https://github.com/AnthonySnow887/FlyCubePHP/releases)
-![Downloads](https://img.shields.io/github/downloads/AnthonySnow887/FlyCubePHP/total)
-![Last Commit](https://img.shields.io/github/last-commit/AnthonySnow887/FlyCubePHP)
+![Last Commit](https://img.shields.io/github/last-commit/AnthonySnow887/FlyCubePHP/develop)
 
 FlyCubePHP is an MVC Web Framework developed in PHP and repeating the ideology and principles of building WEB applications, 
 embedded in Ruby on Rails. The main task set during the development was a quick and flexible transfer of project code 

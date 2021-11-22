@@ -23,8 +23,6 @@ use \FlyCubePHP\Core\Protection\RequestForgeryProtection as RequestForgeryProtec
 
 abstract class BaseController
 {
-    use Extensions\NetworkBase;
-
     protected $_params = [];
 
     private $_isRendered = false;
@@ -105,20 +103,20 @@ abstract class BaseController
     /**
      * Исключить обработчик перед вызовом основного метода контроллера
      * @param string $checkMethod - название метода проверки
-     * @param string $action - метод, который будет игнорироваться обработчиком
+     * @param string|array $action - метод (список методов), который будет игнорироваться обработчиком
      * @throws
      */
-    final protected function skipBeforeAction(string $checkMethod, string $action) {
+    final protected function skipBeforeAction(string $checkMethod, /*string|array*/ $action) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
             throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Not found check method (name: $checkMethod)!", "before-action");
-        if (empty($action) || !method_exists($this, $action))
-            throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Not found action (name: $action)!", "before-action");
-        $tmpSkip = array();
-        if (isset($this->_skipBeforeActions[$action]))
-            $tmpSkip = $this->_skipBeforeActions[$action];
-        if (!in_array($checkMethod, $tmpSkip))
-            $tmpSkip[] = $checkMethod;
-        $this->_skipBeforeActions[$action] = $tmpSkip;
+        if (!is_string($action) && !is_array($action))
+            throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Invalid action type (only string or array[string])!", "before-action");
+        if (is_string($action)) {
+            $this->skipBeforeActionPr($checkMethod, $action);
+        } else {
+            foreach ($action as $act)
+                $this->skipBeforeActionPr($checkMethod, strval($act));
+        }
     }
 
     /**
@@ -148,20 +146,20 @@ abstract class BaseController
     /**
      * Исключить обработчик после вызова основного метода контроллера
      * @param string $checkMethod - название метода проверки
-     * @param string $action - метод, который будет игнорироваться обработчиком
+     * @param string|array $action - метод (список методов), который будет игнорироваться обработчиком
      * @throws
      */
-    final protected function skipAfterAction(string $checkMethod, string $action) {
+    final protected function skipAfterAction(string $checkMethod, /*string|array*/ $action) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
             throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Not found check method (name: $checkMethod)!", "after-action");
-        if (empty($action) || !method_exists($this, $action))
-            throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Not found action (name: $action)!", "after-action");
-        $tmpSkip = array();
-        if (isset($this->_skipAfterActions[$action]))
-            $tmpSkip = $this->_skipAfterActions[$action];
-        if (!in_array($checkMethod, $tmpSkip))
-            $tmpSkip[] = $checkMethod;
-        $this->_skipAfterActions[$action] = $tmpSkip;
+        if (!is_string($action) && !is_array($action))
+            throw new ErrorController($this->controllerName(), __FUNCTION__, "", "Invalid action type (only string or array[string])!", "after-action");
+        if (is_string($action)) {
+            $this->skipAfterActionPr($checkMethod, $action);
+        } else {
+            foreach ($action as $act)
+                $this->skipAfterActionPr($checkMethod, strval($act));
+        }
     }
 
     /**
@@ -249,6 +247,7 @@ abstract class BaseController
     /**
      * Метод верификации токена аутентификации
      * @throws
+     * @private
      */
     final private function verifyAuthenticityToken() {
         try {
@@ -260,5 +259,56 @@ abstract class BaseController
             $curRoute = RouteCollector::instance()->currentRoute();
             throw new ErrorController($this->controllerName(), __FUNCTION__, $curRoute->action(), "Invalid Authenticity Token!", "verify-authenticity-token");
         }
+    }
+
+    /**
+     * Исключить обработчик перед вызовом основного метода контроллера
+     * @param string $checkMethod - название метода проверки
+     * @param string $action - метод, который будет игнорироваться обработчиком
+     * @throws
+     * @private
+     */
+    final private function skipBeforeActionPr(string $checkMethod, string $action) {
+        if (empty($action) || !method_exists($this, $action))
+            throw ErrorController::makeError([
+                'tag' => "before-action",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => "",
+                'message' => "Not found action (name: $action)!",
+                'backtrace-shift' => 2
+            ]);
+        $tmpSkip = array();
+        if (isset($this->_skipBeforeActions[$action]))
+            $tmpSkip = $this->_skipBeforeActions[$action];
+        if (!in_array($checkMethod, $tmpSkip))
+            $tmpSkip[] = $checkMethod;
+        $this->_skipBeforeActions[$action] = $tmpSkip;
+    }
+
+    /**
+     * Исключить обработчик после вызова основного метода контроллера
+     * @param string $checkMethod - название метода проверки
+     * @param string $action - метод, который будет игнорироваться обработчиком
+     * @throws
+     * @private
+     */
+    final private function skipAfterActionPr(string $checkMethod, string $action) {
+        if (empty($action) || !method_exists($this, $action))
+            throw ErrorController::makeError([
+                'tag' => "after-action",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => "",
+                'message' => "Not found action (name: $action)!",
+                'backtrace-shift' => 2
+            ]);
+
+        $tmpSkip = array();
+        if (isset($this->_skipAfterActions[$action]))
+            $tmpSkip = $this->_skipAfterActions[$action];
+        if (!in_array($checkMethod, $tmpSkip))
+            $tmpSkip[] = $checkMethod;
+        $this->_skipAfterActions[$action] = $tmpSkip;
     }
 }

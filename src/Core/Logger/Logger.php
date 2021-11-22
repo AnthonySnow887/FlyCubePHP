@@ -273,7 +273,7 @@ class Logger
             ]);
         if (Logger::EMERGENCY < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->emergency($message, $context);
+        Logger::instance()->_logger->emergency($message, Logger::prepareContext($context));
     }
 
     /**
@@ -298,7 +298,7 @@ class Logger
             ]);
         if (Logger::ALERT < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->alert($message, $context);
+        Logger::instance()->_logger->alert($message, Logger::prepareContext($context));
     }
 
     /**
@@ -322,7 +322,7 @@ class Logger
             ]);
         if (Logger::CRITICAL < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->critical($message, $context);
+        Logger::instance()->_logger->critical($message, Logger::prepareContext($context));
     }
 
     /**
@@ -345,7 +345,7 @@ class Logger
             ]);
         if (Logger::ERROR < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->error($message, $context);
+        Logger::instance()->_logger->error($message, Logger::prepareContext($context));
     }
 
     /**
@@ -370,7 +370,7 @@ class Logger
             ]);
         if (Logger::WARNING < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->warning($message, $context);
+        Logger::instance()->_logger->warning($message, Logger::prepareContext($context));
     }
 
     /**
@@ -392,7 +392,7 @@ class Logger
             ]);
         if (Logger::NOTICE < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->notice($message, $context);
+        Logger::instance()->_logger->notice($message, Logger::prepareContext($context));
     }
 
     /**
@@ -416,7 +416,7 @@ class Logger
             ]);
         if (Logger::INFO < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->info($message, $context);
+        Logger::instance()->_logger->info($message, Logger::prepareContext($context));
     }
 
     /**
@@ -438,7 +438,7 @@ class Logger
             ]);
         if (Logger::DEBUG < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->debug($message, $context);
+        Logger::instance()->_logger->debug($message, Logger::prepareContext($context));
     }
 
     /**
@@ -463,7 +463,7 @@ class Logger
             ]);
         if ($level < Logger::instance()->_level)
             return;
-        Logger::instance()->_logger->log($level, $message, $context);
+        Logger::instance()->_logger->log($level, $message, Logger::prepareContext($context));
     }
 
     /**
@@ -483,5 +483,21 @@ class Logger
             return Logger::ERROR;
 
         return Logger::DEBUG;
+    }
+
+    /**
+     * Метод подготовки контекса к логированию
+     * @param array $context
+     * @return array
+     */
+    static private function prepareContext(array &$context): array {
+        foreach ($context as $key => $val) {
+            if (!is_array($val)
+                && preg_match('/.*(password|secret|private).*/', strtolower(strval($key))) === 1)
+                $context[$key] = "*****";
+            elseif (is_array($val))
+                $context[$key] = self::prepareContext($val);
+        }
+        return $context;
     }
 }

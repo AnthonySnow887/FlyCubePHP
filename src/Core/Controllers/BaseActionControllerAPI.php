@@ -18,6 +18,10 @@ use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
 
 class BaseActionControllerAPI extends BaseController
 {
+    use Extensions\NetworkBase {
+        isNetworkUsed as private;
+    }
+
     public function __construct() {
         parent::__construct();
     }
