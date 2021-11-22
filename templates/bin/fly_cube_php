@@ -2346,11 +2346,20 @@ function appRoutes() {
         echo "\r\nWARNING: Not found root route!\r\n\r\n";
 
     $maxLen = 0;
+    $maxLen2 = 0;
     foreach ($routes as $route) {
+        // --- uri length ---
         $rURI = $route->uri();
         $len = strlen($rURI);
         if ($maxLen < $len)
             $maxLen = $len;
+
+        // --- controller name length ---
+        $rController = $route->controller();
+        $rAction = $route->action();
+        $len = strlen("$rController#$rAction");
+        if ($maxLen2 < $len)
+            $maxLen2 = $len;
     }
     foreach ($routes as $route) {
         $rType = \FlyCubePHP\Core\Routes\RouteType::intToString($route->type());
@@ -2358,7 +2367,9 @@ function appRoutes() {
         $rURI = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($route->uri(), $maxLen + 2);
         $rController = $route->controller();
         $rAction = $route->action();
-        echo "  $rType  $rURI  $rController#$rAction\r\n";
+        $rAs = $route->routeAs();
+        $rClass = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("$rController#$rAction", $maxLen2 + 2);
+        echo "  $rType  $rURI  $rClass  as: $rAs\r\n";
     }
 }
 

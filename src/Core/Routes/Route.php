@@ -80,8 +80,13 @@ class Route
         $this->_uriArgs = array_merge($this->_uriArgs, $uriArgs);
         $this->_controller = $controller;
         $this->_action = $action;
-        if (empty($as))
-            $as = CoreHelper::underscore($controller) . "_" . CoreHelper::underscore($action);
+        if (empty($as)) {
+            $tmpControllerName = $controller;
+            if (preg_match("/.*Controller$/", $tmpControllerName))
+                $tmpControllerName = substr($tmpControllerName, 0, strlen($tmpControllerName) - 10);
+
+            $as = CoreHelper::underscore($tmpControllerName) . "_" . CoreHelper::underscore($action);
+        }
         $this->_as = $as;
     }
 

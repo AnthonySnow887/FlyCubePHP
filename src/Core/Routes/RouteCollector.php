@@ -228,6 +228,11 @@ class RouteCollector
                     'msg' => 'Controller class action is a helper method!'
                 ];
 
+            // --- make route 'as' define ---
+            $tmpAs = $value->routeAs();
+            define($tmpAs."_url", $value->uri());
+
+            // --- clear ---
             unset($tmpController);
         }
         foreach ($tmpRemove as $key => $value) {

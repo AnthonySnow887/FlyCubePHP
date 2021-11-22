@@ -438,6 +438,16 @@ abstract class BaseActionController extends BaseController
     }
 
     /**
+     * Добавить название методов, для которых будет пропущен рендеринг страницы
+     * @param array $actions - Названия методов контроллера
+     * @throws ErrorController
+     */
+    final protected function skipRenderForActions(array $actions) {
+        foreach ($actions as $act)
+            $this->skipRenderForAction($act);
+    }
+
+    /**
      * Добавить вспомогательную функцию
      * @param string $name - название публичного (public) метода
      * @param array $settings - свойства
