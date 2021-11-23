@@ -355,7 +355,8 @@ abstract class BaseActionController extends BaseController
             $this->_obLevel = ob_get_level();
             $this->$action();
             if ($this->_obLevel != 0) {
-                if ($this->_enableActionOutput === true)
+                if ($this->_enableActionOutput === true
+                    || $this->isNetworkUsed() === true)
                     ob_end_flush();
                 else
                     ob_end_clean();
