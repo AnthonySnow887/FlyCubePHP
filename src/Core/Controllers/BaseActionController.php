@@ -330,6 +330,9 @@ abstract class BaseActionController extends BaseController
                 'method' => __FUNCTION__,
                 'action' => $action
             ]);
+        $ignoreProcessing = false;
+        if (strcmp($caller, "assetsPrecompile") === 0)
+            $ignoreProcessing = true;
 
         // --- select settings ---
         $defVal = !Config::instance()->isProduction();
@@ -340,29 +343,33 @@ abstract class BaseActionController extends BaseController
         $this->_params['action'] = $action;
 
         // --- before action ---
-        $this->processingBeforeAction($action);
+        if (!$ignoreProcessing)
+            $this->processingBeforeAction($action);
 
         // --- create helper ---
         $this->createHelper();
 
         // --- processing ---
-        ob_start();
-        $this->_obLevel = ob_get_level();
-        $this->$action();
-        if ($this->_obLevel != 0) {
-            if ($this->_enableActionOutput === true)
-                ob_end_flush();
-            else
-                ob_end_clean();
+        if (!$ignoreProcessing) {
+            ob_start();
+            $this->_obLevel = ob_get_level();
+            $this->$action();
+            if ($this->_obLevel != 0) {
+                if ($this->_enableActionOutput === true)
+                    ob_end_flush();
+                else
+                    ob_end_clean();
 
-            $this->_obLevel = 0;
+                $this->_obLevel = 0;
+            }
         }
 
         // --- render page ---
         $this->render($action);
 
         // --- after action ---
-        $this->processingAfterAction($action);
+        if (!$ignoreProcessing)
+            $this->processingAfterAction($action);
     }
 
     /**
@@ -543,6 +550,15 @@ abstract class BaseActionController extends BaseController
             && isset($this->_helperMethods[$name]["needs_environment"]))
             return $this->_helperMethods[$name]["needs_environment"];
         return false;
+    }
+
+    /**
+     * Задан ли шаблон страницы
+     * @param string $action
+     * @return bool
+     */
+    final public function hasView(string $action): bool {
+        return !empty($this->viewPath($action));
     }
 
     /**

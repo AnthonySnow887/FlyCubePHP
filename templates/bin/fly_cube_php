@@ -2292,6 +2292,11 @@ function assetsPrecompile() {
             unset($tmpController);
             continue;
         }
+        if (!$tmpController->hasView($tmpClassAct)) {
+            echo "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n";
+            unset($tmpController);
+            continue;
+        }
         echo "[Render] $tmpClassName->$tmpClassAct: ";
         ob_start();
         $tmpController->renderPrivate($tmpClassAct);
