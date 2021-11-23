@@ -689,7 +689,11 @@ abstract class ActiveRecord
         $dataValuesKeys = array_keys($dataValues);
         $tName = $this->tableName();
         try {
-            $db->query("INSERT INTO ".$db->quoteTableName($tName)." (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ");", $dataValues);
+            $res = $db->query("INSERT INTO ".$db->quoteTableName($tName)." (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ") RETURNING ".$db->quoteTableName($this->_primaryKey).";", $dataValues);
+            if (count($res) === 1) {
+                $tmpName = $this->_primaryKey;
+                $this->__set($this->_primaryKey, $res[0]->$tmpName);
+            }
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
