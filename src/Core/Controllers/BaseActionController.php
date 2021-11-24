@@ -288,7 +288,8 @@ abstract class BaseActionController extends BaseController
             CSPProtection::instance()->processingCSPNonce();
 
         // --- show page ---
-        if ($this->_obLevel != 0) {
+        if ($this->_obLevel != 0
+            && $this->_obLevel == ob_get_level()) {
             if ($this->_enableActionOutput === true)
                 ob_end_flush();
             else
@@ -349,14 +350,18 @@ abstract class BaseActionController extends BaseController
         // --- create helper ---
         $this->createHelper();
 
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
+            ob_end_clean();
+
         // --- processing ---
         if (!$ignoreProcessing) {
             ob_start();
             $this->_obLevel = ob_get_level();
             $this->$action();
-            if ($this->_obLevel != 0) {
-                if ($this->_enableActionOutput === true
-                    || $this->isNetworkUsed() === true)
+            if ($this->_obLevel != 0
+                && $this->_obLevel == ob_get_level()) {
+                if ($this->_enableActionOutput === true)
                     ob_end_flush();
                 else
                     ob_end_clean();

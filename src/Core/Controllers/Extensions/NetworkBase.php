@@ -81,7 +81,8 @@ trait NetworkBase
             $url = RouteCollector::currentHostUri() . $url;
         }
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         http_response_code($status);
@@ -175,8 +176,8 @@ trait NetworkBase
         if (isset($options['exit']) && $options['exit'] === true)
             $useExit = true;
 
-        // --- send ---
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         // --- send ---
@@ -246,7 +247,8 @@ trait NetworkBase
 
         header("Content-Type: $contentType; charset=".strtoupper($encoding));
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo $body;
@@ -322,7 +324,8 @@ trait NetworkBase
         if (!empty($filename))
             header("Content-Disposition: attachment; filename=\"" . urlencode($filename) . "\"");
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo $data;
@@ -381,7 +384,8 @@ trait NetworkBase
         header("Content-Transfer-Encoding: binary");
         header("Content-Disposition: attachment; filename=\"" . urlencode($filename) . "\"");
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo readfile($path);
