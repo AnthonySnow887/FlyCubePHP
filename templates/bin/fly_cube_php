@@ -233,7 +233,7 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
             $html = "\r\n\r\n=== FlyCubePHP: ERROR  =========";
             $html .= "\r\nError title: $title ($title2)\r\n\r\n$errorBody";
             $html .= "\r\n=== FlyCubePHP: END ERROR =========\r\n\r\n";
-            echo $html;
+            fwrite(STDERR, $html);
         }
 
         final private function makeTrace(string $title,
@@ -2282,6 +2282,12 @@ function assetsPrecompile() {
         echo "ERROR: Routes list Empty!\r\n";
         return;
     }
+    // --- redirect stdout ---
+    fclose(STDOUT);
+    $stdoutPath = sys_get_temp_dir().'/php'.substr(sha1(rand()), 0, 6);
+    $STDOUT = fopen($stdoutPath, 'wb');
+    $STDOUT_2 = fopen('/dev/tty', 'wb');
+    // --- output controllers assets build states ---
     foreach ($routes as $route) {
         if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
             continue;
@@ -2293,18 +2299,30 @@ function assetsPrecompile() {
             continue;
         }
         if (!$tmpController->hasView($tmpClassAct)) {
-            echo "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n";
+            fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
             unset($tmpController);
             continue;
         }
-        echo "[Render] $tmpClassName->$tmpClassAct: ";
-        ob_start();
-        $tmpController->renderPrivate($tmpClassAct);
-        if (ob_get_level())
-            ob_end_clean();
-        echo "OK\r\n";
+        fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: ");
+        try {
+            $tmpController->renderPrivate($tmpClassAct);
+        } catch (\Throwable $e) {
+            // --- close & clear redirected stdout ---
+            fclose($STDOUT);
+            if (is_file($stdoutPath))
+                unlink($stdoutPath);
+            fclose($STDOUT_2);
+            // --- throw error for output ---
+            throw $e;
+        }
+        fwrite($STDOUT_2, "OK\r\n");
         unset($tmpController);
     }
+    // --- close & clear redirected stdout ---
+    fclose($STDOUT);
+    if (is_file($stdoutPath))
+        unlink($stdoutPath);
+    fclose($STDOUT_2);
 }
 
 /**
