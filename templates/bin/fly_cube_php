@@ -2300,7 +2300,8 @@ function assetsPrecompile() {
         echo "[Render] $tmpClassName->$tmpClassAct: ";
         ob_start();
         $tmpController->renderPrivate($tmpClassAct);
-        ob_clean();
+        if (ob_get_level())
+            ob_end_clean();
         echo "OK\r\n";
         unset($tmpController);
     }

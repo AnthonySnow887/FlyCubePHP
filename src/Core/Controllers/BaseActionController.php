@@ -350,12 +350,13 @@ abstract class BaseActionController extends BaseController
         // --- create helper ---
         $this->createHelper();
 
-        // --- clear all buffers ---
-        while (ob_get_level() !== 0)
-            ob_end_clean();
-
         // --- processing ---
         if (!$ignoreProcessing) {
+            // --- clear all buffers ---
+            while (ob_get_level() !== 0)
+                ob_end_clean();
+
+            // --- run ---
             ob_start();
             $this->_obLevel = ob_get_level();
             $this->$action();
