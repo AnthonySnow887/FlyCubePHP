@@ -44,6 +44,7 @@ else if (is_file(__DIR__."/../src/TemplateBuilder/TemplateBuilder.php"))
  */
 function printHelp(string $app) {
     $HELP = <<<EOT
+
 Usage: $app [options]
 
 Options include:
@@ -74,7 +75,8 @@ Examples:
      
  5. Force upgrade an existing FlyCubePHP project:
      $app --upgrade --force --path=/home/test/projects/MyProject
-     
+
+
 EOT;
     exit($HELP);
 }
@@ -518,7 +520,8 @@ function upgradeFlyCubePhpProject(string $path,
             return;
         }
         if (strcmp(trim($line), 'yes') === 0
-            || strcmp(trim($line), 'y') === 0) {
+            || strcmp(trim($line), 'y') === 0
+            || empty(trim($line))) {
             echo "\r\n";
             break;
         }
@@ -766,7 +769,7 @@ function upgradeFlyCubePhpProject(string $path,
     }
     if (!empty($upgradeFiles)) {
         echo "\r\n";
-        echo "  See upgrade files!\r\n";
+        echo "  Look at the update files:\r\n";
         foreach ($upgradeFiles as $key => $value)
             echo "    - upgrade to v$key: $value\r\n";
     }

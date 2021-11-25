@@ -2562,7 +2562,8 @@ function upgradeFlyCubePhpProject(string $path,
             return;
         }
         if (strcmp(trim($line), 'yes') === 0
-            || strcmp(trim($line), 'y') === 0) {
+            || strcmp(trim($line), 'y') === 0
+            || empty(trim($line))) {
             echo "\r\n";
             break;
         }
@@ -2810,7 +2811,7 @@ function upgradeFlyCubePhpProject(string $path,
     }
     if (!empty($upgradeFiles)) {
         echo "\r\n";
-        echo "  See upgrade files!\r\n";
+        echo "  Look at the update files:\r\n";
         foreach ($upgradeFiles as $key => $value)
             echo "    - upgrade to v$key: $value\r\n";
     }
