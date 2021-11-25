@@ -6,7 +6,7 @@
  * Time => 16 =>29
  */
 
-namespace FlyCubePHP\HelperClasses;
+namespace FlyCubePHP\Core\Network;
 
 
 class HttpCodes

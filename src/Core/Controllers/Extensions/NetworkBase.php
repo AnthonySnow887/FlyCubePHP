@@ -181,7 +181,6 @@ trait NetworkBase
             ob_end_clean();
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         foreach ($headers as $key => $value)
             header("$key: $value");
@@ -232,7 +231,6 @@ trait NetworkBase
             $body = strval($options['body']);
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status));
         http_response_code($status);
         $cLength = false;
         foreach ($headers as $key => $value) {
@@ -302,7 +300,6 @@ trait NetworkBase
             $data = strval($options['data']);
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         $cLength = false;
         foreach ($headers as $key => $value) {
@@ -368,7 +365,6 @@ trait NetworkBase
             $headers = $options['headers'];
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         foreach ($headers as $key => $value) {
             if (strcmp("content-type", strtolower(trim($key))) === 0
