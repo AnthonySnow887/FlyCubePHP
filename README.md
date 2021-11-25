@@ -153,7 +153,7 @@ The project will be updated to version 1.2.0. Continue? [yes/no] (yes): y
   - Unzip requires [Psr/Log]: OK
   - Unzip requires [Monolog]: OK
 
-  Look at the update files:
+  Look at the upgrade files:
     - upgrade to v1.2.0: /vendor/FlyCubePHP/UPGRADE-1.2.0.md
 
   Upgrade project to latest version: SUCCESS

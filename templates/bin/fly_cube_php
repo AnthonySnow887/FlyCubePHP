@@ -2811,7 +2811,7 @@ function upgradeFlyCubePhpProject(string $path,
     }
     if (!empty($upgradeFiles)) {
         echo "\r\n";
-        echo "  Look at the update files:\r\n";
+        echo "  Look at the upgrade files:\r\n";
         foreach ($upgradeFiles as $key => $value)
             echo "    - upgrade to v$key: $value\r\n";
     }
