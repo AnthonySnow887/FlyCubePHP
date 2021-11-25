@@ -7,6 +7,8 @@
  * Time: 16:19
  */
 
+use FlyCubePHP\HelperClasses\CoreHelper;
+
 error_reporting(E_ALL);
 
 if (version_compare(PHP_VERSION, '7.0') < 0) {
@@ -214,6 +216,34 @@ function recursiveDeleteDir(string $dir, bool $showOutput = false) {
 }
 
 /**
+ * Сканирование каталога
+ * @param string $dir
+ * @param bool $recursive - использовать ли рекурсивное сканирование
+ * @param bool $appendDirs - добавлять или нет подкаталоги
+ * @return array
+ */
+function scanDirectory(string $dir,
+                       bool $recursive = false,
+                       bool $appendDirs = false): array {
+    if (!is_dir($dir))
+        return array();
+    $files = scandir($dir);
+    $results = array();
+    foreach ($files as $key => $value) {
+        $path = realpath($dir . DIRECTORY_SEPARATOR . $value);
+        if (!is_dir($path)) {
+            $results[] = $path;
+        } elseif ($value != "." && $value != "..") {
+            if ($appendDirs === true)
+                $results[] = $path;
+            if ($recursive === true)
+                $results = array_merge($results, scanDirectory($path, $recursive, $appendDirs));
+        }
+    }
+    return $results;
+}
+
+/**
  * Отправить HTTP GET запрос используя cURL
  * @param string $url to request
  * @param array $get values to send
@@ -413,9 +443,18 @@ function flyCubePhpLatestVersion(): string {
     return $version;
 }
 
+/**
+ * Выполнить обновления проекта FlyCubePHP до последней версии
+ * @param string $path
+ * @param bool $downloadRequires
+ * @param bool $force
+ * @throws ErrorException
+ */
 function upgradeFlyCubePhpProject(string $path,
                                   bool $downloadRequires,
                                   bool $force) {
+    $path = realpath($path);
+    $pName = basename($path);
     // --- check project ---
     if (!is_dir($path)) {
         echo "ERROR: Project folder not found (path: $path)!\r\n";
@@ -454,14 +493,15 @@ function upgradeFlyCubePhpProject(string $path,
     $downloadUrl = URL_PATH_FLY_CUBE_PHP."v$latestVers.zip";
     $projVersion = "$projMajor.$projMinor.$projPatch";
 
-
-    echo "Start upgrade FlyCubePHP project\r\n";
+    echo "\r\n";
+    echo "  Project name: $pName\r\n";
+    echo "  Project path: $path\r\n";
     echo "  Project ver.: $projVersion\r\n";
     echo "   Latest ver.: $latestVers\r\n";
+    echo "\r\n";
 
     // --- check versions ---
-    if (version_compare($projVersion, $latestVers) >= 0
-        && $force === false) {
+    if (version_compare($projVersion, $latestVers) >= 0 && $force === false) {
         echo "NOTE: Your project version is equal to or newer than the latest release. No update required.\r\n";
         echo "NOTE: Use force (--force) update to update FlyCubePHP project if needed.\r\n";
         return;
@@ -500,12 +540,12 @@ function upgradeFlyCubePhpProject(string $path,
     unlink(buildPath($path, "bin", "fly_cube_php"));
     // --- up latest version ---
     rename(buildPath($path, "vendor", "FlyCubePHP-$latestVers"),
-           buildPath($path, "vendor", "FlyCubePHP"));
+        buildPath($path, "vendor", "FlyCubePHP"));
     rename(buildPath($path, "vendor", "FlyCubePHP", "src"),
-           buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP"));
+        buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP"));
     unlink($fPath);
     if (!copy(buildPath($path, "vendor", "FlyCubePHP", "templates", "bin", "fly_cube_php"),
-              buildPath($path, "bin", "fly_cube_php"))) {
+        buildPath($path, "bin", "fly_cube_php"))) {
         echo "FAILED\r\n";
         echo "    ERROR: Copy bin/fly_cube_php failed!\r\n";
         return;
@@ -598,9 +638,9 @@ function upgradeFlyCubePhpProject(string $path,
         if (is_dir(buildPath($path, "vendor", "Twig-2.x")))
             recursiveDeleteDir(buildPath($path, "vendor", "Twig-2.x"));
         rename(buildPath($path, "vendor", DIR_TWIG),
-               buildPath($path, "vendor", "Twig-2.x"));
+            buildPath($path, "vendor", "Twig-2.x"));
         rename(buildPath($path, "vendor", "Twig-2.x", "src"),
-               buildPath($path, "vendor", "Twig-2.x", "Twig"));
+            buildPath($path, "vendor", "Twig-2.x", "Twig"));
         unlink($fPath);
         echo "OK\r\n";
 
@@ -622,9 +662,9 @@ function upgradeFlyCubePhpProject(string $path,
         if (is_dir(buildPath($path, "vendor", "JShrink")))
             recursiveDeleteDir(buildPath($path, "vendor", "JShrink"));
         rename(buildPath($path, "vendor", DIR_JSHRINK),
-               buildPath($path, "vendor", "JShrink"));
+            buildPath($path, "vendor", "JShrink"));
         rename(buildPath($path, "vendor", "JShrink", "src"),
-               buildPath($path, "vendor", "JShrink", "JShrink"));
+            buildPath($path, "vendor", "JShrink", "JShrink"));
         unlink($fPath);
         echo "OK\r\n";
 
@@ -646,9 +686,9 @@ function upgradeFlyCubePhpProject(string $path,
         if (is_dir(buildPath($path, "vendor", "ScssPhp")))
             recursiveDeleteDir(buildPath($path, "vendor", "ScssPhp"));
         rename(buildPath($path, "vendor", DIR_SCSS_PHP),
-               buildPath($path, "vendor", "ScssPhp"));
+            buildPath($path, "vendor", "ScssPhp"));
         rename(buildPath($path, "vendor", "ScssPhp", "src"),
-               buildPath($path, "vendor", "ScssPhp", "ScssPhp"));
+            buildPath($path, "vendor", "ScssPhp", "ScssPhp"));
         unlink($fPath);
         echo "OK\r\n";
 
@@ -670,7 +710,7 @@ function upgradeFlyCubePhpProject(string $path,
         if (is_dir(buildPath($path, "vendor", "Psr")))
             recursiveDeleteDir(buildPath($path, "vendor", "Psr"));
         rename(buildPath($path, "vendor", DIR_PSR_LOG),
-               buildPath($path, "vendor", "Psr"));
+            buildPath($path, "vendor", "Psr"));
         unlink($fPath);
         echo "OK\r\n";
 
@@ -692,12 +732,30 @@ function upgradeFlyCubePhpProject(string $path,
         if (is_dir(buildPath($path, "vendor", "Monolog")))
             recursiveDeleteDir(buildPath($path, "vendor", "Monolog"));
         rename(buildPath($path, "vendor", DIR_MONOLOG),
-               buildPath($path, "vendor", "Monolog"));
+            buildPath($path, "vendor", "Monolog"));
         rename(buildPath($path, "vendor", "Monolog", "src"),
-               buildPath($path, "vendor", "Monolog", "Monolog"));
+            buildPath($path, "vendor", "Monolog", "Monolog"));
         unlink($fPath);
         echo "OK\r\n";
     }
+    // --- check UPGRADE files ---
+    $upgradeFiles = [];
+    $files = scanDirectory(buildPath($path, "vendor", "FlyCubePHP"));
+    foreach ($files as $file) {
+        preg_match('/UPGRADE-(\d.\d.\d)/', $file, $matches);
+        if (count($matches) >= 2 && version_compare($projVersion, $matches[1]) < 0)
+            $upgradeFiles[$matches[1]] = str_replace($path, "", $file);
+    }
+    if (!empty($upgradeFiles)) {
+        echo "\r\n";
+        echo "  See upgrade files!\r\n";
+        foreach ($upgradeFiles as $key => $value)
+            echo "    - upgrade to v$key: $value\r\n";
+    }
+
+    echo "\r\n";
+    echo "  Upgrade project to latest version: SUCCESS\r\n";
+    echo "\r\n";
 }
 
 /**
@@ -1323,9 +1381,9 @@ if (in_array('--upgrade', $arguments)) {
     if (empty($projectPath))
         exit("Invalid project path! Use --help!\r\n");
 
-    echo "=== FlyCubePHP: Upgrade project \"$projectPath\" ===\r\n";
+    echo "=== FlyCubePHP: Upgrade project ===\r\n";
     upgradeFlyCubePhpProject($projectPath, $downloadRequires, $force);
-    echo "=== FlyCubePHP ================\r\n";
+    echo "=== FlyCubePHP ====================\r\n";
     exit();
 }
 if (in_array('--new', $arguments)) {
