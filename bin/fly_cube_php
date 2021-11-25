@@ -507,6 +507,24 @@ function upgradeFlyCubePhpProject(string $path,
         return;
     }
 
+    // --- checking user consent to update ---
+    while (true) {
+        echo "The project will be updated to version $latestVers. Continue? [yes/no] (yes): ";
+        $handle = fopen("php://stdin", "r");
+        $line = fgets($handle);
+        if (strcmp(trim($line), 'no') === 0
+            || strcmp(trim($line), 'n') === 0) {
+            echo "\r\nUpgrade canceled by user!\r\n";
+            return;
+        }
+        if (strcmp(trim($line), 'yes') === 0
+            || strcmp(trim($line), 'y') === 0) {
+            echo "\r\n";
+            break;
+        }
+        echo "\r\nInvalid input value!\r\n\r\n";
+    }
+
     // --- download latest version ---
     echo "  - Download latest version [FlyCubePHP]: ";
     $errorStr = "";
