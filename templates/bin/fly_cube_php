@@ -643,7 +643,7 @@ function curlGET(string $url, array $get = [], array $options = []) {
         CURLOPT_HEADER => 0,
         CURLOPT_RETURNTRANSFER => TRUE,
         CURLOPT_TIMEOUT => 4,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36'
+        CURLOPT_USERAGENT => "fly_cube_php/".FLY_CUBE_PHP_VERSION
     );
     $ch = curl_init();
     curl_setopt_array($ch, ($options + $defaults));

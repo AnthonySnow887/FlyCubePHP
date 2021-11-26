@@ -13,7 +13,6 @@ include_once 'Extensions/NetworkBase.php';
 include_once __DIR__.'/../Protection/RequestForgeryProtection.php';
 include_once __DIR__.'/../Protection/CSPProtection.php';
 include_once __DIR__.'/../Error/ErrorController.php';
-include_once __DIR__.'/../Network/HttpCodes.php';
 include_once __DIR__.'/../../HelperClasses/MimeTypes.php';
 
 use FlyCubePHP\Core\Routes\RouteCollector;
