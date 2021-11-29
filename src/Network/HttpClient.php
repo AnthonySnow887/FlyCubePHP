@@ -44,7 +44,8 @@ class HttpClient
                                    array $httpHeaders = [],
                                    array $cookie = [],
                                    array $curlOptions = []): HttpResponse {
-
+        if (!\extension_loaded('curl'))
+            trigger_error("\"Curl\" extension not installed! Use is not possible!", E_USER_ERROR);
         if (strpos($url, '?') === false && !empty($data))
             $url .= "?". http_build_query($data);
         else if (strpos($url, '?') !== false && !empty($data))
@@ -97,6 +98,8 @@ class HttpClient
                                     array $httpHeaders = [],
                                     array $cookie = [],
                                     array $curlOptions = []): HttpResponse {
+        if (!\extension_loaded('curl'))
+            trigger_error("\"Curl\" extension not installed! Use is not possible!", E_USER_ERROR);
         $tmpCookie = self::prepareCookie($cookie);
         if (!empty($tmpCookie))
             $httpHeaders = array_merge($httpHeaders, [ 'Cookie' => $tmpCookie ]);
@@ -148,6 +151,8 @@ class HttpClient
                                    array $httpHeaders = [],
                                    array $cookie = [],
                                    array $curlOptions = []): HttpResponse {
+        if (!\extension_loaded('curl'))
+            trigger_error("\"Curl\" extension not installed! Use is not possible!", E_USER_ERROR);
         $tmpCookie = self::prepareCookie($cookie);
         if (!empty($tmpCookie))
             $httpHeaders = array_merge($httpHeaders, [ 'Cookie' => $tmpCookie ]);
@@ -199,6 +204,8 @@ class HttpClient
                                      array $httpHeaders = [],
                                      array $cookie = [],
                                      array $curlOptions = []): HttpResponse {
+        if (!\extension_loaded('curl'))
+            trigger_error("\"Curl\" extension not installed! Use is not possible!", E_USER_ERROR);
         $tmpCookie = self::prepareCookie($cookie);
         if (!empty($tmpCookie))
             $httpHeaders = array_merge($httpHeaders, [ 'Cookie' => $tmpCookie ]);
@@ -249,6 +256,8 @@ class HttpClient
                                       array $httpHeaders = [],
                                       array $cookie = [],
                                       array $curlOptions = []): HttpResponse {
+        if (!\extension_loaded('curl'))
+            trigger_error("\"Curl\" extension not installed! Use is not possible!", E_USER_ERROR);
         $tmpCookie = self::prepareCookie($cookie);
         if (!empty($tmpCookie))
             $httpHeaders = array_merge($httpHeaders, [ 'Cookie' => $tmpCookie ]);
