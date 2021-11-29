@@ -169,7 +169,7 @@ abstract class ActiveRecord
     }
 
     /**
-     * Задать режим "Только чтение" для объект класса
+     * Задать режим "Только чтение" для объекта класса
      * @param bool $value
      *
      * NOTE: Call to the save/destroy functions with the specified "read-only" flag will trigger an error!
