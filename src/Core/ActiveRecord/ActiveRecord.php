@@ -28,6 +28,7 @@ abstract class ActiveRecord
     private $_passwordColumn = "password";
 
     private $_callbacks = [];
+    private $_readOnly = false;
 
     /**
      * ActiveRecord constructor.
@@ -158,6 +159,26 @@ abstract class ActiveRecord
     }
 
     /**
+     * Находится ли объект класса в режиме "Только чтение"
+     * @return bool
+     *
+     * NOTE: Call to the save/destroy functions with the specified "read-only" flag will trigger an error!
+     */
+    final protected function isReadOnly(): bool {
+        return $this->_readOnly;
+    }
+
+    /**
+     * Задать режим "Только чтение" для объект класса
+     * @param bool $value
+     *
+     * NOTE: Call to the save/destroy functions with the specified "read-only" flag will trigger an error!
+     */
+    final protected function setReadOnly(bool $value) {
+        $this->_readOnly = $value;
+    }
+
+    /**
      * Сохранить/Обновить объект в БД
      * @throws
      *
@@ -165,6 +186,13 @@ abstract class ActiveRecord
      * Колонка с паролем автоматически преобразуется в хэш перед сохранением / обновлением в БД.
      */
     final public function save() {
+        if ($this->isReadOnly())
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Trying to save a read-only object!',
+                'active-r-class' => $this->objectName(),
+                'active-r-method' => __FUNCTION__
+            ]);
         $this->processingCallbacks('before-save');
         if ($this->_newRecord === true)
             $this->insert();
@@ -178,10 +206,17 @@ abstract class ActiveRecord
      * @throws
      */
     final public function destroy() {
+        if ($this->isReadOnly())
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Trying to destroy a read-only object!',
+                'active-r-class' => $this->objectName(),
+                'active-r-method' => __FUNCTION__
+            ]);
         if ($this->_newRecord === true)
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Attempt to delete an uncreated object!',
+                'message' => 'Trying to destroy an object not present in the database!',
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);
