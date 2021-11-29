@@ -13,10 +13,10 @@ include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Error/ErrorActiveRecord.php';
 
 use FlyCubePHP\Core\Database\BaseDatabaseAdapter;
+use FlyCubePHP\Core\Error\ErrorActiveRecord;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
 use \FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
-use \FlyCubePHP\Core\Error\ErrorActiveRecord as ErrorActiveRecord;
 
 abstract class ActiveRecord
 {
@@ -27,16 +27,26 @@ abstract class ActiveRecord
     private $_columnMappings = array();
     private $_passwordColumn = "password";
 
+    private $_callbacks = [];
+
     /**
      * ActiveRecord constructor.
      * @throws ErrorActiveRecord
      */
     public function __construct() {
         $this->_tableName = CoreHelper::underscore($this->objectName());
+        $this->beforeSave('preparePassword');
     }
 
     final public function __set(string $name, $value) {
         $tmpName = CoreHelper::camelcase($name, false);
+
+        // --- check caller && call before-set ---
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        if (isset($trace[1]['class'])
+            && strcmp($trace[1]['class'], 'FlyCubePHP\Core\ActiveRecord\ActiveRecord') === 0) {
+            $value = $this->beforeSet($name, $value);
+        }
         $this->$tmpName = $value;
         if (!array_key_exists($tmpName, $this->_dataHash))
             $this->_dataHash[$tmpName] = $value;
@@ -155,10 +165,12 @@ abstract class ActiveRecord
      * Колонка с паролем автоматически преобразуется в хэш перед сохранением / обновлением в БД.
      */
     final public function save() {
+        $this->processingCallbacks('before-save');
         if ($this->_newRecord === true)
             $this->insert();
         else
             $this->update();
+        $this->processingCallbacks('after-save');
     }
 
     /**
@@ -173,7 +185,9 @@ abstract class ActiveRecord
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);
+        $this->processingCallbacks('before-destroy');
         $this->delete();
+        $this->processingCallbacks('after-destroy');
     }
 
     /**
@@ -190,6 +204,96 @@ abstract class ActiveRecord
         if (!isset($this->$tmpName))
             return false;
         return password_verify($plainPassword, $this->$tmpName);
+    }
+
+    // --- callbacks ---
+
+    /**
+     * Добавить before-save callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function beforeSave(string $method) {
+        $this->appendCallback('before-save', $method);
+    }
+
+    /**
+     * Добавить after-save callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function afterSave(string $method) {
+        $this->appendCallback('after-save', $method);
+    }
+
+    /**
+     * Добавить before-insert callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function beforeInsert(string $method) {
+        $this->appendCallback('before-insert', $method);
+    }
+
+    /**
+     * Добавить after-insert callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function afterInsert(string $method) {
+        $this->appendCallback('after-insert', $method);
+    }
+
+    /**
+     * Добавить before-update callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function beforeUpdate(string $method) {
+        $this->appendCallback('before-update', $method);
+    }
+
+    /**
+     * Добавить after-update callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final protected function afterUpdate(string $method) {
+        $this->appendCallback('after-update', $method);
+    }
+
+    /**
+     * Добавить before-destroy callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     *
+     * NOTE: destroy from the database, not destroy a class object!
+     */
+    final protected function beforeDestroy(string $method) {
+        $this->appendCallback('before-destroy', $method);
+    }
+
+    /**
+     * Добавить after-destroy callback
+     * @param string $method
+     * @throws ErrorActiveRecord
+     *
+     * NOTE: destroy from the database, not destroy a class object!
+     */
+    final protected function afterDestroy(string $method) {
+        $this->appendCallback('after-destroy', $method);
+    }
+
+    // --- specific functions ---
+
+    /**
+     * Метод предобработки добавляемых данных (aka __set with return)
+     * @param string $name
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function beforeSet(string $name, $value) {
+        return $value;
     }
 
     // --- static ---
@@ -672,6 +776,7 @@ abstract class ActiveRecord
      * @throws
      */
     final private function insert() {
+        $this->processingCallbacks('before-insert');
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -703,6 +808,7 @@ abstract class ActiveRecord
                 'error-database' => $ex
             ]);
         }
+        $this->processingCallbacks('after-insert');
     }
 
     /**
@@ -710,6 +816,7 @@ abstract class ActiveRecord
      * @throws
      */
     final private function update() {
+        $this->processingCallbacks('before-update');
         $db = DatabaseFactory::instance()->createDatabaseAdapter();
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -739,6 +846,7 @@ abstract class ActiveRecord
                 'error-database' => $ex
             ]);
         }
+        $this->processingCallbacks('after-update');
     }
 
     /**
@@ -792,11 +900,7 @@ abstract class ActiveRecord
                 && $value === $tmpValue)
                 continue; // skip not changed value
 
-            // --- check is password & build hash ---
-            if (strcmp($key, $tmpPassName) === 0)
-                $tmpValue = $this->encryptPassword($tmpValue);
-
-            // --- other checks ---
+            // --- prepare ---
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
 
@@ -816,11 +920,7 @@ abstract class ActiveRecord
                 && $this->_dataHash[$key] === $tmpValue)
                 continue; // skip not changed value
 
-            // --- check is password & build hash ---
-            if (strcmp($key, $tmpPassName) === 0)
-                $tmpValue = $this->encryptPassword($tmpValue);
-
-            // --- check is password & build hash ---
+            // --- prepare ---
             $tmpKey = CoreHelper::underscore($key);
             $tmpName = ":" . $tmpKey . "_value";
 
@@ -847,11 +947,59 @@ abstract class ActiveRecord
     }
 
     /**
+     * Метод подготовки пароля к сохранению в БД
+     */
+    final private function preparePassword() {
+        $tmpPassName = CoreHelper::camelcase($this->_passwordColumn, false);
+        if (!isset($this->$tmpPassName))
+            return;
+        $tmpValue = $this->$tmpPassName;
+        if ($this->_newRecord === false
+            && array_key_exists($tmpPassName, $this->_dataHash)
+            && $this->_dataHash[$tmpPassName] === $tmpValue)
+            return; // skip not changed value
+        $this->$tmpPassName = $this->encryptPassword($tmpValue);
+    }
+
+    /**
      * Выполнить преобразование пароля
      * @param string $val
      * @return string
      */
     final private function encryptPassword(string $val): string {
         return password_hash($val, PASSWORD_DEFAULT);
+    }
+
+    /**
+     * Добавить колбэк функцию обратоки
+     * @param string $callbackType
+     * @param string $method
+     * @throws ErrorActiveRecord
+     */
+    final private function appendCallback(string $callbackType, string $method) {
+        if (empty($method) || !method_exists($this, $method))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => "Append $callbackType failed! Not found callback method (name: $method)!",
+                'active-r-class' => $this->objectName(),
+                'active-r-method' => __FUNCTION__,
+                'backtrace-shift' => 2
+            ]);
+        $callbackArr = [ $method ];
+        if (!in_array($callbackType, $this->_callbacks))
+            $this->_callbacks[$callbackType] = $callbackArr;
+        else
+            $this->_callbacks[$callbackType] = array_merge($this->_callbacks[$callbackType], $callbackArr);
+    }
+
+    /**
+     * Вызвать колбэк функции обратоки
+     * @param string $callbackType
+     */
+    final private function processingCallbacks(string $callbackType) {
+        if (!isset($this->_callbacks[$callbackType]))
+            return;
+        foreach ($this->_callbacks[$callbackType] as $method)
+            $this->$method();
     }
 }
