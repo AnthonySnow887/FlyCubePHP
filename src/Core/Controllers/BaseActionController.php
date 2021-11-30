@@ -344,8 +344,11 @@ abstract class BaseActionController extends BaseController
         $this->_params['action'] = $action;
 
         // --- before action ---
-        if (!$ignoreProcessing)
-            $this->processingBeforeAction($action);
+        if (!$ignoreProcessing) {
+            $res = $this->processingBeforeAction($action);
+            if ($res === false)
+                return;
+        }
 
         // --- create helper ---
         $this->createHelper();

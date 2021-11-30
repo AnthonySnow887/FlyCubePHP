@@ -64,7 +64,9 @@ class BaseActionControllerAPI extends BaseController
         $this->_params['action'] = $action;
 
         // --- before action ---
-        $this->processingBeforeAction($action);
+        $res = $this->processingBeforeAction($action);
+        if ($res === false)
+            return;
 
         // --- clear all buffers ---
         while (ob_get_level() !== 0)
