@@ -290,7 +290,6 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
         final private function makeDiv(string $title,
                                        string $data): string {
             $title = trim($title);
-            $data = trim($data);
             $html = "\r\n$title\r\n";
             $html .= "-------------------------\r\n";
             $html .= "$data\r\n";

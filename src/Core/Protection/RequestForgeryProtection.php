@@ -15,6 +15,7 @@ include_once __DIR__.'/../Error/Error.php';
 
 use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Logger\Logger;
 use \FlyCubePHP\Core\Session\Session as Session;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
@@ -87,7 +88,7 @@ class RequestForgeryProtection
      * @throws Exception
      */
     public function formAuthenticityToken(): string {
-        return $this->maskedAuthenticityToken();
+        return urlencode($this->maskedAuthenticityToken());
     }
 
     /**
@@ -120,19 +121,17 @@ class RequestForgeryProtection
      * @throws Exception
      */
     private function isValidAuthenticityToken($encodedMaskedToken): bool {
-        if (is_null($encodedMaskedToken)
-            || !is_string($encodedMaskedToken)
-            || empty($encodedMaskedToken))
+        if (empty($encodedMaskedToken)
+            || !is_string($encodedMaskedToken))
             return false;
-        $maskedToken = base64_decode($encodedMaskedToken, true);
+        $maskedToken = base64_decode(urldecode($encodedMaskedToken), true);
         if ($maskedToken === false)
             return false;
         if (strlen($maskedToken) === RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH) {
             return $this->compareWithRealToken($maskedToken);
         } elseif (strlen($maskedToken) === RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH * 2) {
             $csrfToken = $this->unmaskToken($maskedToken);
-            $isValid = ($this->compareWithGlobalToken($csrfToken) || $this->compareWithRealToken($csrfToken));
-            return $isValid;
+            return ($this->compareWithGlobalToken($csrfToken) || $this->compareWithRealToken($csrfToken));
         }
         return false;
     }
@@ -166,7 +165,7 @@ class RequestForgeryProtection
      * @return string
      * @throws Exception
      */
-    private function globalCSRFToken() {
+    private function globalCSRFToken(): string {
         if (Config::instance()->isDevelopment())
             $identifier = RequestForgeryProtection::GLOBAL_CSRF_TOKEN_IDENTIFIER;
         else

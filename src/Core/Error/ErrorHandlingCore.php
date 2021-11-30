@@ -380,10 +380,9 @@ class ErrorHandlingCore
             $tmpTrace .= "$str | $strVal\r\n";
         }
         $title = trim($title);
-        $data = trim($tmpTrace);
         $html = "\r\n$title\r\n";
         $html .= "-------------------------\r\n";
-        $html .= "$data\r\n";
+        $html .= "$tmpTrace\r\n";
         $html .= "-------------------------\r\n";
         return $html;
     }
