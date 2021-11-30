@@ -126,6 +126,16 @@ class Cookie
                 'cookie-key' => $key,
                 'cookie-options' => $options
             ]);
+        $cookieSessionName = session_name();
+        if (strcmp($cookieSessionName, $key) === 0)
+            throw ErrorCookie::makeError([
+                'tag' => 'cookie',
+                'message' => "Invalid key (key '$cookieSessionName' is reserved)!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'cookie-key' => $key,
+                'cookie-options' => $options
+            ]);
 
         $expires = time() + Cookie::ONE_DAY_SEC;
         if (isset($options["expires"]))
@@ -249,7 +259,8 @@ class Cookie
      * @param string $key - ключ
      */
     public function removeCookie(string $key) {
-        if (isset($_COOKIE[$key])) {
+        if (isset($_COOKIE[$key])
+            && strcmp(session_name(), $key) !== 0) {
             unset($_COOKIE[$key]);
             setcookie($key, null, -1);
             setcookie($key, null, -1, '/');
