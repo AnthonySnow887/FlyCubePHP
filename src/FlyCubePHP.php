@@ -60,7 +60,11 @@ function requestProcessing() {
     $tmpClassAct = $tmpCurRoute->action();
     $tmpController = new $tmpClassName();
     $renderStartMS = microtime(true);
-    $tmpController->renderPrivate($tmpClassAct);
+    try {
+        $tmpController->renderPrivate($tmpClassAct);
+    } catch (\Throwable $ex) {
+        $tmpController->evalException($ex);
+    }
     $renderMS = round(microtime(true) - $renderStartMS, 3);
     unset($tmpController);
     Core\Logger\Logger::info("RENDER: [$renderMS"."ms] $tmpClassName::$tmpClassAct()");

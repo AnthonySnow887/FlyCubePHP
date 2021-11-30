@@ -76,6 +76,15 @@ abstract class BaseController
     abstract public function renderPrivate(string $action);
 
     /**
+     * Метод обработки исключения
+     * @param \Throwable $ex
+     * @throws \Throwable
+     */
+    public function evalException(\Throwable $ex) {
+        throw $ex;
+    }
+
+    /**
      * Добавить обработчик перед вызовом основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
