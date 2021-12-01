@@ -118,7 +118,7 @@ function toBool($val): bool {
     if (is_bool($val)) {
         return $val;
     } elseif (is_numeric($val)) {
-        return ($val == 1) ? true : false;
+        return ($val == 1);
     } elseif (is_string($val)) {
         $val = trim(strtolower($val));
         if (strcmp($val, "true") === 0
@@ -252,7 +252,7 @@ function scanDirectory(string $dir,
  * @param array $options for cURL
  * @return string
  */
-function curlGET(string $url, array $get = [], array $options = []) {
+function curlGET(string $url, array $get = [], array $options = []): string {
     $defaults = array(
         CURLOPT_URL => $url. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get),
         CURLOPT_HEADER => 0,
@@ -275,8 +275,9 @@ function curlGET(string $url, array $get = [], array $options = []) {
  * @param string $path - путь для сохранения
  * @param string $error - сообщение об ошибке
  * @return bool
+ * @throws
  */
-function downloadFile(string $url, string $path, string &$error) {
+function downloadFile(string $url, string $path, string &$error): bool {
     $fileName = basename($url);
     set_error_handler(function($errno, $errstr, $errfile, $errline) {
         // error was suppressed with the @-operator
@@ -303,7 +304,7 @@ function downloadFile(string $url, string $path, string &$error) {
  * @param string $error - сообщение об ошибке
  * @return bool
  */
-function unzipFile(string $path, string $pathTo, string &$error) {
+function unzipFile(string $path, string $pathTo, string &$error): bool {
     if (!class_exists('ZipArchive')) {
         $error = "Not found php class 'ZipArchive'!";
         return false;
@@ -327,7 +328,7 @@ function unzipFile(string $path, string $pathTo, string &$error) {
  *   => "/tmp/app1"
  */
 function splicePathLast(string $path): string {
-    if (is_null($path) || empty($path))
+    if (empty($path))
         return $path;
     if (strcmp($path[strlen($path) - 1], DIRECTORY_SEPARATOR) === 0) {
         if (strlen($path) > 1) {
@@ -386,7 +387,7 @@ function spliceUrlLast(string $uri): string {
 
 /**
  * Преобразование строки в формат underscore
- * @param $str
+ * @param string $str
  * @return string
  *
  * TestStringValue -> test_string_value
@@ -420,7 +421,7 @@ function currentUser() {
  * Запросить версию ядра FlyCubePHP
  * @return string
  */
-function flyCubePhpVersion() {
+function flyCubePhpVersion(): string {
     if (function_exists("\FlyCubePHP\VERSION_STR"))
         return \FlyCubePHP\VERSION_STR();
 
@@ -443,6 +444,64 @@ function flyCubePhpLatestVersion(): string {
     if (count($matches) >= 2)
         return $matches[1];
     return $version;
+}
+
+/**
+ * Проверить и создать необходимые каталоги проекта
+ * @param string $path - путь до проекта
+ * @return bool
+ */
+function checkAndMakeProjectDirs(string $path): bool {
+    $path = realpath($path);
+    // --- check project ---
+    if (!is_dir($path))
+        return false;
+
+    $pats = [
+        buildPath($path, "app", "assets", "images"),
+        buildPath($path, "app", "assets", "javascripts"),
+        buildPath($path, "app", "assets", "stylesheets"),
+        buildPath($path, "app", "controllers"),
+        buildPath($path, "app", "helpers"),
+        buildPath($path, "app", "models"),
+        buildPath($path, "app", "views", "layouts"),
+        buildPath($path, "bin"),
+        buildPath($path, "config", "environments"),
+        buildPath($path, "config", "initializers"),
+        buildPath($path, "db", "migrate"),
+        buildPath($path, "doc", "help", "images"),
+        buildPath($path, "doc", "api"),
+        buildPath($path, "extensions", "db", "adapters"),
+        buildPath($path, "extensions", "db", "migrators"),
+        buildPath($path, "extensions", "controller", "helpers"),
+        buildPath($path, "extensions", "asset_pipeline", "js_builder"),
+        buildPath($path, "extensions", "asset_pipeline", "css_builder"),
+        buildPath($path, "extensions", "error_handling"),
+        buildPath($path, "lib", "assets", "images"),
+        buildPath($path, "lib", "assets", "javascripts"),
+        buildPath($path, "lib", "assets", "stylesheets"),
+        buildPath($path, "log"),
+        buildPath($path, "plugins"),
+        buildPath($path, "tmp"),
+        buildPath($path, "vendor", "assets", "images"),
+        buildPath($path, "vendor", "assets", "javascripts"),
+        buildPath($path, "vendor", "assets", "stylesheets")
+    ];
+    $chmodPats = [
+        buildPath($path, "log"),
+        buildPath($path, "tmp"),
+    ];
+    // --- create ---
+    foreach ($pats as $p) {
+        if (!makeDir($p, 0755, true))
+            return false;
+    }
+    // --- change mode ---
+    foreach ($chmodPats as $p) {
+        if (!chmod($p, 0777))
+            return false;
+    }
+    return true;
 }
 
 /**
@@ -527,6 +586,15 @@ function upgradeFlyCubePhpProject(string $path,
         }
         echo "\r\nInvalid input value!\r\n\r\n";
     }
+
+    // --- check & make projects dirs ---
+    echo "  - Checking project catalogs: ";
+    if (!checkAndMakeProjectDirs($path)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Check and create missing project catalogs failed!\r\n";
+        return;
+    }
+    echo "OK\r\n";
 
     // --- download latest version ---
     echo "  - Download latest version [FlyCubePHP]: ";
@@ -786,6 +854,7 @@ function upgradeFlyCubePhpProject(string $path,
  * @param bool $downloadRequires - скачивать необходимые зависимости
  * @param bool $useDelete - удалять каталог проекта в случае ошибки
  * @return bool
+ * @throws
  */
 function createNewProject(string $name,
                           string $path,
@@ -811,162 +880,7 @@ function createNewProject(string $name,
 
     // --- create project tree ---
     echo "  - Create project tree: ";
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "stylesheets"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "controllers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "helpers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "models"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "views"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "views", "layouts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "bin"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "config", "environments"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "db"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "db"), 0777)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "db", "migrate"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "db", "adapters"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "db", "migrators"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "controller", "helpers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "js_builder"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "css_builder"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "error_handling"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "stylesheets"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "log"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "log"), 0777)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "plugins"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "tmp"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "tmp"), 0777)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "stylesheets"), 0755, true)) {
+    if (!checkAndMakeProjectDirs($tmpPath)) {
         echo "FAILED\r\n";
         echo "    ERROR: Create project tree failed!\r\n";
         return false;
@@ -1372,6 +1286,7 @@ function createNewProject(string $name,
     }
     return true;
 }
+
 
 $app = $argv[0];
 $arguments = [];
