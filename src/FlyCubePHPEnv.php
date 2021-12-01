@@ -143,3 +143,12 @@ if ($enablePluginsCore === true) {
 // --- check app routes ---
 if (!RouteCollector::instance()->checkRoutes())
     trigger_error("Invalid routes list!", E_USER_ERROR);
+
+// --- load initializers ---
+$initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");
+$app_initializers = CoreHelper::scanDir($initializers_dir);
+foreach ($app_initializers as $initializer) {
+    if (!preg_match("/^.*\.php$/", $initializer))
+        continue;
+    include_once $initializer;
+}

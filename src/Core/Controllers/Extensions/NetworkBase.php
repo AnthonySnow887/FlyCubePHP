@@ -81,7 +81,8 @@ trait NetworkBase
             $url = RouteCollector::currentHostUri() . $url;
         }
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         http_response_code($status);
@@ -175,12 +176,11 @@ trait NetworkBase
         if (isset($options['exit']) && $options['exit'] === true)
             $useExit = true;
 
-        // --- send ---
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         foreach ($headers as $key => $value)
             header("$key: $value");
@@ -231,7 +231,6 @@ trait NetworkBase
             $body = strval($options['body']);
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status));
         http_response_code($status);
         $cLength = false;
         foreach ($headers as $key => $value) {
@@ -246,7 +245,8 @@ trait NetworkBase
 
         header("Content-Type: $contentType; charset=".strtoupper($encoding));
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo $body;
@@ -300,7 +300,6 @@ trait NetworkBase
             $data = strval($options['data']);
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         $cLength = false;
         foreach ($headers as $key => $value) {
@@ -322,7 +321,8 @@ trait NetworkBase
         if (!empty($filename))
             header("Content-Disposition: attachment; filename=\"" . urlencode($filename) . "\"");
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo $data;
@@ -365,7 +365,6 @@ trait NetworkBase
             $headers = $options['headers'];
 
         // --- send ---
-//        header($_SERVER["SERVER_PROTOCOL"] . " " . \FlyCubePHP\HelperClasses\HttpCodes::title($status), true, $status);
         http_response_code($status);
         foreach ($headers as $key => $value) {
             if (strcmp("content-type", strtolower(trim($key))) === 0
@@ -381,7 +380,8 @@ trait NetworkBase
         header("Content-Transfer-Encoding: binary");
         header("Content-Disposition: attachment; filename=\"" . urlencode($filename) . "\"");
 
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         echo readfile($path);

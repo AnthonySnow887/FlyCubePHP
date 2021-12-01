@@ -15,30 +15,54 @@
  *    #> root(string $controller, string $action)
  *
  * 2. Append application get URL:
- *    #> get(string $uri, string $controller, string $action)
+ *    #> get(string $uri, array $args = [])
  *
  * 3. Append application post URL:
- *    #> post(string $uri, string $controller, string $action)
+ *    #> post(string $uri, array $args = [])
  *
  * 4. Append application put URL:
- *    #> put(string $uri, string $controller, string $action)
+ *    #> put(string $uri, array $args = [])
  *
  * 5. Append application patch URL:
- *    #> patch(string $uri, string $controller, string $action)
+ *    #> patch(string $uri, array $args = [])
  *
  * 6. Append application delete URL:
- *    #> delete(string $uri, string $controller, string $action)
+ *    #> delete(string $uri, array $args = [])
  *
  * NOTE: the controller name is written without ending 'Controller'!
+ *
+ * Supported input arguments:
+ *
+ *   - [string] to         - The name of the controller and the action separated '#' (Test#show)
+ *   - [string] controller - The name of the controller
+ *   - [string] action     - The name of the controller action
+ *   - [string] as         - Alias for quick access to the route (define is automatically generated)
+ *   - ...
+ *   - Other arguments will be transferred as input parameters.
  *
  * Examples:
  *
  * #> root("AppCore", "root");
- * #> post("/test", "AppCore", "test");
+ *       where
+ *         - AppCore - The name of the controller class without expansion controller
+ *         - root    - The name of the controller action (public method)
  *
- * where:
- *  - "AppCoreController"   - controller class name
- *  - "root" and "test"     - controller public methods
+ * #> get('/test', [ 'to' => 'Test#show' ])
+ *       where
+ *         - Test  - The name of the controller class without expansion controller
+ *         - show  - The name of the controller action (public method)
+ *
+ * #> get('/test', [ 'controller' => 'Test', 'action' => 'show' ])
+ *       where
+ *         - Test  - The name of the controller class without expansion controller
+ *         - show  - The name of the controller action (public method)
+ *
+ * #> get('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *       where
+ *         - Test  - The name of the controller class without expansion controller
+ *         - show  - The name of the controller action (public method)
+ *         - test  - Alias for quick access to url (use define 'test_url')
+ *
  */
 
 namespace FlyCubePHP;

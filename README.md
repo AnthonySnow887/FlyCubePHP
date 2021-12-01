@@ -76,10 +76,28 @@ Options include:
     --new                               Create new FlyCubePHP project
     --name=[VALUE]                      Set new project name
     --path=[VALUE]                      Set new project root path (optional; default: user home)
-    --download-requires=[true/false]    Download FlyCubePHP requires in new project (optional; 
-    default: true)
-
+    --download-requires=[true/false]    Download FlyCubePHP requires in new project (optional; default: true)
     --version                           Print the version [-v]
+    --latest-version                    Select latest version from GitHub [-lv]
+    --upgrade                           Update FlyCubePHP core version of your project to the latest version 
+    --force                             Forced update flag 
+
+Examples:
+
+ 1. Create new FlyCubePHP project:
+     ./fly_cube_php --new --project --name=MyProject
+
+ 2. Create new FlyCubePHP project without requires:
+     ./fly_cube_php --new --project --name=MyProject --download-requires=false
+
+ 3. Create new FlyCubePHP project specifying the installation directory:
+     ./fly_cube_php --new --project --name=MyProject --path=/home/test/projects
+     
+ 4. Upgrade an existing FlyCubePHP project:
+     ./fly_cube_php --upgrade --path=/home/test/projects/MyProject
+     
+ 5. Force upgrade an existing FlyCubePHP project:
+     ./fly_cube_php --upgrade --force --path=/home/test/projects/MyProject
 ```
 
 Create new FlyCubePHP project
@@ -107,6 +125,43 @@ FlyCubePHP/bin> php ./fly_cube_php --new --name=MyProject
 === FlyCubePHP: Dir: /home/[USER]/FlyCubePHProjects/MyProject ===
 ```
 
+Upgrade an existing FlyCubePHP project to the latest version
+------------------------------------------------------------
+
+```bash
+FlyCubePHP/bin> php ./fly_cube_php --upgrade --path=/home/[USER]/FlyCubePHProjects/MyProject
+
+=== FlyCubePHP: Upgrade project ===
+
+  Project name: MyProject
+  Project path: /home/[USER]/FlyCubePHProjects/MyProject
+  Project ver.: 1.1.0
+   Latest ver.: 1.3.0
+
+The project will be updated to version 1.3.0. Continue? [yes/no] (yes): y
+
+  - Checking project catalogs: OK
+  - Download latest version [FlyCubePHP]: OK
+  - Unzip latest version [FlyCubePHP]: OK
+  - Download requires [Twig]: OK
+  - Download requires [JShrink]: OK
+  - Download requires [ScssPhp]: OK
+  - Download requires [Psr/Log]: OK
+  - Download requires [Monolog]: OK
+  - Unzip requires [Twig]: OK
+  - Unzip requires [JShrink]: OK
+  - Unzip requires [ScssPhp]: OK
+  - Unzip requires [Psr/Log]: OK
+  - Unzip requires [Monolog]: OK
+
+  Look at the upgrade files:
+    - upgrade to v1.2.0: /vendor/FlyCubePHP/UPGRADE-1.2.0.md
+
+  Upgrade project to latest version: SUCCESS
+
+=== FlyCubePHP ====================
+```
+
 Development guides
 ------------------
 
@@ -122,6 +177,7 @@ Additional required PHP modules
 -------------------------------
 
 - php7-ctype
+- php7-curl
 - php7-json
 - php7-mbstring
 - php7-mysql

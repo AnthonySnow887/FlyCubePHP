@@ -114,7 +114,7 @@ class CoreHelper
 
     /**
      * Преобразование строки в формат underscore
-     * @param $str
+     * @param string $str
      * @return string
      *
      * TestStringValue -> test_string_value
@@ -372,7 +372,7 @@ class CoreHelper
         if (is_bool($val)) {
             return $val;
         } elseif (is_numeric($val)) {
-            return ($val == 1) ? true : false;
+            return ($val == 1);
         } elseif (is_string($val)) {
             $val = trim(strtolower($val));
             if (strcmp($val, "true") === 0

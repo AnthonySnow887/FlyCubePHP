@@ -428,7 +428,8 @@ class AssetPipeline
             }
             // сбрасываем буфер вывода PHP, чтобы избежать переполнения памяти выделенной под скрипт
             // если этого не сделать файл будет читаться в память полностью!
-            if (ob_get_level())
+            // --- clear all buffers ---
+            while (ob_get_level() !== 0)
                 ob_end_clean();
 
             $lastModified = filemtime($realPath);

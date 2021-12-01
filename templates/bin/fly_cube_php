@@ -227,13 +227,13 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
             die();
         }
 
-        final private function renderError(string $title = "FlyCubePHP Error",
-                                           string $title2 = "",
+        final private function renderError(string $title,
+                                           string $title2,
                                            string $errorBody) {
             $html = "\r\n\r\n=== FlyCubePHP: ERROR  =========";
             $html .= "\r\nError title: $title ($title2)\r\n\r\n$errorBody";
             $html .= "\r\n=== FlyCubePHP: END ERROR =========\r\n\r\n";
-            echo $html;
+            fwrite(STDERR, $html);
         }
 
         final private function makeTrace(string $title,
@@ -290,7 +290,6 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
         final private function makeDiv(string $title,
                                        string $data): string {
             $title = trim($title);
-            $data = trim($data);
             $html = "\r\n$title\r\n";
             $html .= "-------------------------\r\n";
             $html .= "$data\r\n";
@@ -354,6 +353,8 @@ const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip"
 const DIR_PSR_LOG = "log-1.1.4";
 const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
 const DIR_MONOLOG = "monolog-1.26.1";
+const URL_FLY_CUBE_PHP_LATEST = "https://api.github.com/repos/AnthonySnow887/FlyCubePHP/releases/latest";
+const URL_PATH_FLY_CUBE_PHP = "https://github.com/AnthonySnow887/FlyCubePHP/archive/refs/tags/";
 
 /**
  * Вывести справку приложения
@@ -368,8 +369,11 @@ Options include:
 
     --help                              Show this message [-h, -?]
     --version                           Print the version [-v]
+    --latest-version                    Select latest version from GitHub [-lv]
     --output=[true/false]               Show output (optional)
     --env=[VALUE]                       Set current environment (production/development; default: development)
+    --upgrade                           Update FlyCubePHP core version of your project to the latest version 
+    --force                             Forced update flag
     
     --new [option]                      Create new object (project/controller/model/migration/plugin/...etc)
     --project                           Create new FlyCubePHP project
@@ -412,6 +416,7 @@ Options include:
     --secret                            Create application secret key
     --secret-length=[VALUE]             Set application secret key length (value > 0)
     
+    --check-dirs                        Check the project catalogs and create the missing or change their rights to the necessary
     --assets-precompile                 Build assets cache
     --clear-cache                       Clear all application cache
     --clear-logs                        Clear all application logs
@@ -421,33 +426,45 @@ Examples:
 
  1. Create new FlyCubePHP project:
      $app --new --project --name=MyProject
+     
+ 2. Create new FlyCubePHP project without requires:
+     $app --new --project --name=MyProject --download-requires=false
 
- 2. Create new controller without actions:
+ 3. Create new controller without actions:
      $app --new --controller --name=Example
 
- 3. Create new controller with actions:
+ 4. Create new controller with actions:
      $app --new --controller --name=Example --actions=act_1,act_2
     
- 4. Create new plugin:
+ 5. Create new plugin:
      $app --new --plugin --name=ExamplePlugin
     
- 5. Create new gui plugin:
+ 6. Create new gui plugin:
      $app --new --plugin-gui --name=ExamplePlugin
     
- 6. Create new plugin controller:
+ 7. Create new plugin controller:
      $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
     
- 7. Install all migrations:
+ 8. Install all migrations:
      $app --db-migrate
 
- 8. Install needed migrations:
+ 9. Install needed migrations:
      $app --db-migrate --to-version=20210309092620
     
- 9. Uninstall last migration:
+10. Uninstall last migration:
      $app --db-rollback
     
-10. Uninstall last N-steps migrations:
+11. Uninstall last N-steps migrations:
      $app --db-rollback --step=3
+
+12. Upgrade current FlyCubePHP project:
+     $app --upgrade
+          
+13. Upgrade an existing FlyCubePHP project:
+     $app --upgrade --path=/home/test/projects/MyProject
+     
+14. Force upgrade an existing FlyCubePHP project:
+     $app --upgrade --force --path=/home/test/projects/MyProject
 
 
 EOT;
@@ -491,7 +508,7 @@ function toBool($val): bool {
     if (is_bool($val)) {
         return $val;
     } elseif (is_numeric($val)) {
-        return ($val == 1) ? true : false;
+        return ($val == 1);
     } elseif (is_string($val)) {
         $val = trim(strtolower($val));
         if (strcmp($val, "true") === 0
@@ -614,13 +631,38 @@ function deleteDirFiles(string $dir, bool $showOutput = false) {
 }
 
 /**
+ * Отправить HTTP GET запрос используя cURL
+ * @param string $url to request
+ * @param array $get values to send
+ * @param array $options for cURL
+ * @return string
+ */
+function curlGET(string $url, array $get = [], array $options = []): string {
+    $defaults = array(
+        CURLOPT_URL => $url. (strpos($url, '?') === FALSE ? '?' : ''). http_build_query($get),
+        CURLOPT_HEADER => 0,
+        CURLOPT_RETURNTRANSFER => TRUE,
+        CURLOPT_TIMEOUT => 4,
+        CURLOPT_USERAGENT => "fly_cube_php/".FLY_CUBE_PHP_VERSION
+    );
+    $ch = curl_init();
+    curl_setopt_array($ch, ($options + $defaults));
+    if (!$result = curl_exec($ch))
+        trigger_error(curl_error($ch));
+
+    curl_close($ch);
+    return $result;
+}
+
+/**
  * Скачать файл
  * @param string $url - URL
  * @param string $path - путь для сохранения
  * @param string $error - сообщение об ошибке
  * @return bool
+ * @throws
  */
-function downloadFile(string $url, string $path, string &$error) {
+function downloadFile(string $url, string $path, string &$error): bool {
     $fileName = basename($url);
     set_error_handler(function($errno, $errstr, $errfile, $errline) {
         // error was suppressed with the @-operator
@@ -647,7 +689,7 @@ function downloadFile(string $url, string $path, string &$error) {
  * @param string $error - сообщение об ошибке
  * @return bool
  */
-function unzipFile(string $path, string $pathTo, string &$error) {
+function unzipFile(string $path, string $pathTo, string &$error): bool {
     if (!class_exists('ZipArchive')) {
         $error = "Not found php class 'ZipArchive'!";
         return false;
@@ -671,7 +713,7 @@ function unzipFile(string $path, string $pathTo, string &$error) {
  *   => "/tmp/app1"
  */
 function splicePathLast(string $path): string {
-    if (is_null($path) || empty($path))
+    if (empty($path))
         return $path;
     if (strcmp($path[strlen($path) - 1], DIRECTORY_SEPARATOR) === 0) {
         if (strlen($path) > 1) {
@@ -741,7 +783,7 @@ function currentUser() {
  * Запросить версию ядра FlyCubePHP
  * @return string
  */
-function flyCubePhpVersion() {
+function flyCubePhpVersion(): string {
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php";
     if (function_exists("\FlyCubePHP\VERSION_STR"))
@@ -751,12 +793,99 @@ function flyCubePhpVersion() {
 }
 
 /**
+ * Проверить и создать необходимые каталоги проекта
+ * @param string $path - путь до проекта
+ * @return bool
+ */
+function checkAndMakeProjectDirs(string $path): bool {
+    $path = realpath($path);
+    // --- check project ---
+    if (!is_dir($path))
+        return false;
+
+    $pats = [
+        buildPath($path, "app", "assets", "images"),
+        buildPath($path, "app", "assets", "javascripts"),
+        buildPath($path, "app", "assets", "stylesheets"),
+        buildPath($path, "app", "controllers"),
+        buildPath($path, "app", "helpers"),
+        buildPath($path, "app", "models"),
+        buildPath($path, "app", "views", "layouts"),
+        buildPath($path, "bin"),
+        buildPath($path, "config", "environments"),
+        buildPath($path, "config", "initializers"),
+        buildPath($path, "db", "migrate"),
+        buildPath($path, "doc", "help", "images"),
+        buildPath($path, "doc", "api"),
+        buildPath($path, "extensions", "db", "adapters"),
+        buildPath($path, "extensions", "db", "migrators"),
+        buildPath($path, "extensions", "controller", "helpers"),
+        buildPath($path, "extensions", "asset_pipeline", "js_builder"),
+        buildPath($path, "extensions", "asset_pipeline", "css_builder"),
+        buildPath($path, "extensions", "error_handling"),
+        buildPath($path, "lib", "assets", "images"),
+        buildPath($path, "lib", "assets", "javascripts"),
+        buildPath($path, "lib", "assets", "stylesheets"),
+        buildPath($path, "log"),
+        buildPath($path, "plugins"),
+        buildPath($path, "tmp"),
+        buildPath($path, "vendor", "assets", "images"),
+        buildPath($path, "vendor", "assets", "javascripts"),
+        buildPath($path, "vendor", "assets", "stylesheets")
+    ];
+    $chmodPats = [
+        buildPath($path, "log"),
+        buildPath($path, "tmp"),
+    ];
+    // --- create ---
+    foreach ($pats as $p) {
+        if (!makeDir($p, 0755, true))
+            return false;
+    }
+    // --- change mode ---
+    foreach ($chmodPats as $p) {
+        if (!chmod($p, 0777))
+            return false;
+    }
+    return true;
+}
+
+/**
+ * Проверить и создать необходимые каталоги проекта с выводом информации об этом
+ * @param string $path - путь до проекта
+ */
+function checkingProjectCatalogs(string $path) {
+    $path = realpath($path);
+    $pName = basename($path);
+    // --- check project ---
+    if (!is_dir($path)) {
+        echo "ERROR: Project folder not found (path: $path)!\r\n";
+        return;
+    }
+
+    echo "\r\n";
+    echo "  Project name: $pName\r\n";
+    echo "  Project path: $path\r\n";
+    echo "\r\n";
+
+    // --- check & make projects dirs ---
+    echo "  - Checking project catalogs: ";
+    if (!checkAndMakeProjectDirs($path)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Check and create missing project catalogs failed!\r\n\r\n";
+        return;
+    }
+    echo "OK\r\n\r\n";
+}
+
+/**
  * Метод создания новго проекта FlyCubePHP
  * @param string $name - название проекта
  * @param string $path - путь для сохранения
  * @param bool $downloadRequires - скачивать необходимые зависимости
  * @param bool $useDelete - удалять каталог проекта в случае ошибки
  * @return bool
+ * @throws
  */
 function createNewProject(string $name,
                           string $path,
@@ -796,162 +925,7 @@ function createNewProject(string $name,
 
     // --- create project tree ---
     echo "  - Create project tree: ";
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "assets", "stylesheets"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "controllers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "helpers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "models"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "views"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "app", "views", "layouts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "bin"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "config", "environments"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "db"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "db"), 0777)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "db", "migrate"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "db", "adapters"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "db", "migrators"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "controller", "helpers"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "js_builder"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "asset_pipeline", "css_builder"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "extensions", "error_handling"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "lib", "assets", "stylesheets"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "log"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "log"), 0777)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "plugins"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "tmp"), 0777, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "tmp"), 0777)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "images"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "javascripts"), 0755, true)) {
-        echo "FAILED\r\n";
-        echo "ERROR: Create project tree failed!\r\n";
-        return false;
-    }
-    if (!makeDir(buildPath($tmpPath, "vendor", "assets", "stylesheets"), 0755, true)) {
+    if (!checkAndMakeProjectDirs($tmpPath)) {
         echo "FAILED\r\n";
         echo "ERROR: Create project tree failed!\r\n";
         return false;
@@ -1566,7 +1540,7 @@ function dbReset($output) {
  * @param bool $isAPI
  */
 function createController($name, $actions, bool $isAPI = false) {
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new controller name!\r\n";
         return;
     }
@@ -1709,7 +1683,7 @@ function createController($name, $actions, bool $isAPI = false) {
  * @param $name - название
  */
 function createMigration($name) {
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new migration name!\r\n";
         return;
     }
@@ -1754,7 +1728,7 @@ function createMigration($name) {
  * @param $name - название
  */
 function createModel($name) {
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new model name!\r\n";
         return;
     }
@@ -1802,7 +1776,7 @@ function createModel($name) {
  * @param bool $isGui
  */
 function createPlugin($name, bool $isGui = false) {
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new plugin name!\r\n";
         return;
     }
@@ -1843,78 +1817,82 @@ function createPlugin($name, bool $isGui = false) {
     // --- create plugin tree ---
     if ($isGui === true) {
         if (!makeDir(buildPath($tmpPath, "app", "assets", "images"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
         if (!makeDir(buildPath($tmpPath, "app", "assets", "javascripts"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
         if (!makeDir(buildPath($tmpPath, "app", "assets", "stylesheets"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
     }
     if (!makeDir(buildPath($tmpPath, "app", "controllers"), 0755, true, true)) {
-        echo "ERROR: Create project tree failed!\r\n";
+        echo "ERROR: Create plugin tree failed!\r\n";
         return;
     }
     if ($isGui === true) {
         if (!makeDir(buildPath($tmpPath, "app", "helpers"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
     }
     if (!makeDir(buildPath($tmpPath, "app", "models"), 0755, true, true)) {
-        echo "ERROR: Create project tree failed!\r\n";
+        echo "ERROR: Create plugin tree failed!\r\n";
         return;
     }
     if ($isGui === true) {
         if (!makeDir(buildPath($tmpPath, "app", "views"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
     }
     if (!makeDir(buildPath($tmpPath, "config"), 0755, true, true)) {
-        echo "ERROR: Create project tree failed!\r\n";
+        echo "ERROR: Create plugin tree failed!\r\n";
         return;
     }
     // TODO ... add extensions?
 //    if (!makeDir(buildPath($tmpPath, "db", "extensions", "adapters"), 0755, true, true)) {
-//        echo "ERROR: Create project tree failed!\r\n";
+//        echo "ERROR: Create plugin tree failed!\r\n";
 //        return;
 //    }
 //    if (!makeDir(buildPath($tmpPath, "db", "extensions", "migrators"), 0755, true, true)) {
-//        echo "ERROR: Create project tree failed!\r\n";
+//        echo "ERROR: Create plugin tree failed!\r\n";
 //        return;
 //    }
     if (!makeDir(buildPath($tmpPath, "db", "migrate"), 0755, true, true)) {
-        echo "ERROR: Create project tree failed!\r\n";
+        echo "ERROR: Create plugin tree failed!\r\n";
         return;
     }
     if (!makeDir(buildPath($tmpPath, "lib"), 0755, true, true)) {
-        echo "ERROR: Create project tree failed!\r\n";
+        echo "ERROR: Create plugin tree failed!\r\n";
         return;
     }
     if ($isGui === false) {
         if (!makeDir(buildPath($tmpPath, "lib", "assets", "images"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
         if (!makeDir(buildPath($tmpPath, "lib", "assets", "javascripts"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
         if (!makeDir(buildPath($tmpPath, "lib", "assets", "stylesheets"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
     }
     if ($isGui === true) {
-        if (!makeDir(buildPath($tmpPath, "help", "images"), 0755, true, true)) {
-            echo "ERROR: Create project tree failed!\r\n";
+        if (!makeDir(buildPath($tmpPath, "doc", "help", "images"), 0755, true, true)) {
+            echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
+    }
+    if (!makeDir(buildPath($tmpPath, "doc", "api"), 0755, true, true)) {
+        echo "ERROR: Create plugin tree failed!\r\n";
+        return;
     }
 
     // --- create init file ---
@@ -1972,11 +1950,11 @@ function createPlugin($name, bool $isGui = false) {
  * @param bool $isAPI
  */
 function createPluginController($pluginName, $name, $actions, bool $isAPI = false) {
-    if (is_null($pluginName) || empty($pluginName)) {
+    if (empty($pluginName)) {
         echo "ERROR: Invalid plugin name!\r\n";
         return;
     }
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new controller name!\r\n";
         return;
     }
@@ -2068,6 +2046,8 @@ function createPluginController($pluginName, $name, $actions, bool $isAPI = fals
         return;
     }
 
+    // TODO make api controller api-doc file
+
     if ($isAPI === false) {
         // --- create controller helper ---
         $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl";
@@ -2152,11 +2132,11 @@ function createPluginController($pluginName, $name, $actions, bool $isAPI = fals
  * @param $name - название
  */
 function createPluginMigration($pluginName, $name) {
-    if (is_null($pluginName) || empty($pluginName)) {
+    if (empty($pluginName)) {
         echo "ERROR: Invalid plugin name!\r\n";
         return;
     }
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new migration name!\r\n";
         return;
     }
@@ -2209,11 +2189,11 @@ function createPluginMigration($pluginName, $name) {
  * @param $name - название
  */
 function createPluginModel($pluginName, $name) {
-    if (is_null($pluginName) || empty($pluginName)) {
+    if (empty($pluginName)) {
         echo "ERROR: Invalid plugin name!\r\n";
         return;
     }
-    if (is_null($name) || empty($name)) {
+    if (empty($name)) {
         echo "ERROR: Invalid new model name!\r\n";
         return;
     }
@@ -2282,6 +2262,12 @@ function assetsPrecompile() {
         echo "ERROR: Routes list Empty!\r\n";
         return;
     }
+    // --- redirect stdout ---
+    fclose(STDOUT);
+    $stdoutPath = sys_get_temp_dir().'/php'.substr(sha1(rand()), 0, 6);
+    $STDOUT = fopen($stdoutPath, 'wb');
+    $STDOUT_2 = fopen('/dev/tty', 'wb');
+    // --- output controllers assets build states ---
     foreach ($routes as $route) {
         if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
             continue;
@@ -2292,13 +2278,31 @@ function assetsPrecompile() {
             unset($tmpController);
             continue;
         }
-        echo "[Render] $tmpClassName->$tmpClassAct: ";
-        ob_start();
-        $tmpController->renderPrivate($tmpClassAct);
-        ob_clean();
-        echo "OK\r\n";
+        if (!$tmpController->hasView($tmpClassAct)) {
+            fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
+            unset($tmpController);
+            continue;
+        }
+        fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: ");
+        try {
+            $tmpController->renderPrivate($tmpClassAct);
+        } catch (\Throwable $e) {
+            // --- close & clear redirected stdout ---
+            fclose($STDOUT);
+            if (is_file($stdoutPath))
+                unlink($stdoutPath);
+            fclose($STDOUT_2);
+            // --- throw error for output ---
+            throw $e;
+        }
+        fwrite($STDOUT_2, "OK\r\n");
         unset($tmpController);
     }
+    // --- close & clear redirected stdout ---
+    fclose($STDOUT);
+    if (is_file($stdoutPath))
+        unlink($stdoutPath);
+    fclose($STDOUT_2);
 }
 
 /**
@@ -2397,6 +2401,375 @@ function clearPhpSessions() {
     deleteDirFiles(session_save_path(), true);
 }
 
+/**
+ * Запросить последнюю версию FlyCubePHP
+ * @return string
+ */
+function flyCubePhpLatestVersion(): string {
+    $jsonData = curlGET(URL_FLY_CUBE_PHP_LATEST);
+    if (empty($jsonData))
+        return "?.?.?";
+    $jsonObject = json_decode($jsonData, true);
+    $version = "?.?.?";
+    if (isset($jsonObject['tag_name']))
+        $version = $jsonObject['tag_name'];
+    preg_match('/^v(\d.\d.\d)$/', $version, $matches);
+    if (count($matches) >= 2)
+        return $matches[1];
+    return $version;
+}
+
+/**
+ * Выполнить обновления проекта FlyCubePHP до последней версии
+ * @param string $path
+ * @param bool $downloadRequires
+ * @param bool $force
+ * @throws ErrorException
+ */
+function upgradeFlyCubePhpProject(string $path,
+                                  bool $downloadRequires,
+                                  bool $force) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    $path = realpath($path);
+    $pName = basename($path);
+    // --- check project ---
+    if (!is_dir($path)) {
+        echo "ERROR: Project folder not found (path: $path)!\r\n";
+        return;
+    }
+    if (!is_dir(buildPath($path, "vendor", "FlyCubePHP"))) {
+        echo "ERROR: Invalid project folder! Not found 'vendor/FlyCubePHP' (path: $path)!\r\n";
+        return;
+    }
+    if (!is_file(buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP", "FlyCubePHPVersion.php"))
+        || !is_readable(buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP", "FlyCubePHPVersion.php"))) {
+        echo "ERROR: Invalid project folder! Not found 'vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPVersion.php' (path: $path)!\r\n";
+        return;
+    }
+    // --- load project version ---
+    $projFileVersion = file_get_contents(buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP", "FlyCubePHPVersion.php"));
+    if (empty($projFileVersion)) {
+        echo "ERROR: Load project version failed! (path: $path)!\r\n";
+        return;
+    }
+    $projMajor = "0";
+    preg_match('/const VERSION_MAJ.*(\d);/', $projFileVersion, $matches);
+    if (count($matches) >= 2)
+        $projMajor = $matches[1];
+    $projMinor = "0";
+    preg_match('/const VERSION_MIN.*(\d);/', $projFileVersion, $matches);
+    if (count($matches) >= 2)
+        $projMinor = $matches[1];
+    $projPatch = "0";
+    preg_match('/const VERSION_PATCH.*(\d);/', $projFileVersion, $matches);
+    if (count($matches) >= 2)
+        $projPatch = $matches[1];
+
+    // --- select latest version ---
+    $latestVers = flyCubePhpLatestVersion();
+    $downloadUrl = URL_PATH_FLY_CUBE_PHP."v$latestVers.zip";
+    $projVersion = "$projMajor.$projMinor.$projPatch";
+
+    echo "\r\n";
+    echo "  Project name: $pName\r\n";
+    echo "  Project path: $path\r\n";
+    echo "  Project ver.: $projVersion\r\n";
+    echo "   Latest ver.: $latestVers\r\n";
+    echo "\r\n";
+
+    // --- check versions ---
+    if (version_compare($projVersion, $latestVers) >= 0 && $force === false) {
+        echo "NOTE: Your project version is equal to or newer than the latest release. No update required.\r\n";
+        echo "NOTE: Use force (--force) update to update FlyCubePHP project if needed.\r\n";
+        return;
+    }
+
+    // --- checking user consent to update ---
+    while (true) {
+        echo "The project will be updated to version $latestVers. Continue? [yes/no] (yes): ";
+        $handle = fopen("php://stdin", "r");
+        $line = fgets($handle);
+        if (strcmp(trim($line), 'no') === 0
+            || strcmp(trim($line), 'n') === 0) {
+            echo "\r\nUpgrade canceled by user!\r\n";
+            return;
+        }
+        if (strcmp(trim($line), 'yes') === 0
+            || strcmp(trim($line), 'y') === 0
+            || empty(trim($line))) {
+            echo "\r\n";
+            break;
+        }
+        echo "\r\nInvalid input value!\r\n\r\n";
+    }
+
+    // --- check & make projects dirs ---
+    echo "  - Checking project catalogs: ";
+    if (!checkAndMakeProjectDirs($path)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Check and create missing project catalogs failed!\r\n";
+        return;
+    }
+    echo "OK\r\n";
+
+    // --- download latest version ---
+    echo "  - Download latest version [FlyCubePHP]: ";
+    $errorStr = "";
+    if (!downloadFile($downloadUrl, buildPath($path, "vendor"), $errorStr)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Download latest version failed!\r\n";
+        echo "           URL: $downloadUrl\r\n";
+        echo "           Message: $errorStr\r\n";
+        return;
+    }
+    echo "OK\r\n";
+
+    // --- unzip latest version ---
+    echo "  - Unzip latest version [FlyCubePHP]: ";
+    $fPath = buildPath($path, "vendor", basename($downloadUrl));
+    $errorStr = "";
+    if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+        echo "           Message: $errorStr\r\n";
+        return;
+    }
+    if (!is_dir(buildPath($path, "vendor", "FlyCubePHP-$latestVers"))
+        || !is_dir(buildPath($path, "vendor", "FlyCubePHP-$latestVers", "src"))) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Invalid unzipped latest version folders!\r\n";
+        return;
+    }
+    // --- remove old version ---
+    recursiveDeleteDir(buildPath($path, "vendor", "FlyCubePHP"));
+    unlink(buildPath($path, "bin", "fly_cube_php"));
+    // --- up latest version ---
+    rename(buildPath($path, "vendor", "FlyCubePHP-$latestVers"),
+        buildPath($path, "vendor", "FlyCubePHP"));
+    rename(buildPath($path, "vendor", "FlyCubePHP", "src"),
+        buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP"));
+    unlink($fPath);
+    if (!copy(buildPath($path, "vendor", "FlyCubePHP", "templates", "bin", "fly_cube_php"),
+        buildPath($path, "bin", "fly_cube_php"))) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Copy bin/fly_cube_php failed!\r\n";
+        return;
+    }
+    if (!chmod(buildPath($path, "bin", "fly_cube_php"), 0555)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Change bin/fly_cube_php mod failed!\r\n";
+        return;
+    }
+    echo "OK\r\n";
+
+    // --- download requires ---
+    if ($downloadRequires === true) {
+        echo "  - Download requires [Twig]: ";
+        $url = URL_TWIG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [JShrink]: ";
+        $url = URL_JSHRINK;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [ScssPhp]: ";
+        $url = URL_SCSS_PHP;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [Psr/Log]: ";
+        $url = URL_PSR_LOG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        echo "OK\r\n";
+
+        echo "  - Download requires [Monolog]: ";
+        $url = URL_MONOLOG;
+        $errorStr = "";
+        if (!downloadFile($url, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Download require library failed!\r\n";
+            echo "           URL: $url\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        echo "OK\r\n";
+
+        // --- unzip requires ---
+        echo "  - Unzip requires [Twig]: ";
+        $fPath = buildPath($path, "vendor", basename(URL_TWIG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        if (!is_dir(buildPath($path, "vendor", DIR_TWIG))
+            || !is_dir(buildPath($path, "vendor", DIR_TWIG, "src"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for Twig!\r\n";
+            return;
+        }
+        if (is_dir(buildPath($path, "vendor", "Twig-2.x")))
+            recursiveDeleteDir(buildPath($path, "vendor", "Twig-2.x"));
+        rename(buildPath($path, "vendor", DIR_TWIG),
+            buildPath($path, "vendor", "Twig-2.x"));
+        rename(buildPath($path, "vendor", "Twig-2.x", "src"),
+            buildPath($path, "vendor", "Twig-2.x", "Twig"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [JShrink]: ";
+        $fPath = buildPath($path, "vendor", basename(URL_JSHRINK));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        if (!is_dir(buildPath($path, "vendor", DIR_JSHRINK))
+            || !is_dir(buildPath($path, "vendor", DIR_JSHRINK, "src"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for JShrink!\r\n";
+            return;
+        }
+        if (is_dir(buildPath($path, "vendor", "JShrink")))
+            recursiveDeleteDir(buildPath($path, "vendor", "JShrink"));
+        rename(buildPath($path, "vendor", DIR_JSHRINK),
+            buildPath($path, "vendor", "JShrink"));
+        rename(buildPath($path, "vendor", "JShrink", "src"),
+            buildPath($path, "vendor", "JShrink", "JShrink"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [ScssPhp]: ";
+        $fPath = buildPath($path, "vendor", basename(URL_SCSS_PHP));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        if (!is_dir(buildPath($path, "vendor", DIR_SCSS_PHP))
+            || !is_dir(buildPath($path, "vendor", DIR_SCSS_PHP, "src"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return;
+        }
+        if (is_dir(buildPath($path, "vendor", "ScssPhp")))
+            recursiveDeleteDir(buildPath($path, "vendor", "ScssPhp"));
+        rename(buildPath($path, "vendor", DIR_SCSS_PHP),
+            buildPath($path, "vendor", "ScssPhp"));
+        rename(buildPath($path, "vendor", "ScssPhp", "src"),
+            buildPath($path, "vendor", "ScssPhp", "ScssPhp"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [Psr/Log]: ";
+        $fPath = buildPath($path, "vendor", basename(URL_PSR_LOG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        if (!is_dir(buildPath($path, "vendor", DIR_PSR_LOG))
+            || !is_dir(buildPath($path, "vendor", DIR_PSR_LOG, "Psr"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return;
+        }
+        if (is_dir(buildPath($path, "vendor", "Psr")))
+            recursiveDeleteDir(buildPath($path, "vendor", "Psr"));
+        rename(buildPath($path, "vendor", DIR_PSR_LOG),
+            buildPath($path, "vendor", "Psr"));
+        unlink($fPath);
+        echo "OK\r\n";
+
+        echo "  - Unzip requires [Monolog]: ";
+        $fPath = buildPath($path, "vendor", basename(URL_MONOLOG));
+        $errorStr = "";
+        if (!unzipFile($fPath, buildPath($path, "vendor"), $errorStr)) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Unzip file failed! Path: $fPath\r\n";
+            echo "           Message: $errorStr\r\n";
+            return;
+        }
+        if (!is_dir(buildPath($path, "vendor", DIR_MONOLOG))
+            || !is_dir(buildPath($path, "vendor", DIR_MONOLOG, "src"))) {
+            echo "FAILED\r\n";
+            echo "    ERROR: Invalid unzipped required folders for ScssPhp!\r\n";
+            return;
+        }
+        if (is_dir(buildPath($path, "vendor", "Monolog")))
+            recursiveDeleteDir(buildPath($path, "vendor", "Monolog"));
+        rename(buildPath($path, "vendor", DIR_MONOLOG),
+            buildPath($path, "vendor", "Monolog"));
+        rename(buildPath($path, "vendor", "Monolog", "src"),
+            buildPath($path, "vendor", "Monolog", "Monolog"));
+        unlink($fPath);
+        echo "OK\r\n";
+    }
+    // --- check UPGRADE files ---
+    $upgradeFiles = [];
+    $files = \FlyCubePHP\HelperClasses\CoreHelper::scanDir(buildPath($path, "vendor", "FlyCubePHP"));
+    foreach ($files as $file) {
+        preg_match('/UPGRADE-(\d.\d.\d)/', $file, $matches);
+        if (count($matches) >= 2 && version_compare($projVersion, $matches[1]) < 0)
+            $upgradeFiles[$matches[1]] = str_replace($path, "", $file);
+    }
+    if (!empty($upgradeFiles)) {
+        echo "\r\n";
+        echo "  Look at the upgrade files:\r\n";
+        foreach ($upgradeFiles as $key => $value)
+            echo "    - upgrade to v$key: $value\r\n";
+    }
+
+    echo "\r\n";
+    echo "  Upgrade project to latest version: SUCCESS\r\n";
+    echo "\r\n";
+}
+
+
 $app = $argv[0];
 $arguments = [];
 for ($i = 1; $i < $argc; $i++)
@@ -2417,7 +2790,7 @@ if (in_array('--version', $arguments)
 
 // --- set env ---
 $envValue = argumentValue('--env', $arguments);
-if (!is_null($envValue) && !empty($envValue))
+if (!empty($envValue))
     \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, strval($envValue));
 
 // --- disable logging system ---
@@ -2429,10 +2802,10 @@ if (in_array('--new', $arguments)) {
     if (in_array('--project', $arguments)) {
         $projectPath = argumentValue('--path', $arguments);
         $downloadRequires = toBool(argumentValue('--download-requires', $arguments, true));
-        if (is_null($objName) || empty($objName))
+        if (empty($objName))
             exit("Invalid new project name! Use --help!\r\n");
         $projectName = ucwords($objName);
-        if (is_null($projectPath) || empty($projectPath))
+        if (empty($projectPath))
             $projectPath = splicePathLast($_SERVER['HOME']) . "/FlyCubePHProjects";
         else
             $projectPath = splicePathLast($projectPath);
@@ -2606,6 +2979,30 @@ if (in_array('--new', $arguments)) {
     echo "=== FlyCubePHP: Clear php sessions ===\r\n";
     clearPhpSessions();
     echo "=== FlyCubePHP =======================\r\n";
+    exit();
+} else if (in_array('--latest-version', $arguments)
+           || in_array('-lv', $arguments)) {
+    $vStr = flyCubePhpLatestVersion();
+    exit("[FlyCubePHP] Latest Core version: $vStr\r\n");
+} else if (in_array('--upgrade', $arguments)) {
+    $projectPath = argumentValue('--path', $arguments, realpath(__DIR__."/../"));
+    $downloadRequires = toBool(argumentValue('--download-requires', $arguments, true));
+    $force = in_array('--force', $arguments);
+    if (empty($projectPath))
+        exit("Invalid project path! Use --help!\r\n");
+
+    echo "=== FlyCubePHP: Upgrade project ===\r\n";
+    upgradeFlyCubePhpProject($projectPath, $downloadRequires, $force);
+    echo "=== FlyCubePHP ====================\r\n";
+    exit();
+} else if (in_array('--check-dirs', $arguments)) {
+    $projectPath = argumentValue('--path', $arguments, realpath(__DIR__."/../"));
+    if (empty($projectPath))
+        exit("Invalid project path! Use --help!\r\n");
+
+    echo "=== FlyCubePHP: Checking project catalogs ===\r\n";
+    checkingProjectCatalogs($projectPath);
+    echo "=== FlyCubePHP ==============================\r\n";
     exit();
 } else {
     exit("Invalid arguments! Use --help!\r\n");

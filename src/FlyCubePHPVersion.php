@@ -9,7 +9,7 @@
 namespace FlyCubePHP;
 
 const VERSION_MAJ = 1;
-const VERSION_MIN = 2;
+const VERSION_MIN = 3;
 const VERSION_PATCH = 0;
 
 function VERSION_STR(): string {

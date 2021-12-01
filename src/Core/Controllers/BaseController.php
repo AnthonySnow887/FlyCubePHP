@@ -13,7 +13,6 @@ include_once 'Extensions/NetworkBase.php';
 include_once __DIR__.'/../Protection/RequestForgeryProtection.php';
 include_once __DIR__.'/../Protection/CSPProtection.php';
 include_once __DIR__.'/../Error/ErrorController.php';
-include_once __DIR__.'/../../HelperClasses/HttpCodes.php';
 include_once __DIR__.'/../../HelperClasses/MimeTypes.php';
 
 use FlyCubePHP\Core\Routes\RouteCollector;
@@ -77,9 +76,22 @@ abstract class BaseController
     abstract public function renderPrivate(string $action);
 
     /**
+     * Метод обработки исключения
+     * @param \Throwable $ex
+     * @throws \Throwable
+     */
+    public function evalException(\Throwable $ex) {
+        throw $ex;
+    }
+
+    /**
      * Добавить обработчик перед вызовом основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
+     *
+     * ПРИМЕЧАНИЕ:
+     * Если метод возвращает тип bool, то учитывается его результат.
+     * В противном случае, результат игнорируется.
      */
     final protected function appendBeforeAction(string $checkMethod) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
@@ -92,6 +104,10 @@ abstract class BaseController
      * Добавить обработчик в начало очереди перед вызовом основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
+     *
+     * ПРИМЕЧАНИЕ:
+     * Если метод возвращает тип bool, то учитывается его результат.
+     * В противном случае, результат игнорируется.
      */
     final protected function prependBeforeAction(string $checkMethod) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
@@ -123,6 +139,10 @@ abstract class BaseController
      * Добавить обработчик после вызова основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
+     *
+     * ПРИМЕЧАНИЕ:
+     * Если метод возвращает тип bool, то учитывается его результат.
+     * В противном случае, результат игнорируется.
      */
     final protected function appendAfterAction(string $checkMethod) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
@@ -135,6 +155,10 @@ abstract class BaseController
      * Добавить обработчик в начало очереди после вызова основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
+     *
+     * ПРИМЕЧАНИЕ:
+     * Если метод возвращает тип bool, то учитывается его результат.
+     * В противном случае, результат игнорируется.
      */
     final protected function prependAfterAction(string $checkMethod) {
         if (empty($checkMethod) || !method_exists($this, $checkMethod))
@@ -165,8 +189,9 @@ abstract class BaseController
     /**
      * Вызов обработчиков проверок перед основным методом контроллера
      * @param string $action - название текущего экшена контроллера
+     * @return bool
      */
-    final protected function processingBeforeAction(string $action) {
+    final protected function processingBeforeAction(string $action): bool {
         $tmpSkip = array();
         if (isset($this->_skipBeforeActions[$action]))
             $tmpSkip = $this->_skipBeforeActions[$action];
@@ -174,15 +199,19 @@ abstract class BaseController
         foreach ($this->_beforeActions as $item) {
             if (in_array($item, $tmpSkip))
                 continue;
-            $this->$item();
+            $res = $this->$item();
+            if (is_bool($res) && $res === false)
+                return false;
         }
+        return true;
     }
 
     /**
      * Вызов обработчиков проверок после основного метода контроллера
      * @param string $action - название текущего экшена контроллера
+     * @return bool
      */
-    final protected function processingAfterAction(string $action) {
+    final protected function processingAfterAction(string $action): bool {
         $tmpSkip = array();
         if (isset($this->_skipAfterActions[$action]))
             $tmpSkip = $this->_skipAfterActions[$action];
@@ -190,8 +219,11 @@ abstract class BaseController
         foreach ($this->_afterActions as $item) {
             if (in_array($item, $tmpSkip))
                 continue;
-            $this->$item();
+            $res = $this->$item();
+            if (is_bool($res) && $res === false)
+                return false;
         }
+        return true;
     }
 
     /**

@@ -111,6 +111,22 @@ class Config
     }
 
     /**
+     * Получить список ключей для загруженных аргументов
+     * @return array
+     */
+    public function keys(): array {
+        return array_keys($this->_args);
+    }
+
+    /**
+     * Получить массив загруженных аргументов
+     * @return array
+     */
+    public function args(): array {
+        return $this->_args;
+    }
+
+    /**
      * Получить значение аргумента настроек
      * @param string $key - ключ
      * @param mixed $def - базовое значение

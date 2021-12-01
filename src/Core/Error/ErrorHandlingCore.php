@@ -39,7 +39,8 @@ class ErrorHandlingCore
             // так что пусть обрабатываются стандартным обработчиком ошибок PHP
             return false;
         }
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
 
         $errCode = ErrorHandlingCore::fileCodeTrace($errfile, $errline);
@@ -66,7 +67,8 @@ class ErrorHandlingCore
      * @throws
      */
     static public function evalExceptionHandler(\Throwable $ex) {
-        if (ob_get_level())
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
             ob_end_clean();
         ErrorHandlingCore::loggingException($ex);
         ErrorHandlingCore::instance()->evalException($ex);
@@ -378,10 +380,9 @@ class ErrorHandlingCore
             $tmpTrace .= "$str | $strVal\r\n";
         }
         $title = trim($title);
-        $data = trim($tmpTrace);
         $html = "\r\n$title\r\n";
         $html .= "-------------------------\r\n";
-        $html .= "$data\r\n";
+        $html .= "$tmpTrace\r\n";
         $html .= "-------------------------\r\n";
         return $html;
     }
