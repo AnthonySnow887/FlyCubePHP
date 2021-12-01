@@ -1,4 +1,4 @@
-# 1.3.0 (??.??.2021)
+# 1.3.0 (01.12.2021)
 
  * Update fly_cube_php bin file:
    * fix --assets-precompile

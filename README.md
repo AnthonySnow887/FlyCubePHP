@@ -136,10 +136,11 @@ FlyCubePHP/bin> php ./fly_cube_php --upgrade --path=/home/[USER]/FlyCubePHProjec
   Project name: MyProject
   Project path: /home/[USER]/FlyCubePHProjects/MyProject
   Project ver.: 1.1.0
-   Latest ver.: 1.2.0
+   Latest ver.: 1.3.0
 
-The project will be updated to version 1.2.0. Continue? [yes/no] (yes): y
+The project will be updated to version 1.3.0. Continue? [yes/no] (yes): y
 
+  - Checking project catalogs: OK
   - Download latest version [FlyCubePHP]: OK
   - Unzip latest version [FlyCubePHP]: OK
   - Download requires [Twig]: OK

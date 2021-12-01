@@ -37,50 +37,100 @@ class HttpResponse
         }
     }
 
+    /**
+     * URL запроса
+     * @return string
+     */
     public function url(): string {
         return $this->_url;
     }
 
+    /**
+     * Код ответа http
+     * @return int
+     */
     public function code(): int {
         return $this->_code;
     }
 
+    /**
+     * Является ли ответ информацией (code >= 100 и code < 200)
+     * @return bool
+     */
     public function isHttpInformation(): bool {
         return ($this->_code >= 100 && $this->_code < 200);
     }
 
+    /**
+     * Является ли ответ успехом (code >= 200 и code < 300)
+     * @return bool
+     */
     public function isHttpSuccess(): bool {
         return ($this->_code >= 200 && $this->_code < 300);
     }
 
+    /**
+     * Является ли ответ перенаправлением (code >= 300 и code < 400)
+     * @return bool
+     */
     public function isHttpRedirection(): bool {
         return ($this->_code >= 300 && $this->_code < 400);
     }
 
+    /**
+     * Является ли ответ ошибкой клиента (code >= 400 и code < 500)
+     * @return bool
+     */
     public function isHttpClientError(): bool {
         return ($this->_code >= 400 && $this->_code < 500);
     }
 
+    /**
+     * Является ли ответ ошибкой сервера (code >= 500 и code < 600)
+     * @return bool
+     */
     public function isHttpServerError(): bool {
         return ($this->_code >= 500 && $this->_code < 600);
     }
 
+    /**
+     * Получить сырой заголовок http из ответа
+     * @return string
+     */
     public function rawHeader(): string {
         return $this->_rawHeader;
     }
 
-    public function hasHeaders(string $name): bool {
+    /**
+     * Заданы ли заголовки http в ответе
+     * @return bool
+     */
+    public function hasHeaders(): bool {
         return !empty($this->_headers);
     }
 
+    /**
+     * Получить заданные в ответе заголовки http
+     * @return array
+     */
     public function headers(): array {
         return $this->_headers;
     }
 
+    /**
+     * Задан ли в ответе требуемый заголовок
+     * @param string $name
+     * @return bool
+     */
     public function hasHeader(string $name): bool {
         return isset($this->_headers[$name]);
     }
 
+    /**
+     * Получить значение заданного в ответе требуемого заголовка
+     * @param string $name
+     * @return mixed|null
+     */
     public function header(string $name)/*: mixed|null */ {
         $name = strtolower($name);
         if (isset($this->_headers[$name]))
@@ -89,40 +139,78 @@ class HttpResponse
         return null;
     }
 
+    /**
+     * Заданы ли в ответе cookie
+     * @return bool
+     */
     public function hasCookie(): bool {
         return !empty($this->_cookie);
     }
 
+    /**
+     * Получить заданные в ответе cookie
+     * @return array
+     */
     public function cookie(): array {
         return $this->_cookie;
     }
 
+    /**
+     * Задан ли в ответе требуемый cookie
+     * @param string $key
+     * @return bool
+     */
     public function hasCookieValue(string $key): bool {
         return isset($this->_cookie[$key]);
     }
 
+    /**
+     * Получить значение заданного в ответе требуемого cookie
+     * @param string $key
+     * @return mixed|null
+     */
     public function cookieValue(string $key)/*: mixed|null*/ {
         if (isset($this->_cookie[$key]))
             return $this->_cookie[$key];
         return null;
     }
 
+    /**
+     * Задано ли в ответе тело сообщения
+     * @return bool
+     */
     public function hasBody(): bool {
         return !empty($this->_body);
     }
 
+    /**
+     * Получить тело сообщения ответа
+     * @return string
+     */
     public function body(): string {
         return $this->_body;
     }
 
+    /**
+     * Получить Content-Type
+     * @return string
+     */
     public function contentType(): string {
         return $this->_contentType;
     }
 
+    /**
+     * Задана ли ошибка cURL?
+     * @return bool
+     */
     public function hasError(): bool {
         return !empty($this->_error);
     }
 
+    /**
+     * Получить ошибку cURL
+     * @return string
+     */
     public function error(): string {
         return $this->_error;
     }

@@ -1889,11 +1889,10 @@ function createPlugin($name, bool $isGui = false) {
             echo "ERROR: Create plugin tree failed!\r\n";
             return;
         }
-    } else {
-        if (!makeDir(buildPath($tmpPath, "doc", "api"), 0755, true, true)) {
-            echo "ERROR: Create plugin tree failed!\r\n";
-            return;
-        }
+    }
+    if (!makeDir(buildPath($tmpPath, "doc", "api"), 0755, true, true)) {
+        echo "ERROR: Create plugin tree failed!\r\n";
+        return;
     }
 
     // --- create init file ---
