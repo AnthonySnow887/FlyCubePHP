@@ -1,3 +1,49 @@
+# 1.3.0 (??.??.2021)
+
+ * Update fly_cube_php bin file:
+   * fix --assets-precompile
+   * fix backtrace log trim
+   * add --check-dirs
+   * add select latest version from GitHub
+   * add upgrade project & force upgrade
+ * Update routes.php.tmpl (update comments)
+ * Update Cookie (set and delete cookies with a name equal to session_name() is forbidden)
+ * Update AssetPipeline (add clear all php buffers before send data)
+ * Update Controllers/Extensions/NetworkBase trait (add clear all php buffers before send data)
+ * Update BaseController:
+   * remove include HttpCodes.php 
+   * add evalException method
+   * add check before/after actions return value
+ * Update BaseActionController:
+   * fix invalid send data from gui controller in production mode 
+   * add check before/after actions return value
+   * add clear all php buffers before send data
+ * Update BaseActionControllerAPI:
+   * add check before/after actions return value
+   * add clear all php buffers before send data
+ * Update ActiveRecord:
+   * select pkey after insert new item
+   * add callbacks
+   * add readOnly flag
+   * fix comments
+ * Update Config:
+   * add method keys 
+   * add method args
+ * Add Network/HttpClient
+ * Move HttpCodes.php from src/HelperClasses/ to src/Network/
+ * Update ErrorHandlingCore:
+   * fix backtrace log trim
+   * add clear all php buffers before send data
+ * Fix RequestForgeryProtection (add urlencode/urldecode for csrf token)
+ * Change error report:
+   * E_WARNING disabled 
+   * E_NOTICE disabled
+   * E_USER_WARNING disabled 
+   * E_USER_NOTICE disabled
+ * Update FlyCubePHP.php (add try-catch for call controller evalException)
+ * Update FlyCubePHPEnvLoader.php (add check application secret.key file: if not found -> development mode)
+ * Code refactoring
+
 # 1.2.0 (22.11.2021)
 
  * Update BaseActionController:
