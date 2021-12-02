@@ -323,7 +323,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
         if (!file_exists($fPath)) {
             $this->updateCacheList();
             return;
@@ -346,7 +346,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
         $fData = json_encode($this->_cacheList);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {

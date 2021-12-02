@@ -38,6 +38,7 @@ class Config
     const TAG_LOG_LEVEL                     = "FLY_CUBE_PHP_LOG_LEVEL";
     const TAG_LOG_FOLDER                    = "FLY_CUBE_PHP_LOG_FOLDER";
     const TAG_LOG_DATE_TIME_FORMAT          = "FLY_CUBE_PHP_LOG_DATE_TIME_FORMAT";
+    const TAG_ENABLE_API_DOC                = "FLY_CUBE_PHP_ENABLE_API_DOC";
 
     private static $_instance = null;
 

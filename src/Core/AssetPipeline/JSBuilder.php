@@ -122,13 +122,11 @@ class JSBuilder
      * @param string $dir
      */
     public function loadJS(string $dir) {
-        if (empty($dir))
+        if (empty($dir)
+            || !is_dir($dir)
+            || in_array($dir, $this->_jsDirs))
             return;
-        if (!is_dir($dir))
-            return;
-        if (!in_array($dir, $this->_jsDirs))
-            $this->_jsDirs[] = $dir;
-
+        $this->_jsDirs[] = $dir;
         $tmpJS = CoreHelper::scanDir($dir, true);
         foreach ($tmpJS as $js) {
             $tmpName = CoreHelper::buildAppPath($js);

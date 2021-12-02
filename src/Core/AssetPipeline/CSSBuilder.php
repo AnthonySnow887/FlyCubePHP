@@ -121,13 +121,11 @@ class CSSBuilder
      * @param string $dir
      */
     public function loadCSS(string $dir) {
-        if (empty($dir))
+        if (empty($dir)
+            || !is_dir($dir)
+            || in_array($dir, $this->_cssDirs))
             return;
-        if (!is_dir($dir))
-            return;
-        if (!in_array($dir, $this->_cssDirs))
-            $this->_cssDirs[] = $dir;
-
+        $this->_cssDirs[] = $dir;
         $tmpCss = CoreHelper::scanDir($dir, true);
         foreach ($tmpCss as $css) {
             $tmpName = CoreHelper::buildAppPath($css);

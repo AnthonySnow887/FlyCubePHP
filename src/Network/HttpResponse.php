@@ -86,11 +86,11 @@ class HttpResponse
     }
 
     /**
-     * Является ли ответ ошибкой сервера (code >= 500 и code < 600)
+     * Является ли ответ ошибкой сервера (code >= 500 и code <= 526)
      * @return bool
      */
     public function isHttpServerError(): bool {
-        return ($this->_code >= 500 && $this->_code < 600);
+        return ($this->_code >= 500 && $this->_code <= 526);
     }
 
     /**

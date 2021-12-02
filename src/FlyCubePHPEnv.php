@@ -17,10 +17,12 @@ include_once __DIR__.'/Core/AssetPipeline/AssetPipeline.php';
 include_once __DIR__.'/Core/Database/DatabaseFactory.php';
 include_once __DIR__.'/Core/Cookie/Cookie.php';
 include_once __DIR__.'/Core/Session/Session.php';
+include_once __DIR__.'/Core/ApiDoc/ApiDoc.php';
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 include_once 'FlyCubePHPEnvLoader.php';
 
+use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Session\Session as Session;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
@@ -143,6 +145,10 @@ if ($enablePluginsCore === true) {
 // --- check app routes ---
 if (!RouteCollector::instance()->checkRoutes())
     trigger_error("Invalid routes list!", E_USER_ERROR);
+
+// --- load api-doc ---
+$app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
+ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
 
 // --- load initializers ---
 $initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");
