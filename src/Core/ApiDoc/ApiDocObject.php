@@ -3,6 +3,7 @@
 namespace FlyCubePHP\Core\ApiDoc;
 
 use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Routes\RouteType;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\Error;
 
@@ -36,6 +37,33 @@ class ApiDocObject
      */
     public function actions(): array {
         return $this->_actions;
+    }
+
+    /**
+     * Получить api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $md = "# " . $this->_blockName . "\r\n";
+        $md .= "\r\n";
+        if (!empty($this->_blockDescription)) {
+            $md .= $this->_blockDescription . "\r\n";
+            $md .= "\r\n";
+        }
+        $md .= "### Actions:\r\n";
+        $md .= "\r\n";
+        foreach ($this->_actions as $act) {
+            $actType = RouteType::intToString($act->httpMethod());
+            $actUrl = $act->url();
+            $actName = $act->name();
+            $md .= " * $actType $actUrl - $actName\r\n";
+        }
+        $md .= "\r\n";
+        foreach ($this->_actions as $act)
+            $md .= $act->buildMarkdown();
+
+        $md .= "\r\n";
+        return $md;
     }
 
     /**

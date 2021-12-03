@@ -106,6 +106,36 @@ class ApiDocParameter
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $md = $this->_name . " - " . $this->_description . "\r\n";
+        if ($this->_isOptional === true)
+            $md .= " * NOTE: this is optional parameter\r\n";
+        if ($this->_canBeEmpty === true)
+            $md .= " * NOTE: the value of this parameter can be empty\r\n";
+
+        $md .= " * Type: " . $this->_dataType . "\r\n";
+        if ($this->_min < $this->_max) {
+            $md .= " * Min: " . $this->_min . "\r\n";
+            $md .= " * Max: " . $this->_max . "\r\n";
+        }
+        if (!empty($this->_availableValues))
+            $md .= " * Available values: " . implode(", ", $this->_availableValues) . "\r\n";
+
+        if (!empty($this->_parameters)) {
+            $md .= " * Nested parameters:\r\n";
+            foreach ($this->_parameters as $param) {
+                $tmpMd = $param->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n    ", $tmpMd));
+                $md .= "   * $tmpMd\r\n";
+            }
+        }
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param string $name
      * @param array $data

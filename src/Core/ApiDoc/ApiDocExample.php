@@ -2,6 +2,7 @@
 
 namespace FlyCubePHP\Core\ApiDoc;
 
+use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
 class ApiDocExample
@@ -60,10 +61,39 @@ class ApiDocExample
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $md = $this->_name;
+        if (!empty($this->_description))
+            $md .= " - " . $this->_description;
+        $md .= "\r\n";
+        if (!empty($this->_request)) {
+            $tmpRequest = trim($this->_request);
+            $tmpRequest = str_replace("\r\n", "\r\n   ", $tmpRequest);
+            $md .= " * Request:\r\n";
+            $md .= "   ```\r\n";
+            $md .= "   $tmpRequest\r\n";
+            $md .= "   ```\r\n";
+        }
+        if (!empty($this->_response)) {
+            $tmpResponse = trim($this->_response);
+            $tmpResponse = str_replace("\r\n", "\r\n   ", $tmpResponse);
+            $md .= " * Response:\r\n";
+            $md .= "   ```\r\n";
+            $md .= "   $tmpResponse\r\n";
+            $md .= "   ```\r\n";
+        }
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param string $name
      * @param array $data
      * @return ApiDocExample
+     * @throws
      */
     static public function parse(string $name, array $data): ApiDocExample {
         $obj = new ApiDocExample();
@@ -78,6 +108,18 @@ class ApiDocExample
             else if (strcmp($key, 'response') === 0)
                 $obj->_response = self::parseRequestResponse($val);
         }
+        // --- check ---
+        if (empty($obj->_request) && empty($obj->_response))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Invalid request/response in [api-doc] -> [action] -> [example] section (example section name: $name)!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'additional-data' => [
+                    'section' => 'example',
+                    'name' => $name
+                ]
+            ]);
         return $obj;
     }
 

@@ -55,6 +55,24 @@ class ApiDocParametersGroup
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        if (empty($this->_parameters))
+            return "";
+
+        $tmpName = trim($this->_name . " - " . $this->_description);
+        $md = "PARAMETERS GROUP: **$tmpName**\r\n";
+        foreach ($this->_parameters as $param) {
+            $tmpMd = $param->buildMarkdown();
+            $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
+            $md .= " * $tmpMd\r\n";
+        }
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param string $name
      * @param array $data

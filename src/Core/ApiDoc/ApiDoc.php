@@ -4,6 +4,7 @@ namespace FlyCubePHP\Core\ApiDoc;
 
 use Exception;
 use FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\Error;
 
@@ -16,6 +17,8 @@ class ApiDoc
     private static $_instance = null;
 
     private $_isEnabled = false;
+    private $_rebuildCache = false;
+    private $_apiDocList = array();
     private $_cacheList = array();
     private $_apiDocDirs = array();
 
@@ -40,6 +43,8 @@ class ApiDoc
         $this->_isEnabled = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_API_DOC, false));
         if ($this->_isEnabled === false)
             return;
+        $defVal = !Config::instance()->isProduction();
+        $this->_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
         $this->loadCacheList();
     }
 
@@ -63,6 +68,16 @@ class ApiDoc
      */
     public function isEnabled(): bool {
         return $this->_isEnabled;
+    }
+
+    /**
+     * Список загруженных api-doc файлов
+     * @return array
+     */
+    public function apiDocFiles(): array {
+        if (!$this->_isEnabled)
+            return [];
+        return array_keys($this->_apiDocList);
     }
 
     /**
@@ -100,9 +115,27 @@ class ApiDoc
      * @throws
      */
     public function apiDoc(string $name)/*: ApiDocObject|null */ {
-        if (!$this->_isEnabled || !isset($this->_cacheList[$name]))
+        if (!$this->_isEnabled || !isset($this->_apiDocList[$name]))
             return null;
-        return ApiDocObject::parseApiDoc($this->_cacheList[$name]);
+        return ApiDocObject::parseApiDoc($this->_apiDocList[$name]);
+    }
+
+    /**
+     * Получить api-doc в формате markdown
+     * @param string $name
+     * @return string
+     * @throws
+     */
+    public function apiDocMarkdown(string $name): string {
+        if (!$this->_isEnabled)
+            return "";
+        if ($this->_rebuildCache === false) {
+            if (isset($this->_cacheList[$name]))
+                return file_get_contents($this->_cacheList[$name]);
+
+            return file_get_contents($this->buildCacheFile($name));
+        }
+        return file_get_contents($this->buildCacheFile($name));
     }
 
     /**
@@ -132,10 +165,9 @@ class ApiDoc
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__
                 ]);
-            if (!array_key_exists($tmpName, $this->_cacheList))
-                $this->_cacheList[$tmpName] = $doc;
+            if (!array_key_exists($tmpName, $this->_apiDocList))
+                $this->_apiDocList[$tmpName] = $doc;
         }
-        $this->updateCacheList();
     }
 
     /**
@@ -188,5 +220,91 @@ class ApiDoc
                 'class-method' => __FUNCTION__
             ]);
         }
+    }
+
+    /**
+     * Создать кэш файл и вернуть путь до него
+     * @param string $name
+     * @return string
+     * @throws
+     */
+    private function buildCacheFile(string $name): string {
+        $obj = $this->apiDoc($name);
+        if (is_null($obj))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Not found needed api-doc file! Name: $name",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+
+        $fLastModified = -1;
+        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
+        if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Invalid cache settings for api-doc file! Name: $name",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+
+        if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $obj->buildMarkdown()))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Write cache api-doc file failed! Name: $name",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+
+        // --- update cache settings ---
+        $this->_cacheList[$name] = $cacheSettings["f-path"];
+        $this->updateCacheList();
+        return $cacheSettings["f-path"];
+    }
+
+    /**
+     * Сгенерировать настройки для кэширования файла
+     * @param string $name
+     * @param int $lastModified
+     * @return array
+     */
+    private function generateCacheSettings(string $name, int $lastModified = -1): array {
+        if (empty($name))
+            return array("f-dir" => "", "f-path" => "");
+        if ($lastModified <= 0)
+            $lastModified = time();
+        $hash = hash('sha256', basename($name) . strval($lastModified));
+        $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR, $hash[0].$hash[1]);
+        $fPath = CoreHelper::buildPath($fDir, basename($name)."_$hash.md");
+        return array("f-dir" => $fDir, "f-path" => $fPath);
+    }
+
+    /**
+     * Записать кэш файл
+     * @param string $dirPath - каталог файла
+     * @param string $filePath - полный путь до файла с его именем
+     * @param string $fileData - данные
+     * @return bool
+     * @throws
+     */
+    private function writeCacheFile(string $dirPath,
+                                    string $filePath,
+                                    string $fileData): bool {
+        if (empty($dirPath) || empty($filePath))
+            return false;
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Make dir for cache api-doc file failed! Path: $dirPath",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+
+        $tmpFile = tempnam($dirPath, basename($filePath));
+        if (false !== @file_put_contents($tmpFile, $fileData) && @rename($tmpFile, $filePath)) {
+            @chmod($filePath, 0666 & ~umask());
+            return true;
+        }
+        return false;
     }
 }

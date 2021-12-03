@@ -20,6 +20,7 @@ class ApiDocAction
     private $_name = "";
     private $_description = "";
     private $_version = "";
+    private $_outputFormats = [];
     private $_isDeprecated = false;
     private $_parameters = [];
     private $_parameterGroups = [];
@@ -74,6 +75,14 @@ class ApiDocAction
      */
     public function version(): string {
         return $this->_version;
+    }
+
+    /**
+     * Перечень форматов возвращаемых данных
+     * @return array
+     */
+    public function outputFormats(): array {
+        return $this->_outputFormats;
     }
 
     /**
@@ -177,6 +186,88 @@ class ApiDocAction
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $actType = RouteType::intToString($this->_httpMethod);
+        $actUrl = $this->_url;
+        $md = "## $actType $actUrl\r\n";
+        $md .= "\r\n";
+        $md .= $this->_name . "\r\n";
+        if (!empty($this->_description))
+            $md .= $this->_description . "\r\n";
+        if (!empty($this->_version))
+            $md .= "\r\nVersion: " . $this->_version . "\r\n";
+        if ($this->_isDeprecated === true) {
+            $md .= "\r\n---\r\n";
+            $md .= "**NOTE**\r\n";
+            $md .= "\r\n";
+            $md .= "This is deprecated method! In the following versions it will be deleted!\r\n";
+            $md .= "\r\n";
+            $md .= "---\r\n";
+        }
+        $md .= "\r\n";
+
+        $md .= "### Output formats:\r\n";
+        foreach ($this->_outputFormats as $val)
+            $md .= " * $val\r\n";
+        $md .= "\r\n";
+
+        if (!empty($this->_httpHeaders)) {
+            $md .= "### Required HTTP headers:\r\n";
+            foreach ($this->_httpHeaders as $key => $val)
+                $md .= " * $key - $val\r\n";
+            $md .= "\r\n";
+        }
+
+        if (!empty($this->_parameters) || !empty($this->_parameterGroups)) {
+            $md .= "### Input params:\r\n";
+            foreach ($this->_parameters as $param) {
+                $tmpMd = $param->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
+                $md .= " * $tmpMd\r\n";
+            }
+            foreach ($this->_parameterGroups as $param) {
+                $tmpMd = $param->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
+                $md .= " * $tmpMd\r\n";
+            }
+            $md = trim($md);
+            $md .= "\r\n\r\n";
+        }
+
+        $md .= "### Response:\r\n";
+        $md .= $this->_return->buildMarkdown();
+        $md = trim($md);
+        $md .= "\r\n\r\n";
+
+        if (!empty($this->_errors)) {
+            $md .= "### Errors:\r\n";
+            foreach ($this->_errors as $err) {
+                $tmpMd = $err->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
+                $md .= " * $tmpMd\r\n";
+            }
+            $md = trim($md);
+            $md .= "\r\n\r\n";
+        }
+
+        if (!empty($this->_examples)) {
+            $md .= "### Examples:\r\n";
+            foreach ($this->_examples as $ex) {
+                $tmpMd = $ex->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
+                $md .= " * $tmpMd\r\n";
+            }
+            $md = trim($md);
+            $md .= "\r\n\r\n";
+        }
+        $md .= "\r\n";
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param int $httpMethod
      * @param string $url
@@ -199,8 +290,10 @@ class ApiDocAction
                 $obj->_version = trim(strval($val));
             else if (strcmp($key, 'deprecated') === 0)
                 $obj->_isDeprecated = CoreHelper::toBool($val);
+            else if (strcmp($key, 'output-formats') === 0)
+                $obj->_outputFormats = self::parseOutputFormats($val);
             else if (strcmp($key, 'headers') === 0)
-                $obj->_httpHeaders = self::parseHeaders($obj, $val);
+                $obj->_httpHeaders = self::parseHeaders($val);
             else if (strcmp($key, 'return') === 0)
                 $obj->_return = ApiDocReturn::parse($val);
             else if (preg_match('/^param-group-(.*)$/', $key, $matches))
@@ -213,6 +306,17 @@ class ApiDocAction
                 $obj->_examples[] = ApiDocExample::parse($matches[1], $val);
         }
         // --- check ---
+        if (empty($obj->_outputFormats))
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => "Not found api-doc output formats! Method section: $name",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'additional-data' => [
+                    'section' => [ $name ],
+                    'name' => [ '' ]
+                ]
+            ]);
         if (is_null($obj->_return))
             throw Error::makeError([
                 'tag' => 'api-doc',
@@ -229,12 +333,25 @@ class ApiDocAction
     }
 
     /**
-     * Метод разбора HTTP заголовков
-     * @param ApiDocAction $obj
+     * Метод разбора форматов возвращаемых данных
      * @param array $data
      * @return array
      */
-    static private function parseHeaders(ApiDocAction &$obj, array $data): array {
+    static private function parseOutputFormats(array $data): array {
+        $lst = [];
+        foreach ($data as $val) {
+            if (!is_array($val) && !is_object($val))
+                $lst[] = trim(strval($val));
+        }
+        return $lst;
+    }
+
+    /**
+     * Метод разбора HTTP заголовков
+     * @param array $data
+     * @return array
+     */
+    static private function parseHeaders(array $data): array {
         $headers = [];
         foreach ($data as $key => $val) {
             if (is_string($key) && is_string($val))

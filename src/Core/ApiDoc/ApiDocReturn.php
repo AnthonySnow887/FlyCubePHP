@@ -54,6 +54,29 @@ class ApiDocReturn
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $md = "";
+        if (!empty($this->_description))
+            $md .= $this->_description . "\r\n";
+
+        $md .= " * HTTP Status Code: " . $this->_httpCode . "\r\n";
+        $md .= " * Type: " . $this->_dataType . "\r\n";
+
+        if (!empty($this->_parameters)) {
+            $md .= " * Parameters:\r\n";
+            foreach ($this->_parameters as $param) {
+                $tmpMd = $param->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n    ", $tmpMd));
+                $md .= "   * $tmpMd\r\n";
+            }
+        }
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param array $data
      * @return ApiDocReturn

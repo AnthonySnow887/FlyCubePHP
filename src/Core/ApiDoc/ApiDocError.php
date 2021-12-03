@@ -54,6 +54,29 @@ class ApiDocError
     }
 
     /**
+     * Получить секцию api-doc в формате markdown
+     * @return string
+     */
+    public function buildMarkdown(): string {
+        $md = strval($this->_httpCode);
+        if (!empty($this->_name))
+            $md = $this->_name;
+        if (!empty($this->_description))
+            $md .= " - " . $this->_description;
+        $md .= "\r\n";
+        $md .= " * HTTP Status Code: " . $this->_httpCode . "\r\n";
+        if (!empty($this->_parameters)) {
+            $md .= " * Parameters:\r\n";
+            foreach ($this->_parameters as $param) {
+                $tmpMd = $param->buildMarkdown();
+                $tmpMd = trim(str_replace("\r\n", "\r\n    ", $tmpMd));
+                $md .= "   * $tmpMd\r\n";
+            }
+        }
+        return $md;
+    }
+
+    /**
      * Метод разбора данных секции
      * @param string $name
      * @param array $data
