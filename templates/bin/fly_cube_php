@@ -1664,6 +1664,40 @@ function createController($name, $actions, bool $isAPI = false) {
         }
     }
 
+    // --- make api controller api-doc file ---
+    if ($isAPI === true) {
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc.json.tmpl";
+        $tmplActData = "";
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+                $tmplParams = [];
+                $tmplParams['ACTION'] = $act;
+                $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+                $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+                if (!empty($tmplActData))
+                    $tmplActData .= ",\n\n";
+                $tmplActData .= "    $tmpData";
+            }
+        } else {
+            $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+            $tmplParams = [];
+            $tmplParams['ACTION'] = "[CONTROLLER ACTION NAME]";
+            $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+            $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+            $tmplActData = $tmpData;
+        }
+
+        $resultFile = buildPath("doc", "api", $name."Controller.json");
+        $tmplParams = [];
+        $tmplParams['NAME'] = $name;
+        $tmplParams['ACTIONS'] = trim($tmplActData);
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+    }
+
     // --- append routes ---
     if (!empty($actions)) {
         $tmpRoutes = "\n";
@@ -2046,7 +2080,39 @@ function createPluginController($pluginName, $name, $actions, bool $isAPI = fals
         return;
     }
 
-    // TODO make api controller api-doc file
+    // --- make api controller api-doc file ---
+    if ($isAPI === true) {
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc.json.tmpl";
+        $tmplActData = "";
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+                $tmplParams = [];
+                $tmplParams['ACTION'] = $act;
+                $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+                $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+                if (!empty($tmplActData))
+                    $tmplActData .= ",\n\n";
+                $tmplActData .= "    $tmpData";
+            }
+        } else {
+            $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+            $tmplParams = [];
+            $tmplParams['ACTION'] = "[CONTROLLER ACTION NAME]";
+            $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+            $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+            $tmplActData = $tmpData;
+        }
+
+        $resultFile = buildPath($tmpPath, "doc", "api", $name."Controller.json");
+        $tmplParams = [];
+        $tmplParams['NAME'] = $name;
+        $tmplParams['ACTIONS'] = trim($tmplActData);
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+    }
 
     if ($isAPI === false) {
         // --- create controller helper ---
