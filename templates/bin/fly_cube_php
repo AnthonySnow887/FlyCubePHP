@@ -572,9 +572,11 @@ function recursiveCopyDir(string $src, string $dst, bool $showOutput = false) {
             } else {
                 $pathFrom = buildPath($src, $file);
                 $pathTo = buildPath($dst, $file);
-                copy($pathFrom, $pathTo);
+                $state = "[Copy]";
+                if (copy($pathFrom, $pathTo) === false)
+                    $state = "[Copy Failed]";
                 if ($showOutput === true)
-                    echo "[Copy] $pathFrom ==> $pathTo\r\n";
+                    echo "$state $pathFrom ==> $pathTo\r\n";
             }
         }
     }
@@ -595,15 +597,19 @@ function recursiveDeleteDir(string $dir, bool $showOutput = false) {
                     recursiveDeleteDir(buildPath($dir, $object), $showOutput);
                 } else {
                     $path = buildPath($dir, $object);
-                    unlink($path);
+                    $state = "[Delete]";
+                    if (unlink($path) === false)
+                        $state = "[Delete Failed]";
                     if ($showOutput === true)
-                        echo "[Delete] $path\r\n";
+                        echo "$state $path\r\n";
                 }
             }
         }
-        rmdir($dir);
+        $state = "[Delete]";
+        if (rmdir($dir) === false)
+            $state = "[Delete Failed]";
         if ($showOutput === true)
-            echo "[Delete] $dir\r\n";
+            echo "$state $dir\r\n";
     }
 }
 
@@ -621,9 +627,11 @@ function deleteDirFiles(string $dir, bool $showOutput = false) {
                     continue;
                 } else {
                     $path = buildPath($dir, $object);
-                    unlink($path);
+                    $state = "[Delete]";
+                    if (unlink($path) === false)
+                        $state = "[Delete Failed]";
                     if ($showOutput === true)
-                        echo "[Delete] $path\r\n";
+                        echo "$state $path\r\n";
                 }
             }
         }
