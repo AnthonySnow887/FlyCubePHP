@@ -14,6 +14,7 @@ class ApiDocObject
     private $_blockName = "";
     private $_blockDescription = "";
     private $_actions = [];
+    private $_sourceFilePath = "";
 
     /**
      * Название блока API
@@ -37,6 +38,14 @@ class ApiDocObject
      */
     public function actions(): array {
         return $this->_actions;
+    }
+
+    /**
+     * Путь до файла источника данных api
+     * @return string
+     */
+    public function sourceFilePath(): string {
+        return $this->_sourceFilePath;
     }
 
     /**
@@ -93,6 +102,7 @@ class ApiDocObject
         // --- parse ---
         $apiData = json_decode(file_get_contents($path), true);
         $obj = new ApiDocObject();
+        $obj->_sourceFilePath = $path;
         $obj->_blockName = $tmpName;
         if (preg_match("/.*Controller$/", $tmpName))
             $obj->_blockName = substr($tmpName, 0, strlen($tmpName) - 10);
