@@ -401,6 +401,9 @@ class AssetTagHelper extends BaseControllerHelper
      *   link_to("Test Link", {"controller": "AppCore", "action": "test"}), where AppCore::test -> GET
      *   * => <a href="/test">Test Link</a>
      *
+     *   link_to("Test Link", {"controller": "AppCore", "action": "test_with_id", "params": {"id":123} }), where AppCore::test_with_id -> GET (url with params: /test/:id)
+     *   * => <a href="/test/123">Test Link</a>
+     *
      *   link_to("Test Link", {"controller": "AppCore", "action": "test"}), where AppCore::test -> POST/PUT/PATCH/DELETE
      *   * => <a href="/test" data-method="post/put/patch/delete">Test Link</a>
      *
@@ -430,6 +433,12 @@ class AssetTagHelper extends BaseControllerHelper
         if (empty($options))
             return "<a href=\"\">$name</a>";
 
+        $urlParams = [];
+        if (array_key_exists("params", $options))
+            $urlParams = $options["params"];
+        if (!is_array($urlParams))
+            throw new \RuntimeException("[link_to] Invalid params argument (not array)!");
+
         $tmpOptions = "";
         if (array_key_exists("href", $options)
             && !array_key_exists("controller", $options)
@@ -447,7 +456,7 @@ class AssetTagHelper extends BaseControllerHelper
             if (is_null($route))
                 throw new \RuntimeException("[link_to] Not found needed controller with action: " . $controller . "::" . $action . "()");
 
-            $val = $route->uri();
+            $val = $this->makeHrefWithParams($route->uri(), $urlParams);
             $val = CoreHelper::makeValidUrl($val);
             $method = "";
             if ($route->type() !== RouteType::GET)
@@ -617,5 +626,13 @@ class AssetTagHelper extends BaseControllerHelper
             return "<$tagName $tmpTag></$tagName>";
 
         return "<$tagName $tmpTag />";
+    }
+
+    private function makeHrefWithParams(string $url, array $params): string {
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $url))
+            return $url;
+        foreach ($params as $key => $val)
+            $url = str_replace(":$key", $val, $url);
+        return $url;
     }
 }
