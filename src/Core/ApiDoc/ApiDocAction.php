@@ -194,7 +194,6 @@ class ApiDocAction
         $actUrl = $this->_url;
         $md = "## $actType $actUrl\r\n";
         $md .= "\r\n";
-        $md .= $this->_name . "\r\n";
         if (!empty($this->_description))
             $md .= $this->_description . "\r\n";
         if (!empty($this->_version))
