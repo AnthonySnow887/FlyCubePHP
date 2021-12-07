@@ -123,19 +123,21 @@ class ApiDoc
     /**
      * Получить api-doc в формате markdown
      * @param string $name
+     * @param string $action
      * @return string
      * @throws
      */
-    public function apiDocMarkdown(string $name): string {
+    public function apiDocMarkdown(string $name, string $action = ""): string {
         if (!$this->_isEnabled)
             return "";
+        $tmpName = $this->buildCacheFileName($name, $action);
         if ($this->_rebuildCache === false) {
-            if (isset($this->_cacheList[$name]))
-                return file_get_contents($this->_cacheList[$name]);
+            if (isset($this->_cacheList[$tmpName]))
+                return file_get_contents($this->_cacheList[$tmpName]);
 
-            return file_get_contents($this->buildCacheFile($name));
+            return file_get_contents($this->buildCacheFile($name, $action));
         }
-        return file_get_contents($this->buildCacheFile($name));
+        return file_get_contents($this->buildCacheFile($name, $action));
     }
 
     /**
@@ -223,12 +225,25 @@ class ApiDoc
     }
 
     /**
+     * Создать имя для файла
+     * @param string $name
+     * @param string $action
+     * @return string
+     */
+    private function buildCacheFileName(string $name, string $action = ""): string {
+        if (!empty($action))
+            return "$name-$action";
+        return $name;
+    }
+
+    /**
      * Создать кэш файл и вернуть путь до него
      * @param string $name
+     * @param string $action
      * @return string
      * @throws
      */
-    private function buildCacheFile(string $name): string {
+    private function buildCacheFile(string $name, string $action = ""): string {
         $obj = $this->apiDoc($name);
         if (is_null($obj))
             throw Error::makeError([
@@ -238,12 +253,33 @@ class ApiDoc
                 'class-method' => __FUNCTION__
             ]);
 
+        // --- search needed api action ---
+        if (!empty($action)) {
+            $apiAct = null;
+            foreach ($obj->actions() as $act) {
+                if (strcmp($act->name(), $action) === 0) {
+                    $apiAct = $act;
+                    break;
+                }
+            }
+            if (is_null($apiAct))
+                throw Error::makeError([
+                    'tag' => 'api-doc',
+                    'message' => "Not found needed api-doc file action! Name: $name; Action: $action",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
+
+            $obj = $apiAct;
+        }
+
         $fLastModified = -1;
-        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
+        $tmpName = $this->buildCacheFileName($name, $action);
+        $cacheSettings = $this->generateCacheSettings($tmpName, $fLastModified);
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw Error::makeError([
                 'tag' => 'api-doc',
-                'message' => "Invalid cache settings for api-doc file! Name: $name",
+                'message' => "Invalid cache settings for api-doc file! Name: $tmpName",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
@@ -251,13 +287,13 @@ class ApiDoc
         if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $obj->buildMarkdown()))
             throw Error::makeError([
                 'tag' => 'api-doc',
-                'message' => "Write cache api-doc file failed! Name: $name",
+                'message' => "Write cache api-doc file failed! Name: $tmpName",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
 
         // --- update cache settings ---
-        $this->_cacheList[$name] = $cacheSettings["f-path"];
+        $this->_cacheList[$tmpName] = $cacheSettings["f-path"];
         $this->updateCacheList();
         return $cacheSettings["f-path"];
     }
@@ -273,7 +309,7 @@ class ApiDoc
             return array("f-dir" => "", "f-path" => "");
         if ($lastModified <= 0)
             $lastModified = time();
-        $hash = hash('sha256', basename($name) . strval($lastModified));
+        $hash = hash('sha256', basename($name) . $lastModified);
         $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR, $hash[0].$hash[1]);
         $fPath = CoreHelper::buildPath($fDir, basename($name)."_$hash.md");
         return array("f-dir" => $fDir, "f-path" => $fPath);
