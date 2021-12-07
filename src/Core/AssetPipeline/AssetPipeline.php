@@ -419,6 +419,11 @@ class AssetPipeline
         // --- use compression ---
         $compressFilePath = "";
         if ($useCompression === true) {
+            // --- check ---
+            if (!\extension_loaded('zlib'))
+                trigger_error("\"ZLib\" extension not installed! Use is not possible!", E_USER_ERROR);
+
+            // --- build ---
             $cacheDir = CoreHelper::splicePathFirst(CoreHelper::splicePathLast(AssetPipeline::SETTINGS_DIR));
             $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), $cacheDir, $hash[0].$hash[1]);
             if (strcmp($this->_compressionType, "gzip") === 0
