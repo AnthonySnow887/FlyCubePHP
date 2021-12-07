@@ -11,10 +11,19 @@ include_once 'ApiDocAction.php';
 
 class ApiDocObject
 {
+    private $_name = "";
     private $_blockName = "";
     private $_blockDescription = "";
     private $_actions = [];
     private $_sourceFilePath = "";
+
+    /**
+     * Название API по имени файла
+     * @return string
+     */
+    public function name(): string {
+        return $this->_name;
+    }
 
     /**
      * Название блока API
@@ -102,6 +111,7 @@ class ApiDocObject
         // --- parse ---
         $apiData = json_decode(file_get_contents($path), true);
         $obj = new ApiDocObject();
+        $obj->_name = CoreHelper::fileName($path, true);
         $obj->_sourceFilePath = $path;
         $obj->_blockName = $tmpName;
         if (preg_match("/.*Controller$/", $tmpName))
