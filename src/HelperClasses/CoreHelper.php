@@ -327,6 +327,33 @@ class CoreHelper
     }
 
     /**
+     * Удалить экранирование текста
+     * @param string $str
+     * @param string $quote
+     * @return string
+     */
+    static public function removeQuote(string $str, string $quote = "\""): string {
+        if (empty($str))
+            return $str;
+        if (strcmp($str[0], $quote) === 0) {
+            if (strlen($str) > 1) {
+                $str = ltrim($str, $quote);
+                $str = CoreHelper::removeQuote($str, $quote);
+            } else {
+                $str = "";
+            }
+        } else if (strcmp($str[strlen($str) - 1], $quote) === 0) {
+            if (strlen($str) > 1) {
+                $str = substr($str, 0, -1);
+                $str = CoreHelper::removeQuote($str, $quote);
+            } else {
+                $str = "";
+            }
+        }
+        return $str;
+    }
+
+    /**
      * Получить валидную строку адреса (с App-Url-Prefix, если задан)
      * @param string $uri - строка URL
      * @return string
