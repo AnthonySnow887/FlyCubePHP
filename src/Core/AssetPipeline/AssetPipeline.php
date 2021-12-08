@@ -17,7 +17,6 @@ include_once 'ImageBuilder.php';
 
 use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\Core\Logger\Logger;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
 use \FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
