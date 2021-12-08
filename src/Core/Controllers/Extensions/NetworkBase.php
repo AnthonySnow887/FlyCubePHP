@@ -38,7 +38,6 @@ trait NetworkBase
      * - [string]   url         - Set redirect URL
      * - [string]   controller  - Set redirect application controller class name
      * - [string]   action      - Set redirect application controller action
-     * - [bool]     exit        - Use exit() after send response (default: false)
      *
      * NOTE: 'url' and 'controller + action' are mutually exclusive arguments!
      */
@@ -52,10 +51,6 @@ trait NetworkBase
             && intval($options['status']) >= 301
             && intval($options['status']) <= 303)
             $status = intval($options['status']);
-
-        $useExit = false;
-        if (isset($options['exit']) && $options['exit'] === true)
-            $useExit = true;
 
         $url = "";
         if (isset($options['url'])
@@ -87,8 +82,6 @@ trait NetworkBase
 
         http_response_code($status);
         header("Location: $url", true, $status);
-        if ($useExit === true)
-            exit();
     }
 
     /**
@@ -102,7 +95,6 @@ trait NetworkBase
      * - [string]   url        - Set redirect fallback URL
      * - [string]   controller - Set redirect fallback application controller class name
      * - [string]   action     - Set redirect fallback application controller action
-     * - [bool]     exit       - Use exit() after send response (default: false)
      *
      * NOTE: 'url' and 'controller + action' are mutually exclusive arguments!
      */
@@ -155,7 +147,6 @@ trait NetworkBase
      *
      * - [int]      status     - Set HTTP status code (default: 200)
      * - [array]    headers    - Set additional response HTTP headers
-     * - [bool]     exit       - Use exit() after send response (default: false)
      */
     protected function send_head(array $options = []) {
         if ($this->_used === true)
@@ -172,10 +163,6 @@ trait NetworkBase
         if (isset($options['headers']) && is_array($options['headers']))
             $headers = $options['headers'];
 
-        $useExit = false;
-        if (isset($options['exit']) && $options['exit'] === true)
-            $useExit = true;
-
         // --- clear all buffers ---
         while (ob_get_level() !== 0)
             ob_end_clean();
@@ -184,9 +171,6 @@ trait NetworkBase
         http_response_code($status);
         foreach ($headers as $key => $value)
             header("$key: $value");
-
-        if ($useExit === true)
-            exit();
     }
 
     /**
@@ -240,8 +224,9 @@ trait NetworkBase
                 $cLength = true;
             header("$key: $value");
         }
+
         if ($cLength === false)
-            header("Content-Length: ".mb_strlen($body));
+            header("Content-Length: ".strlen($body));
 
         header("Content-Type: $contentType; charset=".strtoupper($encoding));
 
@@ -314,7 +299,7 @@ trait NetworkBase
         header("Accept-Ranges: bytes");
 
         if ($cLength === false)
-            header("Content-Length: ".mb_strlen($data));
+            header("Content-Length: ".strlen($data));
 
         header("Content-Type: $contentType");
         header("Content-Transfer-Encoding: binary");
