@@ -281,6 +281,11 @@ class JSBuilder
                 } elseif (substr($line, 0, 8) == "require ") {
                     $line = substr($line, 8, strlen($line));
                     $line = trim($line);
+                    if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js\.php)$/", $line) === 1)
+                        $line = substr($line, 0, strlen($line) - 7);
+                    else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/", $line) === 1)
+                        $line = substr($line, 0, strlen($line) - 3);
+
                     $tmpPath = $this->makeFilePath(dirname($path), $line);
                 } else {
                     continue;
@@ -393,6 +398,11 @@ class JSBuilder
                 } elseif (substr($tmpLine, 0, 8) == "require ") {
                     $tmpLine = substr($tmpLine, 8, strlen($tmpLine));
                     $tmpLine = trim($tmpLine);
+                    if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js\.php)$/", $tmpLine) === 1)
+                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 7);
+                    else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/", $tmpLine) === 1)
+                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 3);
+
                     $tmpPath = $this->makeFilePath(dirname($path), $tmpLine);
                 } else {
                     continue; // ignore comments
