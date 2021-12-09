@@ -349,9 +349,17 @@ class CSSBuilder
             $lastModified = $fLastModified;
 
         // --- check file extension ---
+        $scssReqData = "";
         $fExt = pathinfo($path, PATHINFO_EXTENSION);
-        if (strtolower($fExt) === "scss")
+        if (strtolower($fExt) === "scss") {
+            $tmpReqList = $this->parseRequireList($path);
+            foreach ($tmpReqList as $key => $item) {
+                if (strcmp(basename($key), basename($path)) === 0)
+                    continue; // skip current file
+                $scssReqData .= $this->parseAndMakeRequireList($item);
+            }
             $path = $this->preBuildFile($path);
+        }
 
         $isMLineComment = false;
         $tmpCSS = "";
@@ -426,6 +434,8 @@ class CSSBuilder
             fclose($file);
             $tmpCSS .= "\r\n";
         }
+        if (!empty($scssReqData))
+            $tmpCSS = $scssReqData . $tmpCSS;
         return trim($tmpCSS);
     }
 
