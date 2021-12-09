@@ -356,7 +356,7 @@ class CSSBuilder
             foreach ($tmpReqList as $key => $item) {
                 if (strcmp(basename($key), basename($path)) === 0)
                     continue; // skip current file
-                $scssReqData .= $this->parseAndMakeRequireList($item);
+                $scssReqData .= $this->parseAndMakeRequireList($item, $lastModified, $readFiles);
             }
             $path = $this->preBuildFile($path);
         }
