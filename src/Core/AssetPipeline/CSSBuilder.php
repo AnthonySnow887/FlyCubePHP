@@ -13,6 +13,7 @@ include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 use \FlyCubePHP\Core\Config\Config as Config;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use ScssPhp\ScssPhp\OutputStyle;
 
 class CSSBuilder
 {
@@ -603,6 +604,9 @@ class CSSBuilder
         $this->appendHelperFunctions($compiler);
 
         try {
+            if (Config::instance()->isProduction() === true)
+                $compiler->setOutputStyle(OutputStyle::COMPRESSED);
+
             $tmpCss = $compiler->compileString($tmpCss)->getCss();
         } catch (\ScssPhp\ScssPhp\Exception\SassException $e) {
             unset($compiler);
