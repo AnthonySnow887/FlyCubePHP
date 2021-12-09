@@ -282,6 +282,11 @@ class CSSBuilder
                 } elseif (substr($line, 0, 8) == "require ") {
                     $line = substr($line, 8, strlen($line));
                     $line = trim($line);
+                    if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css)$/", $line) === 1)
+                        $line = substr($line, 0, strlen($line) - 4);
+                    else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $line) === 1)
+                        $line = substr($line, 0, strlen($line) - 5);
+
                     $tmpPath = $this->makeFilePath(dirname($path), $line);
                 } else {
                     continue;
@@ -394,6 +399,11 @@ class CSSBuilder
                 } elseif (substr($tmpLine, 0, 8) == "require ") {
                     $tmpLine = substr($tmpLine, 8, strlen($tmpLine));
                     $tmpLine = trim($tmpLine);
+                    if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css)$/", $tmpLine) === 1)
+                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 4);
+                    else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $tmpLine) === 1)
+                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 5);
+
                     $tmpPath = $this->makeFilePath(dirname($path), $tmpLine);
                 } else {
                     continue; // ignore comments
