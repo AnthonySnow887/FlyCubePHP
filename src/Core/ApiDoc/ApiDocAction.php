@@ -243,6 +243,13 @@ class ApiDocAction
 
         if (!empty($this->_errors)) {
             $md .= "### Errors:\r\n";
+            usort($this->_errors, function($a, $b) {
+                if ($a->httpCode() < $b->httpCode())
+                    return -1;
+                else if ($a->httpCode() > $b->httpCode())
+                    return 1;
+                return 0;
+            });
             foreach ($this->_errors as $err) {
                 $tmpMd = $err->buildMarkdown();
                 $tmpMd = trim(str_replace("\r\n", "\r\n  ", $tmpMd));
