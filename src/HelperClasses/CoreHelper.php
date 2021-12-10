@@ -444,4 +444,13 @@ class CoreHelper
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
         );
     }
+
+    /**
+     * Метод проверки является ли массив списком
+     * @param array $arr
+     * @return bool
+     */
+    static public function arrayIsList(array $arr): bool {
+        return $arr === [] || (array_keys($arr) === range(0, count($arr) - 1));
+    }
 }
