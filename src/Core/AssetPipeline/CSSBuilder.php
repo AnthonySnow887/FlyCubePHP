@@ -8,11 +8,12 @@
 
 namespace FlyCubePHP\Core\AssetPipeline;
 
+include_once 'CSSMinifier.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
 use \FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use ScssPhp\ScssPhp\OutputStyle;
 
 class CSSBuilder
@@ -533,9 +534,45 @@ class CSSBuilder
                 'backtrace-shift' => 3
             ]);
 
-        $fLastModified = -1;
-        $tmpFileData = $this->parseAndMakeRequireList($fPath, $fLastModified);
-        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
+//        $fLastModified = -1;
+//        $tmpFileData = $this->parseAndMakeRequireList($fPath, $fLastModified);
+//        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
+//        if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
+//            throw ErrorAssetPipeline::makeError([
+//                'tag' => 'asset-pipeline',
+//                'message' => "Invalid cache settings for css/scss file!",
+//                'class-name' => __CLASS__,
+//                'class-method' => __FUNCTION__,
+//                'asset-name' => $name,
+//                'backtrace-shift' => 3
+//            ]);
+
+        //-------------
+        $tmpFileData = "";
+        $lastModified = -1;
+        $tmpFList = $this->parseRequireList($fPath);
+        foreach ($tmpFList as $item) {
+            $fExt = pathinfo($item, PATHINFO_EXTENSION);
+            if (strtolower($fExt) === "scss")
+                $item = $this->preBuildFile($item);
+
+            // --- get last modified and check ---
+            $fLastModified = filemtime($item);
+            if ($fLastModified === false)
+                $fLastModified = time();
+            if ($lastModified < $fLastModified)
+                $lastModified = $fLastModified;
+
+            // --- get stylesheet data ---
+            $tmpFileData .= file_get_contents($item) . "\n";
+        }
+        $cssMinifier = new CSSMinifier();
+        $tmpFileData = $cssMinifier->minifyData($tmpFileData);
+        unset($cssMinifier);
+        file_put_contents("/tmp/123-test-321-min-$name.css", $tmpFileData); // TODO delete
+        //-------------
+
+        $cacheSettings = $this->generateCacheSettings($name, $lastModified);
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
