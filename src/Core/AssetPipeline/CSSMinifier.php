@@ -56,6 +56,12 @@ class CSSMinifier
 
     // --- private functions ---
 
+    /**
+     * Обработать строку файла
+     * @param string $line - строка
+     * @param string $outData - выходные данные
+     * @param bool $isComment - является ли коментарием?
+     */
     private function minifyLine(string $line, string &$outData, bool &$isComment) {
         if (empty($line))
             return; // ignore empty line
@@ -109,8 +115,6 @@ class CSSMinifier
 
         // --- build css ---
         if (!empty($line)) {
-            if (strcmp($line[0], ".") === 0)
-                $line = " $line";
             $outData .= $line;
 
             // --- remove empty selector ---

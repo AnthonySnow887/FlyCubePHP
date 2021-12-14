@@ -242,12 +242,15 @@ class CSSBuilder
             return array();
         if (!file_exists($path))
             return array();
-        if (in_array($path, $readFiles))
+        $neededPath = $this->makeFilePathWithoutExt($path);
+        if (in_array($neededPath, $readFiles))
             return array();
+
         $isMLineComment = false;
         $tmpChild = array();
         if ($file = fopen($path, "r")) {
-            $readFiles[] = $path;
+            $readFiles[] = $neededPath;
+            $readFiles[] = $this->makeFilePathWithoutExt($path); // if used pre-build
             $currentLine = 0;
             while (!feof($file)) {
                 $currentLine += 1;
@@ -277,7 +280,7 @@ class CSSBuilder
                     foreach ($tmpCSS as $css) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
                             continue;
-                        $tmpChild = array_unique(array_merge($tmpChild, $this->parseRequireList($css, $readFiles)));
+                        $tmpChild = array_merge($tmpChild, $this->parseRequireList($css, $readFiles));
                     }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
@@ -294,7 +297,7 @@ class CSSBuilder
                 }
                 // --- parse child file ---
                 if (!empty($tmpPath))
-                    $tmpChild = array_unique(array_merge($tmpChild, $this->parseRequireList($tmpPath, $readFiles)));
+                    $tmpChild = array_merge($tmpChild, $this->parseRequireList($tmpPath, $readFiles));
                 else
                     throw ErrorAssetPipeline::makeError([
                         'tag' => 'asset-pipeline',
@@ -319,125 +322,6 @@ class CSSBuilder
         }
         $tmpChild[$tmpChildKey] = $path;
         return $tmpChild;
-    }
-
-    /**
-     * Метод разбора списка зависимостей CSS/SCSS файла и формирование единого файла
-     * @param string $path
-     * @param int $lastModified
-     * @param array $readFiles
-     * @return string
-     * @throws
-     */
-    private function parseAndMakeRequireList(string $path,
-                                             int &$lastModified = -1,
-                                             array &$readFiles = array()): string {
-        if (empty($path))
-            return "";
-        if (is_dir($path))
-            return "";
-        if (!file_exists($path))
-            return "";
-        $neededPath = $this->makeFilePathWithoutExt($path);
-        if (in_array($neededPath, $readFiles))
-            return "";
-
-        // --- get last modified and check ---
-        $fLastModified = filemtime($path);
-        if ($fLastModified === false)
-            $fLastModified = time();
-        if ($lastModified < $fLastModified)
-            $lastModified = $fLastModified;
-
-        // --- check file extension ---
-        $scssReqData = "";
-        $fExt = pathinfo($path, PATHINFO_EXTENSION);
-        if (strtolower($fExt) === "scss") {
-            $tmpReqList = $this->parseRequireList($path);
-            foreach ($tmpReqList as $key => $item) {
-                if (strcmp(basename($key), basename($path)) === 0)
-                    continue; // skip current file
-                $scssReqData .= $this->parseAndMakeRequireList($item, $lastModified, $readFiles);
-            }
-            $path = $this->preBuildFile($path);
-        }
-
-        $isMLineComment = false;
-        $tmpCSS = "";
-        if ($file = fopen($path, "r")) {
-            $readFiles[] = $neededPath;
-            $readFiles[] = $this->makeFilePathWithoutExt($path); // if used pre-build
-            $currentLine = 0;
-            while (!feof($file)) {
-                $currentLine += 1;
-                $line = fgets($file);
-                $tmpLine = trim($line);
-                if (empty($tmpLine))
-                    continue; // ignore empty line
-                $isMLineCommentEnd = false;
-                if (substr($tmpLine, 0, 2) === "/*")
-                    $isMLineComment = true;
-                if (substr($tmpLine, strlen($tmpLine) - 2, 2) === "*/") {
-                    $isMLineComment = false;
-                    $isMLineCommentEnd = true;
-                }
-                $isComment = false;
-                if (substr($tmpLine, 0, 2) === "//")
-                    $isComment = true;
-                if (!$isComment && !$isMLineComment && !$isMLineCommentEnd) {
-                    $tmpCSS .= $line; // add in css file
-                    continue;
-                }
-                $pos = strpos($tmpLine, "=");
-                if ($pos === false)
-                    continue; // ignore comments
-                $tmpLine = substr($tmpLine, $pos + 1, strlen($tmpLine));
-                $tmpLine = trim($tmpLine);
-                $tmpPath = "";
-                if (substr($tmpLine, 0, 13) == "require_tree ") {
-                    $tmpLine = substr($tmpLine, 13, strlen($tmpLine));
-                    $tmpLine = trim($tmpLine);
-                    $tmpPath = $this->makeDirPath(dirname($path), $tmpLine);
-                    $tmpCssLst = CoreHelper::scanDir($tmpPath, true);
-                    foreach ($tmpCssLst as $css) {
-                        if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
-                            continue;
-                        $tmpCSS .= $this->parseAndMakeRequireList($css, $lastModified, $readFiles);
-                    }
-                    continue; // ignore require_tree folder
-                } elseif (substr($tmpLine, 0, 8) == "require ") {
-                    $tmpLine = substr($tmpLine, 8, strlen($tmpLine));
-                    $tmpLine = trim($tmpLine);
-                    if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css)$/", $tmpLine) === 1)
-                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 4);
-                    else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $tmpLine) === 1)
-                        $tmpLine = substr($tmpLine, 0, strlen($tmpLine) - 5);
-
-                    $tmpPath = $this->makeFilePath(dirname($path), $tmpLine);
-                } else {
-                    continue; // ignore comments
-                }
-                // --- parse child file ---
-                if (!empty($tmpPath))
-                    $tmpCSS .= $this->parseAndMakeRequireList($tmpPath, $lastModified, $readFiles);
-                else
-                    throw ErrorAssetPipeline::makeError([
-                        'tag' => 'asset-pipeline',
-                        'message' => "Not found needed css/scss file: $tmpLine",
-                        'class-name' => __CLASS__,
-                        'class-method' => __FUNCTION__,
-                        'asset-name' => $path,
-                        'file' => $path,
-                        'line' => $currentLine,
-                        'has-asset-code' => true
-                    ]);
-            }
-            fclose($file);
-            $tmpCSS .= "\r\n";
-        }
-        if (!empty($scssReqData))
-            $tmpCSS = $scssReqData . $tmpCSS;
-        return trim($tmpCSS);
     }
 
     /**
@@ -534,20 +418,6 @@ class CSSBuilder
                 'backtrace-shift' => 3
             ]);
 
-//        $fLastModified = -1;
-//        $tmpFileData = $this->parseAndMakeRequireList($fPath, $fLastModified);
-//        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
-//        if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
-//            throw ErrorAssetPipeline::makeError([
-//                'tag' => 'asset-pipeline',
-//                'message' => "Invalid cache settings for css/scss file!",
-//                'class-name' => __CLASS__,
-//                'class-method' => __FUNCTION__,
-//                'asset-name' => $name,
-//                'backtrace-shift' => 3
-//            ]);
-
-        //-------------
         $tmpFileData = "";
         $lastModified = -1;
         $tmpFList = $this->parseRequireList($fPath);
@@ -566,11 +436,11 @@ class CSSBuilder
             // --- get stylesheet data ---
             $tmpFileData .= file_get_contents($item) . "\n";
         }
+
+        // --- build min.css ---
         $cssMinifier = new CSSMinifier();
-        $tmpFileData = $cssMinifier->minifyData($tmpFileData);
+        $tmpFileData = $cssMinifier->minifyData(trim($tmpFileData));
         unset($cssMinifier);
-        file_put_contents("/tmp/123-test-321-min-$name.css", $tmpFileData); // TODO delete
-        //-------------
 
         $cacheSettings = $this->generateCacheSettings($name, $lastModified);
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
@@ -642,15 +512,8 @@ class CSSBuilder
             return "";
         if (!file_exists($path))
             return "";
-        $tmpCss = "";
-        if ($file = fopen($path, "r")) {
-            $readFiles[] = $path;
-            while (!feof($file)) {
-                $line = fgets($file);
-                $tmpCss .= $line;
-            }
-            fclose($file);
-        }
+        // --- load file data ---
+        $tmpCss = file_get_contents($path);
 
         // --- compile scss ---
         $compiler = new \ScssPhp\ScssPhp\Compiler();
