@@ -445,7 +445,7 @@ class JSBuilder
         } catch (\Exception $e) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Make cache min.js file failed! Error: " . $e->getMessage(),
+                'message' => "Build min.js file failed! Error: " . $e->getMessage(),
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name
@@ -456,7 +456,7 @@ class JSBuilder
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Invalid cache settings for css/scss file!",
+                'message' => "Invalid cache settings for js file! Name: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,

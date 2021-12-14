@@ -411,7 +411,7 @@ class CSSBuilder
         if (empty($fPath))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Not found needed css/scss file!",
+                'message' => "Not found needed css/scss file: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
@@ -446,7 +446,7 @@ class CSSBuilder
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Invalid cache settings for css/scss file!",
+                'message' => "Invalid cache settings for css/scss file! Name: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
@@ -456,7 +456,7 @@ class CSSBuilder
         if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $tmpFileData))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Write cache css/scss file failed!",
+                'message' => "Write cache css/scss file failed! Name: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
