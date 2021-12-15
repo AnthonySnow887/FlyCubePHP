@@ -1,3 +1,35 @@
+# 1.4.0 () TODO: Set release date!
+
+ * Add required PHP module: zlib
+
+ * Add ApiDoc:
+   * load api-doc files from json
+   * build support in markdown
+   * support for caching compiled markdown api files
+   * update fly_cube_php bin (add build api-doc json for api controllers)
+
+ * Update AssetPipeline:
+   * add check http header 'If-None-Match'
+   * add assets compression: 
+     * gzip (default)
+     * deflate
+   * add check url prefix 'assets/' for input request
+   * update CSSBuilder:
+     * enable scss minifier in production 
+     * add check file ext and remove in '= require ...'
+     * fix lost '= require ...' sections in production mode in scss files
+     * add css minifier and it is enabled in production mode
+   * update JSBuilder:
+     * add check file ext and remove in '= require ...'
+   * NOTE: with enabled compression of compiled assets and checking ETag in production mode, 
+     the speed of loading web pages is increased by 25%.
+
+ * Fix fly_cube_php bin (fix output if create/copy/delete files and dirs failed)
+ * Fix Controllers/Extensions/NetworkBase (fix invalid data size for send -> used strlen)
+ * Update Controllers/Helpers/AssetTagHelper (update link_to [add params])
+ * Update HelperClasses/CoreHelper (add arrayIsList)
+ * Code refactoring
+
 # 1.3.0 (01.12.2021)
 
  * Update fly_cube_php bin file:

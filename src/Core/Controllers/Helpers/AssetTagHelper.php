@@ -386,13 +386,14 @@ class AssetTagHelper extends BaseControllerHelper
      * ==== Options
      *
      * - controller     - Set controller name
-     * - action         - Set controller actiona name
+     * - action         - Set controller action name
      * - href           - Set link URL
      * - method         - Set link HTTP method
      * - class          - Set link class
      * - id             - Set link ID
      * - target         - Set link target
      * - rel            - Set link rel
+     * - params         - Set additional URL params
      *
      * NOTE: 'href' and 'controller + action' are mutually exclusive arguments!
      *
