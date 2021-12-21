@@ -25,12 +25,16 @@ Currently FlyCubePHP supports
     = require ...
     = require_tree ...
     ```
-  - creation of Sass Stylesheets files with automatic assembly in CSS and processing of directives:
+  - creation of Sass Stylesheets files with automatic assembly in CSS (or *.min.css in production mode) and processing of directives:
     ```bash
     = require ...
     = require_tree ...
     ```
-  - access to project resources (images, files, etc.) using the Asset Pipeline.
+  - creating api dock files for controllers based on json;
+  - access to project resources (images, files, etc.) using the Asset Pipeline;
+  - to speed up the loading of resources, implemented:
+    - automatic compression of assets using gzip or deflate;
+    - automatic check of ETag header.
 - creation of plugins that extend or change the functionality of your application;
 - creation of database migrations and a wide range of tools for working with migrations;
 - creation of extensions to the FlyCubePHP kernel allowing:
@@ -189,6 +193,7 @@ Additional required PHP modules
 - php7-xmlreader
 - php7-xmlwriter
 - php7-zip
+- php7-zlib
 
 Operating systems tested
 ------------------------

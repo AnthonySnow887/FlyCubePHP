@@ -327,6 +327,33 @@ class CoreHelper
     }
 
     /**
+     * Удалить экранирование текста
+     * @param string $str
+     * @param string $quote
+     * @return string
+     */
+    static public function removeQuote(string $str, string $quote = "\""): string {
+        if (empty($str))
+            return $str;
+        if (strcmp($str[0], $quote) === 0) {
+            if (strlen($str) > 1) {
+                $str = ltrim($str, $quote);
+                $str = CoreHelper::removeQuote($str, $quote);
+            } else {
+                $str = "";
+            }
+        } else if (strcmp($str[strlen($str) - 1], $quote) === 0) {
+            if (strlen($str) > 1) {
+                $str = substr($str, 0, -1);
+                $str = CoreHelper::removeQuote($str, $quote);
+            } else {
+                $str = "";
+            }
+        }
+        return $str;
+    }
+
+    /**
      * Получить валидную строку адреса (с App-Url-Prefix, если задан)
      * @param string $uri - строка URL
      * @return string
@@ -416,5 +443,14 @@ class CoreHelper
             // 48 bits for "node"
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
         );
+    }
+
+    /**
+     * Метод проверки является ли массив списком
+     * @param array $arr
+     * @return bool
+     */
+    static public function arrayIsList(array $arr): bool {
+        return $arr === [] || (array_keys($arr) === range(0, count($arr) - 1));
     }
 }

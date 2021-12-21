@@ -572,9 +572,11 @@ function recursiveCopyDir(string $src, string $dst, bool $showOutput = false) {
             } else {
                 $pathFrom = buildPath($src, $file);
                 $pathTo = buildPath($dst, $file);
-                copy($pathFrom, $pathTo);
+                $state = "[Copy]";
+                if (copy($pathFrom, $pathTo) === false)
+                    $state = "[Copy Failed]";
                 if ($showOutput === true)
-                    echo "[Copy] $pathFrom ==> $pathTo\r\n";
+                    echo "$state $pathFrom ==> $pathTo\r\n";
             }
         }
     }
@@ -595,15 +597,19 @@ function recursiveDeleteDir(string $dir, bool $showOutput = false) {
                     recursiveDeleteDir(buildPath($dir, $object), $showOutput);
                 } else {
                     $path = buildPath($dir, $object);
-                    unlink($path);
+                    $state = "[Delete]";
+                    if (unlink($path) === false)
+                        $state = "[Delete Failed]";
                     if ($showOutput === true)
-                        echo "[Delete] $path\r\n";
+                        echo "$state $path\r\n";
                 }
             }
         }
-        rmdir($dir);
+        $state = "[Delete]";
+        if (rmdir($dir) === false)
+            $state = "[Delete Failed]";
         if ($showOutput === true)
-            echo "[Delete] $dir\r\n";
+            echo "$state $dir\r\n";
     }
 }
 
@@ -621,9 +627,11 @@ function deleteDirFiles(string $dir, bool $showOutput = false) {
                     continue;
                 } else {
                     $path = buildPath($dir, $object);
-                    unlink($path);
+                    $state = "[Delete]";
+                    if (unlink($path) === false)
+                        $state = "[Delete Failed]";
                     if ($showOutput === true)
-                        echo "[Delete] $path\r\n";
+                        echo "$state $path\r\n";
                 }
             }
         }
@@ -1664,6 +1672,40 @@ function createController($name, $actions, bool $isAPI = false) {
         }
     }
 
+    // --- make api controller api-doc file ---
+    if ($isAPI === true) {
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc.json.tmpl";
+        $tmplActData = "";
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+                $tmplParams = [];
+                $tmplParams['ACTION'] = $act;
+                $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+                $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+                if (!empty($tmplActData))
+                    $tmplActData .= ",\n\n";
+                $tmplActData .= "    $tmpData";
+            }
+        } else {
+            $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+            $tmplParams = [];
+            $tmplParams['ACTION'] = "[CONTROLLER ACTION NAME]";
+            $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+            $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+            $tmplActData = $tmpData;
+        }
+
+        $resultFile = buildPath("doc", "api", $name."Controller.json");
+        $tmplParams = [];
+        $tmplParams['NAME'] = $name;
+        $tmplParams['ACTIONS'] = trim($tmplActData);
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+    }
+
     // --- append routes ---
     if (!empty($actions)) {
         $tmpRoutes = "\n";
@@ -2046,7 +2088,39 @@ function createPluginController($pluginName, $name, $actions, bool $isAPI = fals
         return;
     }
 
-    // TODO make api controller api-doc file
+    // --- make api controller api-doc file ---
+    if ($isAPI === true) {
+        $tmplFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc.json.tmpl";
+        $tmplActData = "";
+        if (!empty($actions)) {
+            foreach ($actions as $act) {
+                $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+                $tmplParams = [];
+                $tmplParams['ACTION'] = $act;
+                $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+                $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+                if (!empty($tmplActData))
+                    $tmplActData .= ",\n\n";
+                $tmplActData .= "    $tmpData";
+            }
+        } else {
+            $tmplActFile = __DIR__ . "/../vendor/FlyCubePHP/templates/controller_api_doc_action.json.tmpl";
+            $tmplParams = [];
+            $tmplParams['ACTION'] = "[CONTROLLER ACTION NAME]";
+            $tmpData = \FlyCubePHP\TemplateBuilder\TemplateBuilder::parseTemplate($tmplActFile, $tmplParams);
+            $tmpData = trim(str_replace("\n", "\n    ", $tmpData));
+            $tmplActData = $tmpData;
+        }
+
+        $resultFile = buildPath($tmpPath, "doc", "api", $name."Controller.json");
+        $tmplParams = [];
+        $tmplParams['NAME'] = $name;
+        $tmplParams['ACTIONS'] = trim($tmplActData);
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+            echo "ERROR: Copy template failed!\r\n";
+            return;
+        }
+    }
 
     if ($isAPI === false) {
         // --- create controller helper ---

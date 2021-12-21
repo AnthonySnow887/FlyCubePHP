@@ -31,6 +31,9 @@ class AssetPipeline
     private $_viewDirs = array();
     private $_cacheList = array();
 
+    private $_useCompression = false;
+    private $_compressionType = "";
+
     const CORE_JS_DIR       = __DIR__."/../../assets/javascripts/";
     const CORE_CSS_DIR      = __DIR__."/../../assets/stylesheets/";
     const CORE_IMAGES_DIR   = __DIR__."/../../assets/images/";
@@ -56,6 +59,18 @@ class AssetPipeline
 
         $defVal = !Config::instance()->isProduction();
         $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
+
+        $defVal = Config::instance()->isProduction();
+        $this->_useCompression = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSETS_COMPRESSION, $defVal));
+        $this->_compressionType = \FlyCubePHP\configValue(Config::TAG_ASSETS_COMPRESSION_TYPE, "gzip");
+        if (strcmp($this->_compressionType, "gzip") !== 0
+            && strcmp($this->_compressionType, "deflate") !== 0)
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Invalid assets compression type (value: \"".$this->_compressionType."\")!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
 
         // --- create js-builder ---
         $cacheDir = CoreHelper::buildPath(CoreHelper::rootDir(), "tmp", "cache", "FlyCubePHP", "js_builder");
@@ -172,11 +187,11 @@ class AssetPipeline
         if (is_array($tmpPaths)) {
             $tmpAssetPaths = array();
             foreach ($tmpPaths as $key => $value)
-                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key));
+                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression);
 
             return $tmpAssetPaths;
         }
-        return $this->buildAssetPath($tmpPaths);
+        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
     }
 
     /**
@@ -213,11 +228,11 @@ class AssetPipeline
         if (is_array($tmpPaths)) {
             $tmpAssetPaths = array();
             foreach ($tmpPaths as $key => $value)
-                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key));
+                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression);
 
             return $tmpAssetPaths;
         }
-        return $this->buildAssetPath($tmpPaths);
+        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
     }
 
     /**
@@ -297,13 +312,18 @@ class AssetPipeline
             return;
         if (strcmp($path[strlen($path) - 1], "/") === 0)
             return;
+        if (strpos($path, "assets/") !== 0)
+            return;
         $fExt = pathinfo($path, PATHINFO_EXTENSION);
         if (empty(strtolower($fExt)))
             return;
         if (array_key_exists($path, $this->_cacheList)) {
-            $realPath = $this->_cacheList[$path];
-            $realPath = CoreHelper::buildPath(CoreHelper::rootDir(), $realPath);
-            $this->sendAsset($path, $realPath);
+            $realPath = $this->_cacheList[$path]['path'] ?? "";
+            $compressedRealPath = $this->_cacheList[$path][$this->_compressionType] ?? "";
+            $eTag = $this->_cacheList[$path]['etag'] ?? "";
+            if (empty($realPath) || empty($eTag))
+                http_response_code(500);
+            $this->sendAsset($realPath, $compressedRealPath, $eTag);
         }
         http_response_code(404);
         exit;
@@ -323,7 +343,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
         if (!file_exists($fPath)) {
             $this->updateCacheList();
             return;
@@ -346,7 +366,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
         $fData = json_encode($this->_cacheList);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
@@ -365,11 +385,13 @@ class AssetPipeline
      * "Собрать" путь к asset-у
      * @param string $path - полный путь до файла
      * @param string $childDir - дочерний подкаталог
+     * @param bool $useCompression - использовать сжатие
      * @return string
      * @throws
      */
     private function buildAssetPath(string $path,
-                                    string $childDir = ""): string {
+                                    string $childDir = "",
+                                    bool $useCompression = false): string {
         if (empty($path))
             return "";
         $assetPath = "assets/";
@@ -382,7 +404,7 @@ class AssetPipeline
         $fExt = pathinfo($path, PATHINFO_EXTENSION);
         $lastModified = filemtime($path);
         $tmpName = CoreHelper::fileName($tmpName, true);
-        $hash = hash('sha256', $tmpName . strval($lastModified));
+        $hash = hash('sha256', $tmpName . $lastModified);
         $tmpName .= "-".$hash.".".$fExt;
 
         if (empty($childDir)) {
@@ -395,18 +417,52 @@ class AssetPipeline
         if (array_key_exists($assetPath, $this->_cacheList))
             return RouteCollector::makeValidUrl($assetPath);
 
+        // --- use compression ---
+        $compressFilePath = "";
+        if ($useCompression === true) {
+            // --- check ---
+            if (!\extension_loaded('zlib'))
+                trigger_error("\"ZLib\" extension not installed! Use is not possible!", E_USER_ERROR);
+
+            // --- build ---
+            $cacheDir = CoreHelper::splicePathFirst(CoreHelper::splicePathLast(AssetPipeline::SETTINGS_DIR));
+            $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), $cacheDir, $hash[0].$hash[1]);
+            if (strcmp($this->_compressionType, "gzip") === 0
+                && CoreHelper::makeDir($fDir, 0777, true)) {
+                // --- build gzip ---
+                $compressFilePath = CoreHelper::buildPath($fDir, basename($path.".gz"));
+                $compressData = gzencode(file_get_contents($path), 6);
+                $tmpFile = tempnam($fDir, basename($compressFilePath));
+                if (false !== @file_put_contents($tmpFile, $compressData) && @rename($tmpFile, $compressFilePath))
+                    @chmod($compressFilePath, 0666 & ~umask());
+            } else if (strcmp($this->_compressionType, "deflate") === 0
+                       && CoreHelper::makeDir($fDir, 0777, true)) {
+                // --- build deflate ---
+                $compressFilePath = CoreHelper::buildPath($fDir, basename($path.".zz"));
+                $compressData = gzdeflate(file_get_contents($path), 6);
+                $tmpFile = tempnam($fDir, basename($compressFilePath));
+                if (false !== @file_put_contents($tmpFile, $compressData) && @rename($tmpFile, $compressFilePath))
+                    @chmod($compressFilePath, 0666 & ~umask());
+            }
+        }
+
         // --- update cache settings ---
-        $this->_cacheList[$assetPath] = $path;
+        $this->_cacheList[$assetPath] =  [
+            'path' => realpath($path),
+            'etag' => hash('sha256', basename($path) . $lastModified),
+            $this->_compressionType => $compressFilePath
+        ];
         $this->updateCacheList();
         return RouteCollector::makeValidUrl($assetPath);
     }
 
     /**
      * Отправить файл asset-а клиенту
-     * @param string $path - запрашиваемый путь
      * @param string $realPath - реальный путь до файла
+     * @param string $compressedRealPath
+     * @param string $eTag
      */
-    private function sendAsset(string $path, string $realPath) {
+    private function sendAsset(string $realPath, string $compressedRealPath, string $eTag) {
         $fExt = pathinfo($realPath, PATHINFO_EXTENSION);
         $fType = $fExt;
         if (strcmp($fType, "js") === 0)
@@ -433,23 +489,41 @@ class AssetPipeline
                 ob_end_clean();
 
             $lastModified = filemtime($realPath);
-            $hash = hash('sha256', basename($path) . strval($lastModified));
+
+            // --- check If-None-Match ---
+            $ifNoneMatch = CoreHelper::removeQuote(trim(RouteCollector::currentRouteHeader('If-None-Match')));
+            $s = strcmp($ifNoneMatch, $eTag);
+            if ($s === 0) {
+                header($_SERVER["SERVER_PROTOCOL"] . " 304 Not Modified");
+                exit;
+            }
+
+            // --- check Accept-Encoding ---
+            $contentEncodingHeader = "";
+            if ($this->_useCompression === true && strpos($cType, "text/") !== false) {
+                $acceptEncoding = trim(RouteCollector::currentRouteHeader('Accept-Encoding'));
+                if (!empty($acceptEncoding)
+                    && strpos($acceptEncoding, $this->_compressionType) !== false
+                    && file_exists($compressedRealPath)
+                    && is_readable($compressedRealPath)) {
+                    $contentEncodingHeader = $this->_compressionType;
+                    $realPath = $compressedRealPath;
+                }
+            }
+
+            // --- send data ---
             header($_SERVER["SERVER_PROTOCOL"] . " 200 OK");
             header("Accept-Ranges: bytes");
             header("Content-Length: ".filesize($realPath));
             header("Content-Type: $cType");
             header("Date: ".gmdate('D, d M Y H:i:s', time())." GMT");
-            header("ETag: $hash");
+            header("ETag: \"$eTag\"");
             header("Last-Modified: ".gmdate('D, d M Y H:i:s', $lastModified)." GMT");
-            readfile($realPath);
+            header("Connection: close");
+            if (!empty($contentEncodingHeader))
+                header("Content-Encoding: $contentEncodingHeader");
 
-//            header($_SERVER["SERVER_PROTOCOL"] . " 200 OK");
-//            header("Cache-Control: public"); // needed for internet explorer
-//            header("Content-Type: application/$fExt");
-//            header("Content-Transfer-Encoding: Binary");
-//            header("Content-Length:".filesize($path));
-//            header("Content-Disposition: attachment; filename=$name");
-//            readfile($path);
+            readfile($realPath);
             exit;
         } else {
             http_response_code(404);

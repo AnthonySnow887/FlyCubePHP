@@ -21,6 +21,7 @@ use \FlyCubePHP\Core\Error\Error as Error;
 use \FlyCubePHP\Core\Logger\Logger as Logger;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
+use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
 
 class CMState extends \FlyCubePHP\HelperClasses\Enum {
     const NOT_LOADED    = 0; # не загружен
@@ -119,8 +120,7 @@ class ComponentsManager
             $ctrlPath = $controller;
             $controllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
         }
-        $controllers = array_merge($controllers, $this->pluginsControllers());
-        return $controllers;
+        return array_merge($controllers, $this->pluginsControllers());
     }
 
     /**
@@ -145,10 +145,6 @@ class ComponentsManager
      * @throws
      */
     public function appendPlugin(BaseComponent &$plugin) {
-        if (!isset($plugin))
-            trigger_error("[ComponentsManager] Append plugin failed! Plugin is NULL!", E_USER_ERROR);
-        if (!$plugin instanceof BaseComponent)
-            trigger_error("[ComponentsManager] Append plugin failed! Invalid plugin class!", E_USER_ERROR);
         if (empty($plugin->name()))
             trigger_error("[ComponentsManager] Append plugin failed! Invalid plugin name (empty)!", E_USER_ERROR);
         if (array_key_exists($plugin->name(), $this->_plugins)) {
@@ -356,7 +352,7 @@ class ComponentsManager
         }
         unset($tree);
 
-        // Requared dependency
+        // Required dependency
         foreach ($plugin->dependence() as $spec) {
             if ($spec->type() != CDType::REQUIRED)
                 continue;
@@ -529,6 +525,13 @@ class ComponentsManager
                                                     "lib", "assets", "images");
                 AssetPipeline::instance()->appendImageDir($pl_image_dir);
 
+                // --- load plugin api-doc files ---
+                $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                                                        ComponentsManager::PLUGINS_DIR,
+                                                        $plugin->directory(),
+                                                        "doc", "api");
+                ApiDoc::instance()->appendApiDocDir($pl_api_doc_dir);
+
                 // TODO load plugin help files...
             }
         } catch (\Exception $e) {
@@ -564,7 +567,7 @@ class ComponentsManager
             $tree->setError("Not found plugin object in tree [Plugin: " . $plugin->name() . " (ver. " . $plugin->version() . ")]!");
             return false;
         }
-        // Requared dependency
+        // Required dependency
         foreach ($plugin->dependence() as $spec) {
             if ($spec->type() != CDType::REQUIRED)
                 continue;

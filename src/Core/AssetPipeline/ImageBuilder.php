@@ -83,7 +83,6 @@ class ImageBuilder
             'asset-name' => $name,
             'backtrace-shift' => 2
         ]);
-        return "";
     }
 
     /**
@@ -91,13 +90,11 @@ class ImageBuilder
      * @param string $dir
      */
     public function loadImages(string $dir) {
-        if (empty($dir))
+        if (empty($dir)
+            || !is_dir($dir)
+            || in_array($dir, $this->_imageDirs))
             return;
-        if (!is_dir($dir))
-            return;
-        if (!in_array($dir, $this->_imageDirs))
-            $this->_imageDirs[] = $dir;
-
+        $this->_imageDirs[] = $dir;
         $tmpImages = CoreHelper::scanDir($dir, true);
         foreach ($tmpImages as $img) {
             $tmpName = CoreHelper::buildAppPath($img);
