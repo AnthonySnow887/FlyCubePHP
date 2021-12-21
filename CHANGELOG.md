@@ -1,4 +1,4 @@
-# 1.4.0 () TODO: Set release date!
+# 1.4.0 (21.12.2021)
 
  * Add required PHP module: zlib
 

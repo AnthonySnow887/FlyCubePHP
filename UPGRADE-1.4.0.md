@@ -52,6 +52,10 @@ Application config
    #  - enable compression             - default false (enable/disable assets compression)
    #  - compression type               - default gzip (set assets compression type)
    #
+   # Supported compression types:
+   #  - gzip
+   #  - deflate
+   #
    #FLY_CUBE_PHP_ENABLE_ASSETS_COMPRESSION: true
    #FLY_CUBE_PHP_ASSETS_COMPRESSION_TYPE: gzip
    ```
