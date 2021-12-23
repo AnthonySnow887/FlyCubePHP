@@ -15,9 +15,9 @@ Listen 8080
     # Set your server name
     #ServerName my-server.com
 
-    Alias /kuf-future "/home/anton/Documents/Projects/GIT_Projects/KUF/kuf/PhoenixWebFuture/kuf-future"
+    Alias /ws-future "/opt/ws-future"
 
-    <Location /kuf-future/cable >
+    <Location /ws-future/cable >
         ProxyPass "ws://127.0.0.1:8000/cable"
         ProxyPassReverse "ws://127.0.0.1:8000/cable"
         RewriteEngine on
@@ -27,13 +27,13 @@ Listen 8080
     </Location>
 
 
-    <Directory "/home/anton/Documents/Projects/GIT_Projects/KUF/kuf/PhoenixWebFuture/kuf-future">
+    <Directory "/opt/ws-future">
       Options Indexes FollowSymLinks
       Require all granted
 
       # Redirect all requests to index.php
       RewriteEngine On
-      RewriteBase /kuf-future
+      RewriteBase /ws-future
       RewriteRule ^(.+)$ index.php [QSA,L]
    </Directory>
    
