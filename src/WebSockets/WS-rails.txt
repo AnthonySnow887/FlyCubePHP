@@ -1,0 +1,104 @@
+############### APACHE Conf #########################################
+
+# ----------------------------------------------------------------
+# NOTE: This is config for rpm-base systems (CentOS, OpenSUSE...)
+# ----------------------------------------------------------------
+
+# --- Proxy mode (NOTE: Web-sockets working) ---
+LoadModule proxy_module /usr/lib64/apache2/mod_proxy.so
+LoadModule proxy_http_module /usr/lib64/apache2/mod_proxy_http.so
+LoadModule proxy_wstunnel_module /usr/lib64/apache2/mod_proxy_wstunnel.so
+
+# --- For listen eny port ---
+Listen 8080
+<VirtualHost *:8080>
+    # Set your server name
+    #ServerName my-server.com
+
+    Alias /kuf-future "/home/anton/Documents/Projects/GIT_Projects/KUF/kuf/PhoenixWebFuture/kuf-future"
+
+    <Location /kuf-future/cable >
+        ProxyPass "ws://127.0.0.1:8000/cable"
+        ProxyPassReverse "ws://127.0.0.1:8000/cable"
+        RewriteEngine on
+        RewriteCond %{HTTP:Upgrade} websocket [NC]
+        RewriteCond %{HTTP:Connection} upgrade [NC]
+        RewriteRule ^/?(.*) "ws://127.0.0.1:8000/cable" [P,L]
+    </Location>
+
+
+    <Directory "/home/anton/Documents/Projects/GIT_Projects/KUF/kuf/PhoenixWebFuture/kuf-future">
+      Options Indexes FollowSymLinks
+      Require all granted
+
+      # Redirect all requests to index.php
+      RewriteEngine On
+      RewriteBase /kuf-future
+      RewriteRule ^(.+)$ index.php [QSA,L]
+   </Directory>
+   
+</VirtualHost>
+
+
+############### JS Example #########################################
+
+App.cable.subscriptions.create( {
+        channel: 'EventsChannel',
+        stream_name: 'test-channel'
+    }, {
+        connected: function () {
+            console.log("EventsChannel::test-channel CONNECTED");
+        },
+        disconnected: function () {
+            console.log("EventsChannel::test-channel DISCONNECTED");
+        },
+        received: function (data) {
+            console.log("EventsChannel::test-channel; DATA: ", data);
+        }
+    });
+
+
+############### Messages #########################################
+
+CLIENT-SEND:
+
+{
+  "command": "subscribe",
+  "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"storage_data_events\"}"
+}
+
+
+CLIENT-RECEIVED:
+
+1. after in connect:
+
+{
+  "type":"welcome"
+}
+
+
+2. after input "subscribe" (see SEND):
+
+{
+  "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"storage_data_events\"}",
+  "type": "confirm_subscription" // <--- or "reject_subscription"
+}
+
+
+3. after send "confirm_subscription" every second:
+
+{
+  "type":"ping",
+  "message":1640255398 // <-- this is current DateTime UTC
+}
+
+
+4. messages (данные высылаются только конкретному адресату по имени канала):
+
+{
+  "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"storage_data_events\"}",
+  "message": {
+    "command": "UPDATE",
+    "guid": "2d0480b8-d5d7-41fc-9a78-39105fc80cd1"
+  }
+}

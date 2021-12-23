@@ -84,7 +84,7 @@ class WSWorker
                             $this->clients[$clientId] = $client;
                             $this->_onOpen($clientId);
 
-                            var_dump($this->_read($clientId));
+//                            var_dump($this->_read($clientId));
                         }
                     } /*elseif ($this->_service == $client) { //the local socket got a request from a new client
                         if ((count($this->clients) + count($this->services) < self::MAX_SOCKETS) && ($client = @stream_socket_accept($this->_service, 0))) {
@@ -278,7 +278,7 @@ class WSWorker
         }
 
         $headers = explode("\r\n", $this->_read[$connectionId]);
-        var_dump($headers); // TODO ...
+//        var_dump($headers); // TODO ...
         $info = array();
 
         foreach ($headers as $header) {
@@ -294,14 +294,18 @@ class WSWorker
 
         $this->_read[$connectionId] = '';
 
-//        var_dump($info); // TODO ...
+        var_dump($info); // TODO ...
+
+        // TODO exec connection handler for check incoming connection
+        // TODO if 'reject' -> close connection
 
         //send a header according to the protocol websocket
         $SecWebSocketAccept = base64_encode(pack('H*', sha1($match[1] . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
         $upgrade = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
             "Upgrade: websocket\r\n" .
             "Connection: Upgrade\r\n" .
-            "Sec-WebSocket-Accept: {$SecWebSocketAccept}\r\n\r\n";
+            "Sec-WebSocket-Accept: {$SecWebSocketAccept}\r\n" .
+            "Sec-WebSocket-Protocol: actioncable-v1-json\r\n\r\n";
 
         $this->_write($connectionId, $upgrade);
         unset($this->_handshakes[$connectionId]);
@@ -461,9 +465,27 @@ class WSWorker
         return intval($connection);
     }
 
-    protected function onOpen($connectionId, $info) {}
+    protected function onOpen($connectionId, $info) {
+        $this->sendToClient($connectionId, "{\"type\":\"welcome\"}");
+    }
     protected function onClose($connectionId) {}
-    protected function onMessage($connectionId, $packet, $type) {}
+    protected function onMessage($connectionId, $packet, $type) {
+        var_dump($connectionId);
+        var_dump($packet);
+        var_dump($type);
+        $data = json_decode($packet, true);
+        if (isset($data['command']) && $data['command'] == 'subscribe') {
+            // TODO exec channel handler and send 'confirm_subscription' or 'reject_subscription'
+            // TODO if 'reject_subscription' -> close connection
+            $sData = [
+                'identifier' => $data['identifier'],
+                'type' => 'confirm_subscription'
+            ];
+            $this->sendToClient($connectionId, json_encode($sData));
+
+            // TODO start timer for send every 1 sec ping to client
+        }
+    }
 
     protected function onServiceMessage($connectionId, $data) {}
     protected function onServiceOpen($connectionId) {}
