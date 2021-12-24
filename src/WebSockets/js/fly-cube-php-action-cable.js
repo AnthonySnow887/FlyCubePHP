@@ -1,3 +1,9 @@
+/*
+fly-cube-php-action-cable based on rails 5.2 action_cable.js.
+https://github.com/rails/rails/blob/main/actioncable/app/assets/javascripts/
+Released under the MIT license
+*/
+
 (function() {
   var context = this;
 
@@ -35,7 +41,7 @@
           if (url && !/^wss?:/i.test(url)) {
             a = document.createElement("a");
             a.href = url;
-            a.href = a.href;
+            a.href = a.href; // TODO delete???
             a.protocol = a.protocol.replace("http", "ws");
             return a.href;
           } else {

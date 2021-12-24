@@ -1,45 +1,51 @@
 <?php
 
+/*
+FlyCubePHP WebSockets based on the code and idea described in morozovsk/websocket.
+https://github.com/morozovsk/websocket
+Released under the MIT license
+*/
+
 namespace FlyCubePHP\WebSockets\Server;
 
 class WSWorker
 {
-    const SOCKET_BUFFER_SIZE = 1024;
-    const MAX_SOCKET_BUFFER_SIZE = 10240;
-    const MAX_SOCKETS = 1000;
-    const SOCKET_MESSAGE_DELIMITER = "\n";
+    const SOCKET_BUFFER_SIZE        = 1024;
+    const MAX_SOCKET_BUFFER_SIZE    = 10240;
+    const MAX_SOCKETS               = 1000;
+    const SOCKET_MESSAGE_DELIMITER  = "\n";
 
-    protected $clients = array();
-//    protected $services = array(); // TODO ???
-    protected $_server = null;
+    private $_clients = array();
+    private $_server = null;
 //    protected $_service = null;  // TODO ???
 //    protected $_master = null;  // TODO ???
-    protected $_read = array();  //read buffers
-    protected $_write = array(); //write buffers
-    protected $pid; // TODO ???
+    private $_read = array();  //read buffers
+    private $_write = array(); //write buffers
+    private $_pid = -1;
     private $_handshakes = array();
-
-    public $timer = null; // TODO ???
+    private $_timer = null;
+    private $_timerSec = 1;
 
     function __construct($server)
     {
         $this->_server = $server;
-        $this->pid = posix_getpid();
+        $this->_pid = posix_getpid();
     }
 
     public function start() {
-        $this->onStart(); // TODO delete?
+        // TODO write in log file 'worker PID started'
 
-// TODO
-//        if ($this->timer) {
-//            $timer = $this->_createTimer();
-//        }
+        // --- create timer for send 'ping' to client ---
+        $this->_timer = $this->_createTimer();
 
         while (true) {
             // prepare the array of sockets that need to be processed
-            $read = $this->clients /*+ $this->services*/;
+            $read = $this->_clients /*+ $this->services*/;
             if ($this->_server)
                 $read[] = $this->_server;
+
+            // --- timer ticks ---
+            $read[] = $this->_timer;
 
 //            if ($this->_service) {
 //                $read[] = $this->_service;
@@ -49,9 +55,7 @@ class WSWorker
 //                $read[] = $this->_master;
 //            }
 //
-//            if ($this->timer) {
-//                $read[] = $timer;
-//            }
+
 
             if (!$read)
                 return;
@@ -64,11 +68,14 @@ class WSWorker
                 }
             }
 
+            // --- exception array ---
             $except = $read;
 
-            stream_select($read, $write, $except, null);//update the array of sockets that can be processed
+            // --- select streams ---
+            stream_select($read, $write, $except, null); // update the array of sockets that can be processed
 
-//            if ($this->timer && in_array($timer, $read)) {
+//            // --- check is timer tick ---
+//            if ($this->_timerSec && in_array($timer, $read)) {
 //                unset($read[array_search($timer, $read)]);
 //                fread($timer, self::SOCKET_BUFFER_SIZE);
 //                $this->onTimer();
@@ -76,15 +83,18 @@ class WSWorker
 
             if ($read) { //data were obtained from the connected clients
                 foreach ($read as $client) {
-                    if ($this->_server == $client) { //the server socket got a request from a new client
-                        if ((count($this->clients) /*+ count($this->services)*/ < self::MAX_SOCKETS)
+                    if ($this->_timer == $client) {
+                        // --- check is timer tick ---
+                        fread($this->_timer, self::SOCKET_BUFFER_SIZE);
+                        $this->onTimer();
+                    } else if ($this->_server == $client) {
+                        // --- check is new incoming connection ---
+                        if ((count($this->_clients) /*+ count($this->services)*/ < self::MAX_SOCKETS)
                             && ($client = @stream_socket_accept($this->_server, 0))) {
                             stream_set_blocking($client, 0);
                             $clientId = $this->getIdByConnection($client);
-                            $this->clients[$clientId] = $client;
+                            $this->_clients[$clientId] = $client;
                             $this->_onOpen($clientId);
-
-//                            var_dump($this->_read($clientId));
                         }
                     } /*elseif ($this->_service == $client) { //the local socket got a request from a new client
                         if ((count($this->clients) + count($this->services) < self::MAX_SOCKETS) && ($client = @stream_socket_accept($this->_service, 0))) {
@@ -94,6 +104,7 @@ class WSWorker
                             $this->onServiceOpen($clientId);
                         }
                     } */else {
+                        // --- read new incoming data ---
                         $connectionId = $this->getIdByConnection($client);
                         /*if (in_array($client, $this->services)) {
                             if (is_null($this->_read($connectionId))) { //connection has been closed or the buffer was overflow
@@ -114,11 +125,11 @@ class WSWorker
                                 $this->onMasterMessage($data); //call user handler
                             }
                         } else {*/
-                            if (!$this->_read($connectionId)) { //connection has been closed or the buffer was overwhelmed
+                            if (!$this->_read($connectionId)) { // connection has been closed or the buffer was overwhelmed
                                 $this->close($connectionId);
                                 continue;
                             }
-
+                            // --- process incoming message ---
                             $this->_onMessage($connectionId);
                         /*}*/
                     }
@@ -127,16 +138,14 @@ class WSWorker
 
             if ($write) {
                 foreach ($write as $client) {
-                    if (is_resource($client)) {//verify that the connection is not closed during the reading
+                    if (is_resource($client)) // verify that the connection is not closed during the reading
                         $this->_sendBuffer($client);
-                    }
                 }
             }
 
             if ($except) {
-                foreach ($except as $client) {
+                foreach ($except as $client)
                     $this->_onError($this->getIdByConnection($client));
-                }
             }
         }
     }
@@ -182,28 +191,25 @@ class WSWorker
 
     protected function _createTimer() {
         $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
-
-        $pid = pcntl_fork();//create a fork
-
+        $pid = pcntl_fork(); //create a fork
         if ($pid == -1) {
+            // TODO write to log file
             die("error: pcntl_fork\r\n");
-        } elseif ($pid) { //parent
+        } elseif ($pid) { // parent
             fclose($pair[0]);
-            return $pair[1];//one of the pair will be in the parent
-        } else { //child process
+            return $pair[1]; // one of the pair will be in the parent
+        } else { // child process
             fclose($pair[1]);
-            $parent = $pair[0];//second of the pair will be in the child
-
+            $parent = $pair[0]; // second of the pair will be in the child
             while (true) {
                 fwrite($parent, '1');
-
-                usleep($this->timer * 1000000);
+                sleep($this->_timerSec);
             }
         }
     }
 
     protected function _onOpen($connectionId) {
-        $this->_handshakes[$connectionId] = '';//mark the connection that it needs a handshake
+        $this->_handshakes[$connectionId] = ''; // mark the connection that it needs a handshake
     }
 
     protected function _onMessage($connectionId) {
@@ -225,8 +231,8 @@ class WSWorker
     protected function close($connectionId) {
         if (isset($this->_handshakes[$connectionId])) {
             unset($this->_handshakes[$connectionId]);
-        } elseif (isset($this->clients[$connectionId])) {
-            $this->onClose($connectionId);//call user handler
+        } elseif (isset($this->_clients[$connectionId])) {
+            $this->onClose($connectionId); // call user handler
         } /*elseif (isset($this->services[$connectionId])) {
             $this->onServiceClose($connectionId);//call user handler
         } elseif ($this->getIdByConnection($this->_master) == $connectionId) {
@@ -235,8 +241,8 @@ class WSWorker
 
         $this->_close($connectionId);
 
-        if (isset($this->clients[$connectionId])) {
-            unset($this->clients[$connectionId]);
+        if (isset($this->_clients[$connectionId])) {
+            unset($this->_clients[$connectionId]);
         } /*elseif (isset($this->services[$connectionId])) {
             unset($this->services[$connectionId]);
         } */elseif ($this->getIdByConnection($this->_server) == $connectionId) {
@@ -252,9 +258,9 @@ class WSWorker
     }
 
     protected function sendToClient($connectionId, $data, $type = 'text') {
-        if (!isset($this->_handshakes[$connectionId]) && isset($this->clients[$connectionId])) {
+        if (!isset($this->_handshakes[$connectionId])
+            && isset($this->_clients[$connectionId]))
             $this->_write($connectionId, $this->_encode($data, $type));
-        }
     }
 
 //    protected function sendToMaster($data) {
@@ -267,20 +273,15 @@ class WSWorker
 
     protected function _handshake($connectionId) {
         //read the headers from the connection
-        if (!strpos($this->_read[$connectionId], "\r\n\r\n")) {
+        if (!strpos($this->_read[$connectionId], "\r\n\r\n"))
             return true;
-        }
 
         preg_match("/Sec-WebSocket-Key: (.*)\r\n/", $this->_read[$connectionId], $match);
-
-        if (empty($match[1])) {
+        if (empty($match[1]))
             return false;
-        }
 
         $headers = explode("\r\n", $this->_read[$connectionId]);
-//        var_dump($headers); // TODO ...
         $info = array();
-
         foreach ($headers as $header) {
             if (($explode = explode(':', $header)) && isset($explode[1])) {
                 $info[trim($explode[0])] = trim($explode[1]);
@@ -311,11 +312,10 @@ class WSWorker
         unset($this->_handshakes[$connectionId]);
 
         $this->onOpen($connectionId, $info);
-
         return true;
     }
 
-    protected function _encode($payload, $type = 'text')
+    protected function _encode($payload, $type = 'text'): string
     {
         $frameHead = array();
         $payloadLength = strlen($payload);
@@ -353,14 +353,14 @@ class WSWorker
             $secondByte = $payloadLength;
         }
 
-        return $data  = chr($frameHead[0]) . chr($secondByte) . $ext . $payload;
+        return (chr($frameHead[0]) . chr($secondByte) . $ext . $payload);
     }
 
-    protected function _decode($connectionId)
+    protected function _decode($connectionId)/*: array:bool */
     {
         $data = $this->_read[$connectionId];
-
-        if (strlen($data) < 2) return false;
+        if (strlen($data) < 2)
+            return false;
 
         $unmaskedPayload = '';
         $decodedData = array();
@@ -377,79 +377,71 @@ class WSWorker
             case 1:
                 $decodedData['type'] = 'text';
                 break;
-
             case 2:
                 $decodedData['type'] = 'binary';
                 break;
-
             // connection close frame:
             case 8:
                 $decodedData['type'] = 'close';
                 break;
-
             // ping frame:
             case 9:
                 $decodedData['type'] = 'ping';
                 break;
-
             // pong frame:
             case 10:
                 $decodedData['type'] = 'pong';
                 break;
-
             default:
                 $decodedData['type'] = '';
         }
 
         if ($payloadLength === 126) {
-            if (strlen($data) < 4) return false;
+            if (strlen($data) < 4)
+                return false;
             $payloadOffset = 8;
             $dataLength = bindec(sprintf('%08b', ord($data[2])) . sprintf('%08b', ord($data[3]))) + $payloadOffset;
-        } elseif ($payloadLength === 127) {
-            if (strlen($data) < 10) return false;
+        } else if ($payloadLength === 127) {
+            if (strlen($data) < 10)
+                return false;
             $payloadOffset = 14;
-            for ($tmp = '', $i = 0; $i < 8; $i++) {
+            for ($tmp = '', $i = 0; $i < 8; $i++)
                 $tmp .= sprintf('%08b', ord($data[$i + 2]));
-            }
             $dataLength = bindec($tmp) + $payloadOffset;
         } else {
             $payloadOffset = 6;
             $dataLength = $payloadLength + $payloadOffset;
         }
 
-        if (strlen($data) < $dataLength) {
+        if (strlen($data) < $dataLength)
             return false;
-        } else {
+        else
             $this->_read[$connectionId] = substr($data, $dataLength);
-        }
 
         if ($isMasked) {
-            if ($payloadLength === 126) {
+            if ($payloadLength === 126)
                 $mask = substr($data, 4, 4);
-            } elseif ($payloadLength === 127) {
+            else if ($payloadLength === 127)
                 $mask = substr($data, 10, 4);
-            } else {
+            else
                 $mask = substr($data, 2, 4);
-            }
 
             for ($i = $payloadOffset; $i < $dataLength; $i++) {
                 $j = $i - $payloadOffset;
-                if (isset($data[$i])) {
+                if (isset($data[$i]))
                     $unmaskedPayload .= $data[$i] ^ $mask[$j % 4];
-                }
             }
             $decodedData['payload'] = $unmaskedPayload;
         } else {
             $payloadOffset = $payloadOffset - 4;
             $decodedData['payload'] = substr($data, $payloadOffset, $dataLength - $payloadOffset);
         }
-
         return $decodedData;
     }
 
     protected function getConnectionById($connectionId) {
-        if (isset($this->clients[$connectionId])) {
-            return $this->clients[$connectionId];
+        if (isset($this->_clients[$connectionId])) {
+            return $this->_clients[$connectionId];
         } /*elseif (isset($this->services[$connectionId])) {
             return $this->services[$connectionId];
         } */elseif ($this->getIdByConnection($this->_server) == $connectionId) {
@@ -468,7 +460,9 @@ class WSWorker
     protected function onOpen($connectionId, $info) {
         $this->sendToClient($connectionId, "{\"type\":\"welcome\"}");
     }
-    protected function onClose($connectionId) {}
+    protected function onClose($connectionId) {
+        echo "Connection closed: $connectionId\r\n";
+    }
     protected function onMessage($connectionId, $packet, $type) {
         var_dump($connectionId);
         var_dump($packet);
@@ -482,8 +476,6 @@ class WSWorker
                 'type' => 'confirm_subscription'
             ];
             $this->sendToClient($connectionId, json_encode($sData));
-
-            // TODO start timer for send every 1 sec ping to client
         }
     }
 
@@ -494,5 +486,14 @@ class WSWorker
     protected function onMasterMessage($data) {}
     protected function onMasterClose($connectionId) {}
 
-    protected function onStart() {}
+    protected function onTimer() {
+        $sData = [
+            'type' => 'ping',
+            'message' => time()
+        ];
+        foreach ($this->_clients as $clientId => $client) {
+            echo("Send to: $clientId\r\n");
+            $this->sendToClient($clientId, json_encode($sData));
+        }
+    }
 }

@@ -1,30 +1,38 @@
 <?php
 
+/*
+FlyCubePHP WebSockets based on the code and idea described in morozovsk/websocket.
+https://github.com/morozovsk/websocket
+Released under the MIT license
+*/
+
 namespace FlyCubePHP\WebSockets\Server;
 
-include_once 'WSWorker.php';
+use FlyCubePHP\HelperClasses\CoreHelper;
 
-/*
- * JS Test:
- *
- * function wsStart() {
-                ws = new WebSocket("ws://127.0.0.1:8000/");
-                ws.onopen = function() { console.log("system: connection is open"); };
-                ws.onclose = function() { console.log("system: the connection is closed, I try to reconnect"); setTimeout(wsStart, 1000); };
-                ws.onmessage = function(evt) { console.log("In DATA: " + evt.data); };
-            };
- *
- * wsStart();
- */
+
+include_once __DIR__.'/../../FlyCubePHPVersion.php';
+include_once __DIR__.'/../../FlyCubePHPAutoLoader.php';
+include_once __DIR__.'/../../FlyCubePHPErrorHandling.php';
+include_once __DIR__.'/../../FlyCubePHPEnvLoader.php';
+include_once __DIR__.'../../Core/Logger/Logger.php';
+include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
+
+include_once 'WSWorker.php';
 
 class WSServer
 {
     function __construct()
     {
+        // TODO load config
     }
 
     public function start(string $host = '127.0.0.1', int $port = 8000)
     {
+        echo "App path: " . CoreHelper::rootDir() . "\r\n";
+
+        // TODO load host & port from config
+
 // TODO
 //        $pid = @file_get_contents($this->config['pid']);
 //        if ($pid) {
@@ -57,7 +65,9 @@ class WSServer
             $server = stream_socket_server("tcp://$host:$port", $errorNumber, $errorString);
             stream_set_blocking($server, 0);
             if (!$server)
-                die("error: stream_socket_server: $errorString ($errorNumber)\r\n");
+                die("error: stream_socket_server: $errorString ($errorNumber)\r\n"); // TODO write in log file error start
+
+
 
 // TODO
 //        if (!empty($this->config['localsocket'])) {
@@ -112,6 +122,10 @@ class WSServer
 //            $worker->timer = $this->config['timer'];
 //        }
 //        $worker->start();
+
+        // TODO start reader (ipc or redis) & connect this to workers
+
+        // TODO start N workers (get count from config) (default: 1)
 
         $worker = new WSWorker($server);
         $worker->start();

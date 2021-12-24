@@ -1,3 +1,17 @@
+############### Additional required PHP modules #####################
+
+- php7-pcntl
+
+
+############### Start process from Apache user ######################
+
+1. login by root user
+
+2. run command:
+
+su -s /bin/bash -l wwwrun -c '/opt/FlyCubePHP/test.php &'
+
+
 ############### APACHE Conf #########################################
 
 # ----------------------------------------------------------------
