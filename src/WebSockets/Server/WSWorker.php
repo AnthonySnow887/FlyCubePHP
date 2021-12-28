@@ -34,6 +34,7 @@ class WSWorker
 
     public function start() {
         // TODO write in log file 'worker PID started'
+        echo "WSWorker started: " . $this->_pid . "\r\n";
 
         // --- create timer for send 'ping' to client ---
         $this->_timer = $this->_createTimer();
@@ -151,7 +152,7 @@ class WSWorker
     }
 
     protected function _onError($connectionId) {
-        echo "An error has occurred: $connectionId\n";
+        echo "[". $this->_pid . "] An error has occurred: $connectionId\n";
     }
 
     protected function _close($connectionId) {
@@ -461,7 +462,7 @@ class WSWorker
         $this->sendToClient($connectionId, "{\"type\":\"welcome\"}");
     }
     protected function onClose($connectionId) {
-        echo "Connection closed: $connectionId\r\n";
+        echo "[". $this->_pid . "] Connection closed: $connectionId\r\n";
     }
     protected function onMessage($connectionId, $packet, $type) {
         var_dump($connectionId);
@@ -492,7 +493,7 @@ class WSWorker
             'message' => time()
         ];
         foreach ($this->_clients as $clientId => $client) {
-            echo("Send to: $clientId\r\n");
+            echo "[". $this->_pid . "] Send to: $clientId\r\n";
             $this->sendToClient($clientId, json_encode($sData));
         }
     }

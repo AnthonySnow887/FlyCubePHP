@@ -22,14 +22,19 @@ include_once 'WSWorker.php';
 
 class WSServer
 {
+    private $_host;
+    private $_port;
+    private $_pid;
+
     function __construct()
     {
         // TODO load config
     }
 
-    public function start(string $host = '127.0.0.1', int $port = 8000)
+    public function start(string $appPath, string $host = '127.0.0.1', int $port = 8000)
     {
         echo "App path: " . CoreHelper::rootDir() . "\r\n";
+        var_dump($this->isCopyOfCurrentProcess(posix_getpid(), $appPath));
 
         // TODO load host & port from config
 
@@ -127,10 +132,25 @@ class WSServer
 
         // TODO start N workers (get count from config) (default: 1)
 
+        // --- test start 3 workers ---
+//        $numWorkers = 1;
+//        for ($i = 0; $i < $numWorkers; $i++) {
+//            $pid = pcntl_fork(); //create a fork
+//            if ($pid == -1) {
+//                // TODO write to log file
+//                die("error: pcntl_fork\r\n");
+//            } else if ($pid == 0) { // child started
+//
+//                // create stream_socket_pair for send data to worker & send system commands
+//
+//                $worker = new WSWorker($server);
+//                $worker->start();
+//                break;
+//            }
+//        }
+
         $worker = new WSWorker($server);
         $worker->start();
-
-
         //}
     }
 
@@ -183,5 +203,68 @@ class WSServer
 //        }
 //
 //        $this->start();
+    }
+
+    private function isCopyOfCurrentProcess($pid, $appPath)
+    {
+        var_dump($pid, $appPath);
+
+        // get process all name
+        $bPath = "/proc/$pid/cmdline";
+        if ($file = fopen($bPath, "r")) {
+            $line = fgets($file);
+            fclose($file);
+            if (!empty($line)) {
+                $line = $this->prepareCmdLineData(rtrim($line));
+                var_dump($line);
+
+                $buffLst = explode("/", $line);
+                $pName = rtrim($buffLst[count($buffLst) - 1]);
+                unset($buffLst[count($buffLst) - 1]);
+                foreach ($buffLst as $item) {
+                    if (empty($pPath))
+                        $pPath = rtrim($item);
+                    else
+                        $pPath .= "/" . rtrim($item);
+                }
+
+                // check is link
+                if (is_link($pPath) === true)
+                    $pPath = readlink($pPath);
+            }
+
+        } else {
+            die("Open file failed (ReadOnly)! Path: $bPath");
+        }
+
+        var_dump($pName, $pPath);
+
+        // check
+        if (strcmp("$pPath/$pName", $appPath) === 0)
+            return true;
+
+        // get process path
+        $bPath = "/proc/$pid/cwd";
+        if (is_link($bPath) === true)
+            $pPath = readlink($bPath) . "/$pName";
+        else
+            die("Open symlink failed (ReadOnly)! Path: $bPath");
+
+        var_dump($pPath);
+
+        // check
+        return (strcmp($pPath, $appPath) === 0);
+    }
+
+    private function prepareCmdLineData(string $line): string {
+        $tmpLine = "";
+        $size = strlen($line);
+        for ($i = $size - 1; $i >= 0; $i--) {
+            $ch = $line[$i];
+            if (ord($ch) === 0)
+                break;
+            $tmpLine = $ch . $tmpLine;
+        }
+        return $tmpLine;
     }
 }

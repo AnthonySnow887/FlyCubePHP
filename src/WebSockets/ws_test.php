@@ -9,6 +9,8 @@
 
 error_reporting(E_ALL);
 
+chdir(__DIR__);
+
 // TODO comment this line
 include_once 'Server/WSServer.php';
 
@@ -16,5 +18,5 @@ include_once 'Server/WSServer.php';
 //include_once 'vendor/FlyCubePHP/FlyCubePHP/WebSockets/Server/WSServer.php';
 
 $ws = new FlyCubePHP\WebSockets\Server\WSServer();
-$ws->start();
+$ws->start(__FILE__);
 
