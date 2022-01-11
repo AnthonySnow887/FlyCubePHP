@@ -200,11 +200,19 @@ class WSWorker
             fclose($pair[0]);
             return $pair[1]; // one of the pair will be in the parent
         } else { // child process
+            $chPid = posix_getpid();
+            $chSid = posix_getsid(posix_getpid());
+            echo "Timer PID: $chPid\r\n";
+            echo "Timer SID: $chSid\r\n";
+            if ($chSid < 0)
+                exit;
             fclose($pair[1]);
             $parent = $pair[0]; // second of the pair will be in the child
             while (true) {
                 fwrite($parent, '1');
                 sleep($this->_timerSec);
+                if (!file_exists("/proc/$chSid"))
+                    exit;
             }
         }
     }

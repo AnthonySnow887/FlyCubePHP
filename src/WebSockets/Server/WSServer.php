@@ -31,10 +31,10 @@ class WSServer
         // TODO load config
     }
 
-    public function start(string $appPath, string $host = '127.0.0.1', int $port = 8000)
+    public function start(string $host = '127.0.0.1', int $port = 8000)
     {
         echo "App path: " . CoreHelper::rootDir() . "\r\n";
-        var_dump($this->isCopyOfCurrentProcess(posix_getpid(), $appPath));
+
 
         // TODO load host & port from config
 
@@ -174,97 +174,4 @@ class WSServer
         }
         return array($pid, $master, $workers);
     }*/
-
-    public function stop() {
-// TODO
-//        $pid = @file_get_contents($this->config['pid']);
-//        if ($pid) {
-//            posix_kill($pid, SIGTERM);
-//            for ($i=0;$i=10;$i++) {
-//                sleep(1);
-//
-//                if (!posix_getpgid($pid)) {
-//                    unlink($this->config['pid']);
-//                    return;
-//                }
-//            }
-//
-//            die("don't stopped\r\n");
-//        } else {
-//            die("already stopped\r\n");
-//        }
-    }
-
-    public function restart() {
-// TODO
-//        $pid = @file_get_contents($this->config['pid']);
-//        if ($pid) {
-//            $this->stop();
-//        }
-//
-//        $this->start();
-    }
-
-    private function isCopyOfCurrentProcess($pid, $appPath)
-    {
-        var_dump($pid, $appPath);
-
-        // get process all name
-        $bPath = "/proc/$pid/cmdline";
-        if ($file = fopen($bPath, "r")) {
-            $line = fgets($file);
-            fclose($file);
-            if (!empty($line)) {
-                $line = $this->prepareCmdLineData(rtrim($line));
-                var_dump($line);
-
-                $buffLst = explode("/", $line);
-                $pName = rtrim($buffLst[count($buffLst) - 1]);
-                unset($buffLst[count($buffLst) - 1]);
-                foreach ($buffLst as $item) {
-                    if (empty($pPath))
-                        $pPath = rtrim($item);
-                    else
-                        $pPath .= "/" . rtrim($item);
-                }
-
-                // check is link
-                if (is_link($pPath) === true)
-                    $pPath = readlink($pPath);
-            }
-
-        } else {
-            die("Open file failed (ReadOnly)! Path: $bPath");
-        }
-
-        var_dump($pName, $pPath);
-
-        // check
-        if (strcmp("$pPath/$pName", $appPath) === 0)
-            return true;
-
-        // get process path
-        $bPath = "/proc/$pid/cwd";
-        if (is_link($bPath) === true)
-            $pPath = readlink($bPath) . "/$pName";
-        else
-            die("Open symlink failed (ReadOnly)! Path: $bPath");
-
-        var_dump($pPath);
-
-        // check
-        return (strcmp($pPath, $appPath) === 0);
-    }
-
-    private function prepareCmdLineData(string $line): string {
-        $tmpLine = "";
-        $size = strlen($line);
-        for ($i = $size - 1; $i >= 0; $i--) {
-            $ch = $line[$i];
-            if (ord($ch) === 0)
-                break;
-            $tmpLine = $ch . $tmpLine;
-        }
-        return $tmpLine;
-    }
 }
