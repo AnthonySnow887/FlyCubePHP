@@ -265,13 +265,23 @@ class RouteCollector
     }
 
     /**
+     * Получить текущий протокол хоста
+     * @return string
+     */
+    static public function currentHostProtocol(): string {
+        $protocol = "http";
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+            $protocol = "https";
+
+        return $protocol;
+    }
+
+    /**
      * Получить текущий URL хоста
      * @return string
      */
     static public function currentHostUri(): string {
-        $protocol = "http";
-        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
-            $protocol = "https";
+        $protocol = self::currentHostProtocol();
         return "$protocol://$_SERVER[HTTP_HOST]";
     }
 
