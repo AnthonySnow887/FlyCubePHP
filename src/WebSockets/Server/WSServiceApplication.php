@@ -2,25 +2,21 @@
 
 namespace FlyCubePHP\WebSockets\Server;
 
+use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
 include_once __DIR__.'/../../FlyCubePHPVersion.php';
 include_once __DIR__.'/../../FlyCubePHPAutoLoader.php';
 include_once __DIR__.'/../../FlyCubePHPErrorHandling.php';
 include_once __DIR__.'/../../FlyCubePHPEnvLoader.php';
-include_once __DIR__.'../../Core/Logger/Logger.php';
+include_once __DIR__.'/../../Core/Logger/Logger.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
 include_once 'WSServer.php';
 
 class WSServiceApplication
 {
-    const PID_FILE_NAME                     = "ws.pid";
-
-    function __construct()
-    {
-        // TODO load config
-    }
+    const PID_FILE_NAME = "ws.pid";
 
     public function start()
     {
@@ -77,14 +73,13 @@ class WSServiceApplication
 
         $pid = pcntl_fork(); // create a fork
         if ($pid == -1) {
-            // TODO write to log file
-//            die("error: pcntl_fork\r\n");
+            Logger::error("[" . self::class . "] Create fork failed (error pcntl_fork)!");
             return false;
         } else if ($pid == 0) { // child started
             $sid = posix_setsid();
             $pid = posix_getpid();
-            echo "PID: $pid\r\n";
-            echo "SID: $sid\r\n";
+//            echo "PID: $pid\r\n";
+//            echo "SID: $sid\r\n";
             if ($sid < 0)
                 exit;
             // --- save PID ---
@@ -159,7 +154,8 @@ class WSServiceApplication
             }
 
         } else {
-            die("Open file failed (ReadOnly)! Path: $bPath\r\n");
+            echo "Open file failed (ReadOnly)! Path: $bPath\r\n";
+            return false;
         }
 
 //        echo "$pName\r\n";
@@ -171,10 +167,12 @@ class WSServiceApplication
 
         // get process path
         $bPath = "/proc/$pid/cwd";
-        if (is_link($bPath) === true)
+        if (is_link($bPath) === true) {
             $pPath = readlink($bPath) . "/$pName";
-        else
-            die("Open symlink failed (ReadOnly)! Path: $bPath\r\n");
+        } else {
+            echo "Open symlink failed (ReadOnly)! Path: $bPath\r\n";
+            return false;
+        }
 
 //        echo "$pPath\r\n";
 

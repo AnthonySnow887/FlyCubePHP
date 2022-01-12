@@ -8,6 +8,8 @@ Released under the MIT license
 
 namespace FlyCubePHP\WebSockets\Server;
 
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
 
@@ -24,154 +26,57 @@ class WSServer
 {
     private $_host;
     private $_port;
+    private $_workersNum = 1;
+    private $_workersControls = array();
     private $_pid;
 
     function __construct()
     {
-        // TODO load config
+        $this->_host = Config::instance()->arg(Config::TAG_WS_SERVER_HOST, "127.0.0.1");
+        $this->_port = intval(Config::instance()->arg(Config::TAG_WS_SERVER_PORT, 8000));
+        $this->_workersNum = intval(Config::instance()->arg(Config::TAG_WS_SERVER_WORKERS_NUM, 5));
+        if ($this->_workersNum <= 0) {
+            Logger::error("[". self::class ."] Invalid WS Workers number (num <= 0)!");
+            die();
+        }
+        $this->_pid = posix_getpid();
     }
 
-    public function start(string $host = '127.0.0.1', int $port = 8000)
+    public function start()
     {
-        echo "App path: " . CoreHelper::rootDir() . "\r\n";
+        Logger::info("[". self::class ."] Start WSServer. PID: " . $this->_pid);
+        Logger::info("[". self::class ."] App path: " . CoreHelper::rootDir());
 
+        // --- open server socket ---
+        $host = $this->_host;
+        $port = $this->_port;
+        $server = stream_socket_server("tcp://$host:$port", $errorNumber, $errorString);
+        stream_set_blocking($server, 0);
+        if (!$server) {
+            Logger::error("[". self::class ."] stream_socket_server: $errorString ($errorNumber)");
+            die();
+        }
 
-        // TODO load host & port from config
-
-// TODO
-//        $pid = @file_get_contents($this->config['pid']);
-//        if ($pid) {
-//            if (posix_getpgid($pid)) {
-//                die("already started\r\n");
-//            } else {
-//                unlink($this->config['pid']);
-//            }
-//        }
-
-// TODO
-//        if (empty($this->config['websocket']) && empty($this->config['localsocket']) && empty($this->config['master'])) {
-//            die("error: config: !websocket && !localsocket && !master\r\n");
-//        }
-
-        $server = $service = $master = null;
-
-// TODO
-//        if (!empty($this->config['websocket'])) {
-//            //open server socket
-//            $server = stream_socket_server($this->config['websocket'], $errorNumber, $errorString);
-//            stream_set_blocking($server, 0);
-//
-//            if (!$server) {
-//                die("error: stream_socket_server: $errorString ($errorNumber)\r\n");
-//            }
-//        }
-
-            //open server socket
-            $server = stream_socket_server("tcp://$host:$port", $errorNumber, $errorString);
-            stream_set_blocking($server, 0);
-            if (!$server)
-                die("error: stream_socket_server: $errorString ($errorNumber)\r\n"); // TODO write in log file error start
-
-
-
-// TODO
-//        if (!empty($this->config['localsocket'])) {
-//            //create a socket for the processing of messages from scripts
-//            $service = stream_socket_server($this->config['localsocket'], $errorNumber, $errorString);
-//            stream_set_blocking($service, 0);
-//
-//            if (!$service) {
-//                die("error: stream_socket_server: $errorString ($errorNumber)\r\n");
-//            }
-//        }
-//
-//        if (!empty($this->config['master'])) {
-//            //create a socket for the processing of messages from slaves
-//            $master = stream_socket_client($this->config['master'], $errorNumber, $errorString);
-//            stream_set_blocking($master, 0);
-//
-//            if (!$master) {
-//                die("error: stream_socket_client: $errorString ($errorNumber)\r\n");
-//            }
-//        }
-//
-//        if (!empty($this->config['eventDriver']) && $this->config['eventDriver'] == 'libevent') {
-//            class_alias('morozovsk\websocket\GenericLibevent', 'morozovsk\websocket\Generic');
-//        } elseif (!empty($this->config['eventDriver']) && $this->config['eventDriver'] == 'event') {
-//            class_alias('morozovsk\websocket\GenericEvent', 'morozovsk\websocket\Generic');
-//        } else {
-//            class_alias('morozovsk\websocket\GenericSelect', 'morozovsk\websocket\Generic');
-//        }
-//
-//        file_put_contents($this->config['pid'], posix_getpid());
-
-
-
-        //list($pid, $master, $workers) = $this->spawnWorkers();//create child processes
-
-        /*if ($pid) {//мастер
-            file_put_contents($this->config['pid'], $pid);
-            fclose($server);//master will not handle incoming connections on the main socket
-            $masterClass = $this->config['master']['class'];
-            $master = new $masterClass ($service, $workers);//master will process messages from the script and send them to a worker
-            if (!empty($this->config['master']['timer'])) {
-                $master->timer = $this->config['worker']['timer'];
-            }
-            $master->start();
-        } else {//воркер*/
-
-// TODO
-//        $workerClass = $this->config['class'];
-//        $worker = new $workerClass ($server, $service, $master);
-//        if (!empty($this->config['timer'])) {
-//            $worker->timer = $this->config['timer'];
-//        }
-//        $worker->start();
-
-        // TODO start reader (ipc or redis) & connect this to workers
-
-        // TODO start N workers (get count from config) (default: 1)
-
-        // --- test start 3 workers ---
-//        $numWorkers = 1;
-//        for ($i = 0; $i < $numWorkers; $i++) {
-//            $pid = pcntl_fork(); //create a fork
-//            if ($pid == -1) {
-//                // TODO write to log file
-//                die("error: pcntl_fork\r\n");
-//            } else if ($pid == 0) { // child started
-//
-//                // create stream_socket_pair for send data to worker & send system commands
-//
-//                $worker = new WSWorker($server);
-//                $worker->start();
-//                break;
-//            }
-//        }
-
-        $worker = new WSWorker($server);
-        $worker->start();
-        //}
-    }
-
-    /*protected function spawnWorkers() {
-        $master = null;
-        $workers = array();
-        for ($i=0; $i<$this->config['master']['workers']; $i++) {
-            //create a pair of sockets through which the master and the worker is to be linked
+        // --- start workers ---
+        for ($i = 0; $i < $this->_workersNum; $i++) {
             $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
-            $pid = pcntl_fork();//create a fork
+            $pid = pcntl_fork(); // create a fork
             if ($pid == -1) {
-                die("error: pcntl_fork\r\n");
-            } elseif ($pid) { //master
+                Logger::error("[" . self::class . "] Create fork failed (error pcntl_fork)!");
+                die();
+            } else if ($pid) { // parent process
                 fclose($pair[0]);
-                $workers[intval($pair[1])] = $pair[1];//one of the pair is in the master
-            } else { //worker
+                $this->_workersControls[] = $pair[1];
+            } else if ($pid == 0) { // child process
                 fclose($pair[1]);
-                $master = $pair[0];//second of pair is in worker
+                $worker = new WSWorker($server, $pair[0]);
+                $worker->start();
                 break;
             }
         }
-        return array($pid, $master, $workers);
-    }*/
+
+        // TODO start reader (ipc or redis) & connect this to workers
+        // --- start server loop ---
+        while (true) {} // TODO start server loop
+    }
 }
