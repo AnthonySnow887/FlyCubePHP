@@ -34,7 +34,7 @@ class WSServer
     {
         $this->_host = Config::instance()->arg(Config::TAG_WS_SERVER_HOST, "127.0.0.1");
         $this->_port = intval(Config::instance()->arg(Config::TAG_WS_SERVER_PORT, 8000));
-        $this->_workersNum = intval(Config::instance()->arg(Config::TAG_WS_SERVER_WORKERS_NUM, 5));
+        $this->_workersNum = intval(Config::instance()->arg(Config::TAG_WS_SERVER_WORKERS_NUM, 1));
         if ($this->_workersNum <= 0) {
             Logger::error("[". self::class ."] Invalid WS Workers number (num <= 0)!");
             die();
@@ -56,6 +56,7 @@ class WSServer
             Logger::error("[". self::class ."] stream_socket_server: $errorString ($errorNumber)");
             die();
         }
+        Logger::info("[". self::class ."] Listen on: tcp://$host:$port");
 
         // --- start workers ---
         for ($i = 0; $i < $this->_workersNum; $i++) {

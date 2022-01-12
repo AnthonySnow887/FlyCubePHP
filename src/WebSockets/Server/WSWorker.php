@@ -20,8 +20,8 @@ class WSWorker
     private $_clients = array();
     private $_server = null;
     private $_controlSocket = null;
-    private $_read = array();  //read buffers
-    private $_write = array(); //write buffers
+    private $_read = array();  // read buffers
+    private $_write = array(); // write buffers
     private $_pid = -1;
     private $_handshakes = array();
     private $_timer = null;
@@ -36,29 +36,31 @@ class WSWorker
 
     function __destruct()
     {
+        // --- checking that the WSWorker is stopped and not the timer fork ---
         if ($this->_pid == posix_getpid())
             Logger::info("[". self::class ."] WSWorker Stopped. PID: " . $this->_pid);
     }
 
     public function start() {
-        // TODO write in log file 'worker PID started'
-//        echo "WSWorker started: " . $this->_pid . "\r\n";
+        $chSid = posix_getsid($this->_pid);
+        if ($chSid < 0) {
+            Logger::error("[". self::class ."] WSWorker Stopped. Invalid SID! PID: " . $this->_pid);
+            die();
+        }
 
         Logger::info("[". self::class ."] WSWorker Started. PID: " . $this->_pid);
 
-        // --- create timer for send 'ping' to client ---
+        // --- create timer fork for send 'ping' to client ---
         $this->_timer = $this->_createTimer();
 
-        $chSid = posix_getsid($this->_pid);
-        if ($chSid < 0)
-            return;
-
+        // --- start worker loop ---
         while (true) {
+            // --- check SID and exit if not found ---
             if (!file_exists("/proc/$chSid"))
-                return;
+                exit;
 
-            // prepare the array of sockets that need to be processed
-            $read = $this->_clients /*+ $this->services*/;
+            // --- prepare the array of sockets that need to be processed ---
+            $read = $this->_clients;
             if ($this->_server)
                 $read[] = $this->_server;
 
@@ -68,8 +70,9 @@ class WSWorker
             // --- control from master ---
             $read[] = $this->_controlSocket;
 
+            // --- check ---
             if (!$read)
-                return;
+                exit;
 
             $write = array();
             if ($this->_write) {
@@ -85,17 +88,18 @@ class WSWorker
             // --- select streams ---
             stream_select($read, $write, $except, null); // update the array of sockets that can be processed
 
-            if ($read) { //data were obtained from the connected clients
+            if ($read) { // data were obtained from the connected clients
                 foreach ($read as $client) {
                     if ($this->_timer == $client) {
                         // --- check is timer tick ---
                         $tData = fread($this->_timer, self::SOCKET_BUFFER_SIZE);
+                        // --- check if 'STOP' command ---
                         if (strcmp($tData, "STOP") === 0)
                             exit;
                         $this->onTimer();
                     } else if ($this->_server == $client) {
                         // --- check is new incoming connection ---
-                        if ((count($this->_clients) /*+ count($this->services)*/ < self::MAX_SOCKETS)
+                        if ((count($this->_clients) < self::MAX_SOCKETS)
                             && ($client = @stream_socket_accept($this->_server, 0))) {
                             stream_set_blocking($client, 0);
                             $clientId = $this->getIdByConnection($client);
@@ -179,7 +183,7 @@ class WSWorker
 
     protected function _createTimer() {
         $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
-        $pid = pcntl_fork(); //create a fork
+        $pid = pcntl_fork(); // create a fork
         if ($pid == -1) {
             Logger::error("[" . self::class . "] Create timer fork failed (error pcntl_fork)!");
             die();
@@ -212,16 +216,16 @@ class WSWorker
 
     protected function _onMessage($connectionId) {
         if (isset($this->_handshakes[$connectionId])) {
-            if ($this->_handshakes[$connectionId]) {//if the client has already made a handshake
-                return;//then there does not need to read before sending the response from the server
+            if ($this->_handshakes[$connectionId]) { // if the client has already made a handshake
+                return; // then there does not need to read before sending the response from the server
             }
 
             if (!$this->_handshake($connectionId)) {
                 $this->close($connectionId);
             }
         } else {
-            while (($data = $this->_decode($connectionId)) && mb_check_encoding($data['payload'], 'utf-8')) {//decode buffer (there may be multiple messages)
-                $this->onMessage($connectionId, $data['payload'], $data['type']);//call user handler
+            while (($data = $this->_decode($connectionId)) && mb_check_encoding($data['payload'], 'utf-8')) { // decode buffer (there may be multiple messages)
+                $this->onMessage($connectionId, $data['payload'], $data['type']); // call user handler
             }
         }
     }
@@ -264,7 +268,7 @@ class WSWorker
 //    }
 
     protected function _handshake($connectionId) {
-        //read the headers from the connection
+        // read the headers from the connection
         if (!strpos($this->_read[$connectionId], "\r\n\r\n"))
             return true;
 
@@ -287,12 +291,14 @@ class WSWorker
 
         $this->_read[$connectionId] = '';
 
-        var_dump($info); // TODO ...
+        var_dump($info); // TODO parse cookie
 
+        // TODO write incoming connection to log file
+        // TODO check connection route (see $info['GET']) -> if invalid - close connection
         // TODO exec connection handler for check incoming connection
         // TODO if 'reject' -> close connection
 
-        //send a header according to the protocol websocket
+        // send a header according to the protocol websocket
         $SecWebSocketAccept = base64_encode(pack('H*', sha1($match[1] . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
         $upgrade = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
             "Upgrade: websocket\r\n" .
