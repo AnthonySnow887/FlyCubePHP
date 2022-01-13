@@ -11,7 +11,7 @@ Released under the MIT license
     (function() {
       var slice = [].slice;
 
-      this.ActionCable = {
+      this.FlyCubePHPActionCable = {
         INTERNAL: {
           "message_types": {
             "welcome": "welcome",
@@ -29,7 +29,7 @@ Released under the MIT license
           if (url == null) {
             url = (ref = this.getConfig("url")) != null ? ref : this.INTERNAL.default_mount_path;
           }
-          return new ActionCable.Consumer(this.createWebSocketURL(url));
+          return new FlyCubePHPActionCable.Consumer(this.createWebSocketURL(url));
         },
         getConfig: function(name) {
           var element;
@@ -59,7 +59,7 @@ Released under the MIT license
           messages = 1 <= arguments.length ? slice.call(arguments, 0) : [];
           if (this.debugging) {
             messages.push(Date.now());
-            return (ref = this.logger).log.apply(ref, ["[ActionCable]"].concat(slice.call(messages)));
+            return (ref = this.logger).log.apply(ref, ["[FlyCubePHPActionCable]"].concat(slice.call(messages)));
           }
         }
       };
@@ -67,13 +67,13 @@ Released under the MIT license
     }).call(this);
   }).call(context);
 
-  var ActionCable = context.ActionCable;
+  var FlyCubePHPActionCable = context.FlyCubePHPActionCable;
 
   (function() {
     (function() {
       var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-      ActionCable.ConnectionMonitor = (function() {
+      FlyCubePHPActionCable.ConnectionMonitor = (function() {
         var clamp, now, secondsSince;
 
         ConnectionMonitor.pollInterval = {
@@ -95,7 +95,7 @@ Released under the MIT license
             delete this.stoppedAt;
             this.startPolling();
             document.addEventListener("visibilitychange", this.visibilityDidChange);
-            return ActionCable.log("ConnectionMonitor started. pollInterval = " + (this.getPollInterval()) + " ms");
+            return FlyCubePHPActionCable.log("ConnectionMonitor started. pollInterval = " + (this.getPollInterval()) + " ms");
           }
         };
 
@@ -104,7 +104,7 @@ Released under the MIT license
             this.stoppedAt = now();
             this.stopPolling();
             document.removeEventListener("visibilitychange", this.visibilityDidChange);
-            return ActionCable.log("ConnectionMonitor stopped");
+            return FlyCubePHPActionCable.log("ConnectionMonitor stopped");
           }
         };
 
@@ -120,12 +120,12 @@ Released under the MIT license
           this.reconnectAttempts = 0;
           this.recordPing();
           delete this.disconnectedAt;
-          return ActionCable.log("ConnectionMonitor recorded connect");
+          return FlyCubePHPActionCable.log("ConnectionMonitor recorded connect");
         };
 
         ConnectionMonitor.prototype.recordDisconnect = function() {
           this.disconnectedAt = now();
-          return ActionCable.log("ConnectionMonitor recorded disconnect");
+          return FlyCubePHPActionCable.log("ConnectionMonitor recorded disconnect");
         };
 
         ConnectionMonitor.prototype.startPolling = function() {
@@ -155,12 +155,12 @@ Released under the MIT license
 
         ConnectionMonitor.prototype.reconnectIfStale = function() {
           if (this.connectionIsStale()) {
-            ActionCable.log("ConnectionMonitor detected stale connection. reconnectAttempts = " + this.reconnectAttempts + ", pollInterval = " + (this.getPollInterval()) + " ms, time disconnected = " + (secondsSince(this.disconnectedAt)) + " s, stale threshold = " + this.constructor.staleThreshold + " s");
+            FlyCubePHPActionCable.log("ConnectionMonitor detected stale connection. reconnectAttempts = " + this.reconnectAttempts + ", pollInterval = " + (this.getPollInterval()) + " ms, time disconnected = " + (secondsSince(this.disconnectedAt)) + " s, stale threshold = " + this.constructor.staleThreshold + " s");
             this.reconnectAttempts++;
             if (this.disconnectedRecently()) {
-              return ActionCable.log("ConnectionMonitor skipping reopening recent disconnect");
+              return FlyCubePHPActionCable.log("ConnectionMonitor skipping reopening recent disconnect");
             } else {
-              ActionCable.log("ConnectionMonitor reopening");
+              FlyCubePHPActionCable.log("ConnectionMonitor reopening");
               return this.connection.reopen();
             }
           }
@@ -180,7 +180,7 @@ Released under the MIT license
             return setTimeout((function(_this) {
               return function() {
                 if (_this.connectionIsStale() || !_this.connection.isOpen()) {
-                  ActionCable.log("ConnectionMonitor reopening stale connection on visibilitychange. visbilityState = " + document.visibilityState);
+                  FlyCubePHPActionCable.log("ConnectionMonitor reopening stale connection on visibilitychange. visbilityState = " + document.visibilityState);
                   return _this.connection.reopen();
                 }
               };
@@ -211,18 +211,18 @@ Released under the MIT license
         bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
         indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-      ref = ActionCable.INTERNAL, message_types = ref.message_types, protocols = ref.protocols;
+      ref = FlyCubePHPActionCable.INTERNAL, message_types = ref.message_types, protocols = ref.protocols;
 
       supportedProtocols = 2 <= protocols.length ? slice.call(protocols, 0, i = protocols.length - 1) : (i = 0, []), unsupportedProtocol = protocols[i++];
 
-      ActionCable.Connection = (function() {
+      FlyCubePHPActionCable.Connection = (function() {
         Connection.reopenDelay = 500;
 
         function Connection(consumer) {
           this.consumer = consumer;
           this.open = bind(this.open, this);
           this.subscriptions = this.consumer.subscriptions;
-          this.monitor = new ActionCable.ConnectionMonitor(this);
+          this.monitor = new FlyCubePHPActionCable.ConnectionMonitor(this);
           this.disconnected = true;
         }
 
@@ -237,14 +237,14 @@ Released under the MIT license
 
         Connection.prototype.open = function() {
           if (this.isActive()) {
-            ActionCable.log("Attempted to open WebSocket, but existing socket is " + (this.getState()));
+            FlyCubePHPActionCable.log("Attempted to open WebSocket, but existing socket is " + (this.getState()));
             return false;
           } else {
-            ActionCable.log("Opening WebSocket, current state is " + (this.getState()) + ", subprotocols: " + protocols);
+            FlyCubePHPActionCable.log("Opening WebSocket, current state is " + (this.getState()) + ", subprotocols: " + protocols);
             if (this.webSocket != null) {
               this.uninstallEventHandlers();
             }
-            this.webSocket = new ActionCable.WebSocket(this.consumer.url, protocols);
+            this.webSocket = new FlyCubePHPActionCable.WebSocket(this.consumer.url, protocols);
             this.installEventHandlers();
             this.monitor.start();
             return true;
@@ -266,15 +266,15 @@ Released under the MIT license
 
         Connection.prototype.reopen = function() {
           var error;
-          ActionCable.log("Reopening WebSocket, current state is " + (this.getState()));
+          FlyCubePHPActionCable.log("Reopening WebSocket, current state is " + (this.getState()));
           if (this.isActive()) {
             try {
               return this.close();
             } catch (error1) {
               error = error1;
-              return ActionCable.log("Failed to reopen WebSocket", error);
+              return FlyCubePHPActionCable.log("Failed to reopen WebSocket", error);
             } finally {
-              ActionCable.log("Reopening WebSocket in " + this.constructor.reopenDelay + "ms");
+              FlyCubePHPActionCable.log("Reopening WebSocket in " + this.constructor.reopenDelay + "ms");
               setTimeout(this.open, this.constructor.reopenDelay);
             }
           } else {
@@ -354,17 +354,17 @@ Released under the MIT license
             }
           },
           open: function() {
-            ActionCable.log("WebSocket onopen event, using '" + (this.getProtocol()) + "' subprotocol");
+            FlyCubePHPActionCable.log("WebSocket onopen event, using '" + (this.getProtocol()) + "' subprotocol");
             this.disconnected = false;
             if (!this.isProtocolSupported()) {
-              ActionCable.log("Protocol is unsupported. Stopping monitor and disconnecting.");
+              FlyCubePHPActionCable.log("Protocol is unsupported. Stopping monitor and disconnecting.");
               return this.close({
                 allowReconnect: false
               });
             }
           },
           close: function(event) {
-            ActionCable.log("WebSocket onclose event");
+            FlyCubePHPActionCable.log("WebSocket onclose event");
             if (this.disconnected) {
               return;
             }
@@ -375,7 +375,7 @@ Released under the MIT license
             });
           },
           error: function() {
-            return ActionCable.log("WebSocket onerror event");
+            return FlyCubePHPActionCable.log("WebSocket onerror event");
           }
         };
 
@@ -387,7 +387,7 @@ Released under the MIT license
     (function() {
       var slice = [].slice;
 
-      ActionCable.Subscriptions = (function() {
+      FlyCubePHPActionCable.Subscriptions = (function() {
         function Subscriptions(consumer) {
           this.consumer = consumer;
           this.subscriptions = [];
@@ -399,7 +399,7 @@ Released under the MIT license
           params = typeof channel === "object" ? channel : {
             channel: channel
           };
-          subscription = new ActionCable.Subscription(this.consumer, params, mixin);
+          subscription = new FlyCubePHPActionCable.Subscription(this.consumer, params, mixin);
           return this.add(subscription);
         };
 
@@ -516,7 +516,7 @@ Released under the MIT license
 
     }).call(this);
     (function() {
-      ActionCable.Subscription = (function() {
+      FlyCubePHPActionCable.Subscription = (function() {
         var extend;
 
         function Subscription(consumer, params, mixin) {
@@ -565,11 +565,11 @@ Released under the MIT license
 
     }).call(this);
     (function() {
-      ActionCable.Consumer = (function() {
+      FlyCubePHPActionCable.Consumer = (function() {
         function Consumer(url) {
           this.url = url;
-          this.subscriptions = new ActionCable.Subscriptions(this);
-          this.connection = new ActionCable.Connection(this);
+          this.subscriptions = new FlyCubePHPActionCable.Subscriptions(this);
+          this.connection = new FlyCubePHPActionCable.Connection(this);
         }
 
         Consumer.prototype.send = function(data) {
@@ -600,9 +600,9 @@ Released under the MIT license
   }).call(this);
 
   if (typeof module === "object" && module.exports) {
-    module.exports = ActionCable;
+    module.exports = FlyCubePHPActionCable;
   } else if (typeof define === "function" && define.amd) {
-    define(ActionCable);
+    define(FlyCubePHPActionCable);
   }
 }).call(this);
  
