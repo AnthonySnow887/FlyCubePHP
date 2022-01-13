@@ -44,11 +44,15 @@ class WSWorker
     public function start() {
         $chSid = posix_getsid($this->_pid);
         if ($chSid < 0) {
-            Logger::error("[". self::class ."] WSWorker Stopped. Invalid SID! PID: " . $this->_pid);
+            $errMsg = "[". self::class ."] WSWorker Stopped. Invalid SID! PID: " . $this->_pid;
+            Logger::error($errMsg);
+            fwrite(STDERR, "$errMsg\r\n");
             die();
         }
 
-        Logger::info("[". self::class ."] WSWorker Started. PID: " . $this->_pid);
+        $infoMsg = "[". self::class ."] WSWorker Started. PID: " . $this->_pid;
+        Logger::info($infoMsg);
+        echo "$infoMsg\r\n";
 
         // --- create timer fork for send 'ping' to client ---
         $this->_timer = $this->_createTimer();
@@ -120,6 +124,7 @@ class WSWorker
                         } else {
                             if (!$this->_read($connectionId)) { // connection has been closed or the buffer was overwhelmed
                                 $this->close($connectionId);
+                                Logger::info("[". self::class ."][". $this->_pid ."] Connection has been closed. ID: $connectionId");
                                 continue;
                             }
                             // --- process incoming message ---
@@ -163,12 +168,10 @@ class WSWorker
 
     protected function _readFromBuffer($connectionId) {
         $data = '';
-
         if (false !== ($pos = strpos($this->_read[$connectionId], self::SOCKET_MESSAGE_DELIMITER))) {
             $data = substr($this->_read[$connectionId], 0, $pos);
             $this->_read[$connectionId] = substr($this->_read[$connectionId], $pos + strlen(self::SOCKET_MESSAGE_DELIMITER));
         }
-
         return $data;
     }
 
@@ -185,16 +188,15 @@ class WSWorker
         $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
         $pid = pcntl_fork(); // create a fork
         if ($pid == -1) {
-            Logger::error("[" . self::class . "] Create timer fork failed (error pcntl_fork)!");
+            $errMsg = "[" . self::class . "] Create timer fork failed (error pcntl_fork)!";
+            Logger::error($errMsg);
+            fwrite(STDERR, "$errMsg\r\n");
             die();
         } elseif ($pid) { // parent
             fclose($pair[0]);
             return $pair[1]; // one of the pair will be in the parent
         } else { // child process
-            $chPid = posix_getpid();
             $chSid = posix_getsid(posix_getpid());
-//            echo "Timer PID: $chPid\r\n";
-//            echo "Timer SID: $chSid\r\n";
             if ($chSid < 0)
                 exit;
             fclose($pair[1]);
@@ -258,14 +260,6 @@ class WSWorker
             && isset($this->_clients[$connectionId]))
             $this->_write($connectionId, $this->_encode($data, $type));
     }
-
-//    protected function sendToMaster($data) {
-//        $this->_write($this->getIdByConnection($this->_master), $data, self::SOCKET_MESSAGE_DELIMITER);
-//    }
-
-//    protected function sendToService($connectionId, $data) {
-//        $this->_write($connectionId, $data, self::SOCKET_MESSAGE_DELIMITER);
-//    }
 
     protected function _handshake($connectionId) {
         // read the headers from the connection
@@ -475,10 +469,6 @@ class WSWorker
         }
     }
 
-    protected function onServiceMessage($connectionId, $data) {}
-    protected function onServiceOpen($connectionId) {}
-    protected function onServiceClose($connectionId) {}
-
     protected function onMasterMessage($data) {
         echo "DATA From MASTER: $data\r\n";
     }
@@ -490,9 +480,10 @@ class WSWorker
             'type' => 'ping',
             'message' => time()
         ];
+        $jsonData = json_encode($sData);
         foreach ($this->_clients as $clientId => $client) {
-            echo "[". $this->_pid . "] Send to: $clientId\r\n";
-            $this->sendToClient($clientId, json_encode($sData));
+            echo "[". $this->_pid . "] Send to: $clientId\r\n"; // TODO <-- delete this line
+            $this->sendToClient($clientId, $jsonData);
         }
     }
 }

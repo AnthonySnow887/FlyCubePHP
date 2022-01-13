@@ -2,6 +2,7 @@
 
 namespace FlyCubePHP\WebSockets\Server;
 
+use FlyCubePHP\Core\Error\ErrorHandlingCore;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
@@ -13,6 +14,7 @@ include_once __DIR__.'/../../Core/Logger/Logger.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
 include_once 'WSServer.php';
+include_once 'WSServerErrorHandler.php';
 
 class WSServiceApplication
 {
@@ -45,19 +47,17 @@ class WSServiceApplication
         $pidFile = CoreHelper::buildPath(CoreHelper::rootDir(), 'tmp', self::PID_FILE_NAME);
         $pid = trim(@file_get_contents($pidFile));
         if ($pid) {
-            echo "Check...$appPath\r\n";
             $ret = $this->isCopyOfCurrentProcess($pid, $appPath);
-            var_dump($ret);
             if ($ret) {
-                echo "Stop...$appPath\r\n";
                 if ($this->stopService($appPath) === false)
                     die("WSServiceApplication stop failed!\r\n");
             }
 
         }
-        echo "Start...\r\n";
         if ($this->startService($appPath) === false)
             die("WSServiceApplication start failed!\r\n");
+
+        die("WSServiceApplication restarted\r\n");
     }
 
     private function startService(string $appPath): bool
@@ -73,17 +73,18 @@ class WSServiceApplication
 
         $pid = pcntl_fork(); // create a fork
         if ($pid == -1) {
-            Logger::error("[" . self::class . "] Create fork failed (error pcntl_fork)!");
+            $errMsg = "[" . self::class . "] Create fork failed (error pcntl_fork)!";
+            Logger::error($errMsg);
+            fwrite(STDERR, "$errMsg\r\n");
             return false;
         } else if ($pid == 0) { // child started
             $sid = posix_setsid();
-            $pid = posix_getpid();
-//            echo "PID: $pid\r\n";
-//            echo "SID: $sid\r\n";
             if ($sid < 0)
                 exit;
             // --- save PID ---
             file_put_contents($pidFile, posix_getpid());
+            // --- set error handler ---
+            ErrorHandlingCore::instance()->setErrorHandler(new WSServerErrorHandler());
             // --- start ws server loop ---
             $server = new WSServer();
             $server->start();
@@ -116,9 +117,6 @@ class WSServiceApplication
     {
         if (!file_exists("/proc/$pid"))
             return false;
-//        echo "$pid\r\n";
-//        echo "$appPath\r\n";
-
         // get process all name
         $bPath = "/proc/$pid/cmdline";
         if ($file = fopen($bPath, "r")) {
@@ -126,27 +124,28 @@ class WSServiceApplication
             fclose($file);
             if (!empty($line)) {
                 $line = $this->prepareCmdLineData(rtrim($line));
-                echo "$line\r\n";
                 if (strpos($line, "php") === 0)
-                    $line = substr($line, 3, strlen($line));
+                    $line = trim(substr($line, 3, strlen($line)));
 
-//                echo "$line\r\n";
+                if (!empty($line) && preg_match('/(.*)(\s--start|\s--stop|\s--restart)/', $line, $matches))
+                    $line = trim($matches[1]);
 
-                if (!empty($line) && preg_match('/(.*)(\sstart|\sstop|\srestart)/', $line, $matches))
-                    $line = $matches[1];
-
-//                var_dump($matches);
-//                echo "$line\r\n";
+                $spacePos = strpos($line, " ");
+                if ($spacePos > 0)
+                    $line = trim(substr($line, 0, $spacePos));
 
                 $buffLst = explode("/", $line);
                 $pName = rtrim($buffLst[count($buffLst) - 1]);
                 unset($buffLst[count($buffLst) - 1]);
+                $pPath = "";
                 foreach ($buffLst as $item) {
                     if (empty($pPath))
                         $pPath = rtrim($item);
                     else
                         $pPath .= "/" . rtrim($item);
                 }
+                if (strcmp($pPath[0], "/") !== 0)
+                    $pPath = "/$pPath";
 
                 // check is link
                 if (is_link($pPath) === true)
@@ -154,13 +153,9 @@ class WSServiceApplication
             }
 
         } else {
-            echo "Open file failed (ReadOnly)! Path: $bPath\r\n";
+            fwrite(STDERR, "Open file failed (ReadOnly)! Path: $bPath\r\n");
             return false;
         }
-
-//        echo "$pName\r\n";
-//        echo "$pPath\r\n";
-
         // check
         if (strcmp("$pPath/$pName", $appPath) === 0)
             return true;
@@ -170,12 +165,9 @@ class WSServiceApplication
         if (is_link($bPath) === true) {
             $pPath = readlink($bPath) . "/$pName";
         } else {
-            echo "Open symlink failed (ReadOnly)! Path: $bPath\r\n";
+            fwrite(STDERR, "Open symlink failed (ReadOnly)! Path: $bPath\r\n");
             return false;
         }
-
-//        echo "$pPath\r\n";
-
         // check
         return (strcmp($pPath, $appPath) === 0);
     }
@@ -187,7 +179,6 @@ class WSServiceApplication
             $ch = $line[$i];
             if (ord($ch) === 0)
                 $ch = ' ';
-//                break;
             $tmpLine = $ch . $tmpLine;
         }
         return $tmpLine;
