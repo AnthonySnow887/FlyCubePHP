@@ -1,15 +1,22 @@
 <?php
 
-namespace FlyCubePHP\WebSockets\Client;
+namespace FlyCubePHP\WebSockets\ActionCable\Adapters;
 
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\WebSockets\Config\WSConfig;
 
-include_once __DIR__.'/../Config/WSConfig.php';
+include_once 'BaseClientAdapter.php';
+include_once __DIR__.'/../../Config/WSConfig.php';
 
-class IPCClient
+class IPCClientAdapter implements BaseClientAdapter
 {
-    static public function send(string $data)
+    /**
+     * Отправить данные клиентам
+     * @param string $channel Название канала
+     * @param mixed $message Данные
+     * @throws
+     */
+    public function broadcast(string $channel, $message)
     {
         $sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
 
@@ -31,6 +38,10 @@ class IPCClient
         }
 
         // Отправляем запрос
+        $data = json_encode([
+            'channel' => $channel,
+            'message' => $message
+        ]);
         $result = socket_write($socket, $data, strlen($data));
         if ($result === false)
             return;

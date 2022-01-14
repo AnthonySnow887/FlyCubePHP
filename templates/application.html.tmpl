@@ -4,6 +4,7 @@
     <!--<link rel='icon' type='image/png' href='{# image_path("logo.png") #}' />-->
     <title>{{ APP_NAME }}</title>
 
+    {{ action_cable_meta_tag() }}
     {{ csrf_meta_tags() }}
     {{ csp_meta_tag() }}
 

@@ -13,6 +13,7 @@ include_once 'vendor/Twig-2.x/Twig/Extension/AbstractExtension.php';
 
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Error/ErrorController.php';
+include_once 'Helpers/ActionCableHelper.php';
 include_once 'Helpers/AssetTagHelper.php';
 include_once 'Helpers/AssetUrlHelper.php';
 include_once 'Helpers/JavascriptTagHelper.php';
@@ -32,6 +33,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
 
     public function __construct(/*BaseControllerHelper*/ $helper) {
         $this->_helper = $helper;
+        $this->_defaultHelpers[] = new Helpers\ActionCableHelper();
         $this->_defaultHelpers[] = new Helpers\AssetTagHelper();
         $this->_defaultHelpers[] = new Helpers\AssetUrlHelper();
         $this->_defaultHelpers[] = new Helpers\JavascriptTagHelper();
