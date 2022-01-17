@@ -12,11 +12,11 @@ class IPCClientAdapter implements BaseClientAdapter
 {
     /**
      * Отправить данные клиентам
-     * @param string $channel Название канала
+     * @param string $broadcasting Название канала вещания
      * @param mixed $message Данные
      * @throws
      */
-    public function broadcast(string $channel, $message)
+    public function broadcast(string $broadcasting, $message)
     {
         $sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
 
@@ -39,7 +39,7 @@ class IPCClientAdapter implements BaseClientAdapter
 
         // Отправляем запрос
         $data = json_encode([
-            'channel' => $channel,
+            'broadcasting' => $broadcasting,
             'message' => $message
         ]);
         $result = socket_write($socket, $data, strlen($data));

@@ -116,3 +116,18 @@ CLIENT-RECEIVED:
     "guid": "2d0480b8-d5d7-41fc-9a78-39105fc80cd1"
   }
 }
+
+5. Client send unsubscribe (сервер обрабатывает, но не отвечает):
+
+{
+    "command": "unsubscribe",
+    "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"test-channel\"}"
+}
+
+
+######################## LOG Messaged ###################################
+
+18:47:20 INFO: EventsChannel is transmitting the subscription confirmation
+18:47:20 INFO: EventsChannel is streaming from test-channel
+18:47:22 INFO: Unsubscribing from channel: {"channel":"EventsChannel","stream_name":"test-channel"}
+18:47:22 INFO: EventsChannel stopped streaming from test-channel

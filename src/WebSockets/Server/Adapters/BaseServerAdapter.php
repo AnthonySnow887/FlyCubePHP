@@ -11,5 +11,8 @@ abstract class BaseServerAdapter
         $this->_workersControls = $workersControls;
     }
 
+    /**
+     * Метод запуска обработчика событий от контроллеров для отправки клиентам
+     */
     abstract public function run();
 }

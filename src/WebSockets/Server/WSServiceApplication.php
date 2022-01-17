@@ -20,6 +20,9 @@ class WSServiceApplication
 {
     const PID_FILE_NAME = "ws.pid";
 
+    /**
+     * Запустить WebSockets сервер
+     */
     public function start()
     {
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -30,6 +33,9 @@ class WSServiceApplication
         die("WSServiceApplication start failed!\r\n");
     }
 
+    /**
+     * Остановить WebSockets сервер
+     */
     public function stop()
     {
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -40,6 +46,9 @@ class WSServiceApplication
         die("WSServiceApplication stop failed!\r\n");
     }
 
+    /**
+     * Перезапустить WebSockets сервер
+     */
     public function restart()
     {
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -60,6 +69,12 @@ class WSServiceApplication
         die("WSServiceApplication restarted\r\n");
     }
 
+    /**
+     * Запустить управляющий поток WebSockets сервера
+     * @param string $appPath
+     * @return bool
+     * @throws \FlyCubePHP\Core\Error\Error
+     */
     private function startService(string $appPath): bool
     {
         $pidFile = CoreHelper::buildPath(CoreHelper::rootDir(), 'tmp', self::PID_FILE_NAME);
@@ -92,6 +107,11 @@ class WSServiceApplication
         return true;
     }
 
+    /**
+     * Остановить управляющий поток WebSockets сервера
+     * @param string $appPath
+     * @return bool
+     */
     private function stopService(string $appPath): bool
     {
         $pidFile = CoreHelper::buildPath(CoreHelper::rootDir(), 'tmp', self::PID_FILE_NAME);
@@ -113,10 +133,18 @@ class WSServiceApplication
         return true;
     }
 
-    private function isCopyOfCurrentProcess($pid, $appPath)
+    /**
+     * Метод проверки процесса по его PID (является ли копией текущего процесса)
+     * @param $pid
+     * @param $appPath
+     * @return bool
+     */
+    private function isCopyOfCurrentProcess($pid, $appPath): bool
     {
         if (!file_exists("/proc/$pid"))
             return false;
+        $pPath = "";
+        $pName = "";
         // get process all name
         $bPath = "/proc/$pid/cmdline";
         if ($file = fopen($bPath, "r")) {
@@ -172,6 +200,11 @@ class WSServiceApplication
         return (strcmp($pPath, $appPath) === 0);
     }
 
+    /**
+     * Метод подготовки данных из файла '/proc/PID/cmdline'
+     * @param string $line
+     * @return string
+     */
     private function prepareCmdLineData(string $line): string {
         $tmpLine = "";
         $size = strlen($line);

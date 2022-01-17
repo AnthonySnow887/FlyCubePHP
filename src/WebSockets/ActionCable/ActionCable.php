@@ -13,14 +13,14 @@ class ActionCable
 {
     /**
      * Отправить данные клиентам
-     * @param string $channel Название канала
+     * @param string $broadcasting Название канала вещания
      * @param mixed $message Данные
      * @throws \FlyCubePHP\Core\Error\Error
      */
-    static public function serverBroadcast(string $channel, $message)
+    static public function serverBroadcast(string $broadcasting, $message)
     {
-        if (empty($channel) || empty($message)) {
-            Logger::warning("[ActionCable][serverBroadcast] Empty channel name or message! Skip broadcast!");
+        if (empty($broadcasting) || empty($message)) {
+            Logger::warning("[ActionCable][serverBroadcast] Empty broadcasting channel name or message! Skip broadcast!");
             return;
         }
         $adapter = null;
@@ -33,7 +33,7 @@ class ActionCable
         if (is_null($adapter))
             throw new \RuntimeException("[ActionCable][serverBroadcast] Not found adapter with name \"$adapterName\"!");
 
-        $adapter->broadcast($channel, $message);
+        $adapter->broadcast($broadcasting, $message);
         unset($adapter);
     }
 }

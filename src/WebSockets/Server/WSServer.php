@@ -8,6 +8,7 @@ Released under the MIT license
 
 namespace FlyCubePHP\WebSockets\Server;
 
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\WebSockets\Config\WSConfig;
@@ -18,8 +19,10 @@ include_once __DIR__.'/../../FlyCubePHPVersion.php';
 include_once __DIR__.'/../../FlyCubePHPAutoLoader.php';
 include_once __DIR__.'/../../FlyCubePHPErrorHandling.php';
 include_once __DIR__.'/../../FlyCubePHPEnvLoader.php';
-include_once __DIR__.'../../Core/Logger/Logger.php';
+include_once __DIR__.'/../../Core/Logger/Logger.php';
+include_once __DIR__.'/../../Core/Config/Config.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
+//include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php'; // TODO to add or not?
 include_once __DIR__.'/../Config/WSConfig.php';
 
 include_once 'WSWorker.php';
@@ -30,6 +33,7 @@ class WSServer
     private $_host;
     private $_port;
     private $_workersNum = 1;
+    private $_mountPath = "/cable";
     private $_workersControls = array();
     private $_pid;
 
@@ -38,6 +42,7 @@ class WSServer
         $this->_host = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_WS_SERVER_HOST, "127.0.0.1");
         $this->_port = intval(WSConfig::instance()->currentSettingsValue(WSConfig::TAG_WS_SERVER_PORT, 8000));
         $this->_workersNum = intval(WSConfig::instance()->currentSettingsValue(WSConfig::TAG_WS_SERVER_WORKERS_NUM, 1));
+        $this->_mountPath = Config::instance()->arg(Config::TAG_ACTION_CABLE_MOUNT_PATH, "/cable");
         if ($this->_workersNum <= 0) {
             $errMsg = "[". self::class ."] Invalid WS Workers number (num <= 0)!";
             Logger::error($errMsg);
@@ -47,6 +52,10 @@ class WSServer
         $this->_pid = posix_getpid();
     }
 
+    /**
+     * Метод запуска управляющего потока WebSockets сервера
+     * @throws \FlyCubePHP\Core\Error\Error
+     */
     public function start()
     {
         $infoMsg = "[". self::class ."] Start WSServer. PID: " . $this->_pid;
@@ -57,6 +66,9 @@ class WSServer
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
 
+        $infoMsg = "[". self::class ."] Action Cable mount path: " . $this->_mountPath;
+        Logger::info($infoMsg);
+        echo "$infoMsg\r\n";
 
         // --- open server socket ---
         $host = $this->_host;
@@ -73,6 +85,18 @@ class WSServer
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
 
+        // --- load & include app channels ---
+        $appChannels = $this->loadApplicationChannels();
+
+        $infoMsg = "[". self::class ."] Loaded application channels: " . count($appChannels);
+        Logger::info($infoMsg);
+        echo "$infoMsg\r\n";
+        foreach ($appChannels as $channel) {
+            $infoMsg = "[". self::class ."]   - $channel";
+            Logger::info($infoMsg);
+            echo "$infoMsg\r\n";
+        }
+
         // --- start workers ---
         for ($i = 0; $i < $this->_workersNum; $i++) {
             $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
@@ -87,12 +111,13 @@ class WSServer
                 $this->_workersControls[] = $pair[1];
             } else if ($pid == 0) { // child process
                 fclose($pair[1]);
-                $worker = new WSWorker($server, $pair[0]);
+                $worker = new WSWorker($this->_mountPath, $appChannels, $server, $pair[0]);
                 $worker->start();
                 break;
             }
         }
 
+        // --- start server adapter ---
         $adapter = null;
         $adapterName = WSConfig::instance()->currentAdapterName();
         if (strcmp(trim(strtolower($adapterName)), 'ipc') === 0)
@@ -107,5 +132,42 @@ class WSServer
             die();
         }
         $adapter->run();
+    }
+
+    /**
+     * Загрузить классы каналов приложения
+     * @return array
+     */
+    protected function loadApplicationChannels(): array
+    {
+        // --- include base channels class ---
+        $base_channel = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "channels", "Channel.php");
+        if (is_file($base_channel))
+            include_once $base_channel;
+
+        // --- search, load & include all app channels ---
+        $channels = [];
+        $app_channels_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "channels");
+        $app_channels = CoreHelper::scanDir($app_channels_dir);
+        foreach ($app_channels as $channel) {
+            $tmpName = $this->channelClass($channel);
+            if (empty($tmpName))
+                continue;
+            $channel[] = $tmpName;
+            include_once $channel;
+        }
+        return $channels;
+    }
+
+    /**
+     * Получить имя класса канала по его пути к файлу
+     * @param string $path
+     * @return string
+     */
+    protected function channelClass(string $path): string
+    {
+        if (preg_match("/^.*Channel\.php$/", $path) && preg_match('/(.*)\.php$/', basename($path), $matches))
+            return $matches[1];
+        return "";
     }
 }

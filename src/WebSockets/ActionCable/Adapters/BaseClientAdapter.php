@@ -6,8 +6,8 @@ interface BaseClientAdapter
 {
     /**
      * Отправить данные клиентам
-     * @param string $channel
+     * @param string $broadcasting Название канала вещания
      * @param mixed $message
      */
-    public function broadcast(string $channel, $message);
+    public function broadcast(string $broadcasting, $message);
 }

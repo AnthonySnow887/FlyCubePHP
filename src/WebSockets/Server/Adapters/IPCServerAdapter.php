@@ -37,6 +37,9 @@ class IPCServerAdapter extends BaseServerAdapter
         }
     }
 
+    /**
+     * Метод запуска обработчика событий от контроллеров для отправки клиентам
+     */
     public function run()
     {
         $sockPath = $this->_sockPath;
@@ -48,7 +51,7 @@ class IPCServerAdapter extends BaseServerAdapter
             fwrite(STDERR, "$errMsg\r\n");
             die();
         }
-        $infoMsg = "[". self::class ."] Adapter listen on: unix://$sockPath";
+        $infoMsg = "[". self::class ."] Server adapter listen on: unix://$sockPath";
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
 
@@ -84,9 +87,6 @@ class IPCServerAdapter extends BaseServerAdapter
                             $this->close($connectionId);
                             continue;
                         }
-                        echo "-> READ Success. Send to workers...\r\n";
-                        // --- process incoming message ---
-                        $this->sendToWorkers($connectionId);
                     } else {
                         // --- read new incoming data ---
                         echo "-> Can READ 2...\r\n";
@@ -96,10 +96,10 @@ class IPCServerAdapter extends BaseServerAdapter
                             $this->close($connectionId);
                             continue;
                         }
-                        echo "-> READ 2 Success. Send to workers...\r\n";
-                        // --- process incoming message ---
-                        $this->sendToWorkers($connectionId);
                     }
+                    echo "-> Send to workers...\r\n";
+                    // --- process incoming message ---
+                    $this->sendToWorkers($connectionId);
                 }
             }
 
@@ -110,6 +110,11 @@ class IPCServerAdapter extends BaseServerAdapter
         }
     }
 
+    /**
+     * Получить дескриптор соединения по его ИД
+     * @param $connectionId
+     * @return mixed|null
+     */
     protected function connectionById($connectionId) {
         if (isset($this->_clients[$connectionId])) {
             return $this->_clients[$connectionId];
@@ -119,10 +124,20 @@ class IPCServerAdapter extends BaseServerAdapter
         return null;
     }
 
-    protected function idByConnection($connection) {
+    /**
+     * Получить ИД по дескриптору входящего соединения
+     * @param $connection
+     * @return int
+     */
+    protected function idByConnection($connection): int {
         return intval($connection);
     }
 
+    /**
+     * Чтение данных из сокета
+     * @param $connectionId
+     * @return bool|int
+     */
     protected function read($connectionId) {
         $data = fread($this->connectionById($connectionId), self::SOCKET_BUFFER_SIZE);
         if (!strlen($data))
@@ -132,6 +147,11 @@ class IPCServerAdapter extends BaseServerAdapter
         return strlen($this->_read[$connectionId]) < self::MAX_SOCKET_BUFFER_SIZE;
     }
 
+    /**
+     * Запись данных в сокет
+     * @param $sock
+     * @param $data
+     */
     protected function write($sock, $data)
     {
         echo "-> Write: $data\r\n";
@@ -142,6 +162,10 @@ class IPCServerAdapter extends BaseServerAdapter
             $this->write($sock, $data);
     }
 
+    /**
+     * Обработка закрытия соединения
+     * @param $connectionId
+     */
     protected function close($connectionId) {
         @fclose($this->connectionById($connectionId));
         if (isset($this->_clients[$connectionId])) {
@@ -152,10 +176,21 @@ class IPCServerAdapter extends BaseServerAdapter
         unset($this->_read[$connectionId]);
     }
 
+    /**
+     * Обработка ошибки
+     * @param $connectionId
+     */
     protected function error($connectionId) {
-        Logger::error("[". self::class ."] An error has occurred: $connectionId");
+        try {
+            Logger::error("[". self::class ."] An error has occurred: $connectionId");
+        } catch (\Exception $e) {
+        }
     }
 
+    /**
+     * Отправка данных дочерним потокам
+     * @param $connectionId
+     */
     protected function sendToWorkers($connectionId)
     {
         $data = $this->_read[$connectionId];
