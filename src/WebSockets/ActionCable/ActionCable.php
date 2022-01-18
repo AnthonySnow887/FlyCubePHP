@@ -35,5 +35,6 @@ class ActionCable
 
         $adapter->broadcast($broadcasting, $message);
         unset($adapter);
+        Logger::info("[ActionCable] Broadcasting to $broadcasting: " . json_encode($message));
     }
 }

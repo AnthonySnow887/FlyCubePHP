@@ -18,8 +18,10 @@ class WSWorker
     const SOCKET_MESSAGE_DELIMITER  = "\n";
 
     private $_appChannels = array();
+    private $_currentClientId = null;
     private $_clients = array();
-    private $_clientsInfo = array(); // headers, cookie, params
+    private $_clientsInfo = array(); // headers, cookie, params, channel-id
+    private $_clientsSubscribers = array(); // { 'ch-name': { client-id, client-id, ...} }
     private $_server = null;
     private $_controlSocket = null;
     private $_read = array();  // read buffers
@@ -42,7 +44,7 @@ class WSWorker
     {
         // --- checking that the WSWorker is stopped and not the timer fork ---
         if ($this->_pid == posix_getpid())
-            Logger::info("[". self::class ."] WSWorker Stopped. PID: " . $this->_pid);
+            $this->log(Logger::INFO, "WSWorker Stopped.");
     }
 
     /**
@@ -156,6 +158,100 @@ class WSWorker
     }
 
     /**
+     * Добавить запись о подписчике текущего соединения
+     * @param string $channel
+     * @param string $broadcasting
+     */
+    public function appendSubscriber(string $channel, string $broadcasting)
+    {
+        if (is_null($this->_currentClientId)
+            || empty($channel)
+            || empty($broadcasting))
+            return;
+        $tmpConnection = $this->connectionById($this->_currentClientId);
+        if (is_null($tmpConnection))
+            return;
+        if (!isset($this->_clientsSubscribers[$broadcasting]))
+            $this->_clientsSubscribers[$broadcasting] = [];
+        $tmpLst = $this->_clientsSubscribers[$broadcasting];
+        $this->_clientsSubscribers[$broadcasting] = array_merge($tmpLst, [
+            $this->_currentClientId => [
+                'channel' => $channel,
+                'stream_name' => $broadcasting,
+                'identifier' => json_encode([ 'channel' => $channel, 'stream_name' => $broadcasting ]),
+                'connection' => $tmpConnection
+            ]
+        ]);
+        $this->log(Logger::INFO, "$channel is streaming from $broadcasting");
+    }
+
+    /**
+     * Удалить запись о подписчике текущего соединения
+     * @param string $broadcasting
+     */
+    public function removeSubscriber(string $broadcasting)
+    {
+        if (is_null($this->_currentClientId) || empty($broadcasting))
+            return;
+        if (!isset($this->_clientsSubscribers[$broadcasting]))
+            return;
+        $tmpLst = $this->_clientsSubscribers[$broadcasting];
+        if (isset($tmpLst[$this->_currentClientId])) {
+            $channelName = $tmpLst[$this->_currentClientId]['channel'];
+            unset($tmpLst[$this->_currentClientId]);
+            $this->_clientsSubscribers[$broadcasting] = $tmpLst;
+            $this->log(Logger::INFO, "$channelName stopped streaming $broadcasting");
+        }
+    }
+
+    /**
+     * Удалить записи о подписчиках всех соединений по названию канала
+     * @param string $channel
+     */
+    public function removeSubscribersByChannel(string $channel)
+    {
+        if (empty($channel))
+            return;
+        foreach ($this->_clientsSubscribers as $broadcasting => $broadcastingInfo) {
+            $keys = array_keys($broadcastingInfo);
+            foreach ($keys as $key) {
+                if (strcmp($broadcastingInfo[$key]['channel'], $channel) !== 0)
+                    continue;
+                unset($broadcastingInfo[$key]);
+            }
+            $this->_clientsSubscribers[$broadcasting] = $broadcastingInfo;
+        }
+    }
+
+    /**
+     * Удалить запись об ИД подписчика
+     * @param $connectionId
+     */
+    public function removeSubscriberId($connectionId)
+    {
+        foreach ($this->_clientsSubscribers as $key => $value) {
+            if (isset($value[$connectionId])) {
+                unset($value[$connectionId]);
+                $this->_clientsSubscribers[$key] = $value;
+            }
+        }
+    }
+
+    /**
+     * Получить список подписчиков
+     * @param string $broadcasting
+     * @return array
+     */
+    protected function subscribers(string $broadcasting): array
+    {
+        if (empty($broadcasting))
+            return [];
+        if (!isset($this->_clientsSubscribers[$broadcasting]))
+            return [];
+        return $this->_clientsSubscribers[$broadcasting];
+    }
+
+    /**
      * Чтение данных из сокета
      * @param $connectionId
      * @return bool|int
@@ -207,6 +303,7 @@ class WSWorker
             unset($this->_clients[$connectionId]);
             if (isset($this->_clientsInfo[$connectionId]))
                 unset($this->_clientsInfo[$connectionId]);
+            $this->removeSubscriberId($connectionId);
         } elseif ($this->idByConnection($this->_server) == $connectionId) {
             $this->_server = null;
         } elseif ($this->idByConnection($this->_controlSocket) == $connectionId) {
@@ -291,14 +388,12 @@ class WSWorker
         $this->_read[$connectionId] = '';
 
         // --- show input connection ---
-        try {
-            $info = [
-                'HTTP HEADERS' => $headers,
-                'COOKIE' => $cookie,
-                'PARAMS' => $params
-            ];
-            Logger::info("[" . self::class . "][" . $this->_pid . "] Incoming connection (id: $connectionId)", $info);
-        } catch (\Exception $e) {}
+        $info = [
+            'HTTP HEADERS' => $headers,
+            'COOKIE' => $cookie,
+            'PARAMS' => $params
+        ];
+        $this->log(Logger::INFO, "Incoming connection (id: $connectionId)", $info);
 
         // --- check url ---
         $reqMethod = "???";
@@ -313,29 +408,20 @@ class WSWorker
         if (isset($headers['upgrade']))
             $httpUpgrade = $headers['upgrade'];
 
-        if (!isset($headers['request-method']['url'])) {
-            try {
-                Logger::warning("[" . self::class . "][" . $this->_pid . "] Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Not found 'request-method::url' (id: $connectionId)! Close connection!");
-            } catch (\Exception $e) {}
-            return false;
-        }
-        if (strcmp($headers['request-method']['url'], $this->_mountPath) !== 0) {
-            try {
-                Logger::warning("[" . self::class . "][" . $this->_pid . "] Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Invalid input URL (id: $connectionId; url: " . $headers['request-method']['url'] . ")! Close connection!");
-            } catch (\Exception $e) {}
-            return false;
-        }
+        if (!isset($headers['request-method']['url']))
+            $this->log(Logger::WARNING, "Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Not found 'request-method::url' (id: $connectionId)! Close connection!");
+        if (strcmp($headers['request-method']['url'], $this->_mountPath) !== 0)
+            $this->log(Logger::WARNING, "Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Invalid input URL (id: $connectionId; url: " . $headers['request-method']['url'] . ")! Close connection!");
 
         // --- check input connection ---
         if (class_exists('\ApplicationCable\Channel')) {
             $tmpChannel = new \ApplicationCable\Channel();
             if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-                $isSuccess = $tmpChannel->connect($params, $cookie);
+                $tmpChannel->connect($params, $cookie);
+                $isReject = $tmpChannel->isRejectConnection();
                 unset($tmpChannel);
-                if ($isSuccess === false) {
-                    try {
-                        Logger::warning("[" . self::class . "][" . $this->_pid . "] Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Channel denied connection! Close connection!");
-                    } catch (\Exception $e) {}
+                if ($isReject === true) {
+                    $this->log(Logger::WARNING, "Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Channel denied connection! Close connection!");
                     return false;
                 }
             }
@@ -545,13 +631,28 @@ class WSWorker
      * @param array $headers
      * @param array $cookie
      * @param array $params
+     * @param string $channelId
      */
-    protected function setConnectionInfo($connectionId, array $headers, array $cookie, array $params) {
+    protected function setConnectionInfo($connectionId,
+                                         array $headers,
+                                         array $cookie,
+                                         array $params,
+                                         string $channelId = "") {
         $this->_clientsInfo[$connectionId] = [
             'headers' => $headers,
             'cookie' => $cookie,
-            'params' => $params
+            'params' => $params,
+            'channel-id' => $channelId
         ];
+    }
+
+    /**
+     * Задать ИД канала в информации подключения клиента
+     * @param $connectionId
+     * @param string $channelId
+     */
+    protected function setConnectionInfoChannelId($connectionId, string $channelId = "") {
+        $this->_clientsInfo[$connectionId]['channel-id'] = $channelId;
     }
 
     /**
@@ -565,7 +666,8 @@ class WSWorker
         return [
             'headers' => [],
             'cookie' => [],
-            'params' => []
+            'params' => [],
+            'channel-id' => ''
         ];
     }
 
@@ -578,10 +680,7 @@ class WSWorker
         $pid = pcntl_fork(); // create a fork
         if ($pid == -1) {
             $errMsg = "[" . self::class . "] Create timer fork failed (error pcntl_fork)!";
-            try {
-                Logger::error($errMsg);
-            } catch (\Exception $e) {
-            }
+            $this->log(Logger::ERROR, $errMsg);
             fwrite(STDERR, "$errMsg\r\n");
             die();
         } elseif ($pid) { // parent
@@ -732,6 +831,20 @@ class WSWorker
         return $uriArgs;
     }
 
+    /**
+     * Отправить сообщение в лог
+     * @param $level
+     * @param $message
+     * @param array $context
+     */
+    protected function log($level, $message, array $context = array())
+    {
+        try {
+            Logger::log($level, "[". self::class ."][". $this->_pid ."] $message", $context);
+        } catch (\Exception $e) {
+        }
+    }
+
     // --- Функции-Обработчики ---
 
     /**
@@ -742,22 +855,19 @@ class WSWorker
      * @param array $params
      */
     protected function onOpen($connectionId, array $headers, array $cookie, array $params) {
-        try {
-            $reqMethod = "???";
-            if (isset($headers['request-method']['type']))
-                $reqMethod = $headers['request-method']['type'];
+        $reqMethod = "???";
+        if (isset($headers['request-method']['type']))
+            $reqMethod = $headers['request-method']['type'];
 
-            $httpConnection = "???";
-            if (isset($headers['connection']))
-                $httpConnection = $headers['connection'];
+        $httpConnection = "???";
+        if (isset($headers['connection']))
+            $httpConnection = $headers['connection'];
 
-            $httpUpgrade = "???";
-            if (isset($headers['upgrade']))
-                $httpUpgrade = $headers['upgrade'];
+        $httpUpgrade = "???";
+        if (isset($headers['upgrade']))
+            $httpUpgrade = $headers['upgrade'];
 
-            Logger::info("[" . self::class . "][" . $this->_pid . "] Successfully upgraded to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)");
-        } catch (\Exception $e) {
-        }
+        $this->log(Logger::INFO, "Successfully upgraded to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)");
         $this->sendToClient($connectionId, "{\"type\":\"welcome\"}");
     }
 
@@ -766,10 +876,15 @@ class WSWorker
      * @param $connectionId
      */
     protected function onClose($connectionId) {
-        try {
-            Logger::info("[". self::class ."][". $this->_pid ."] Connection closed (id: $connectionId)");
-        } catch (\Exception $e) {
+        if (class_exists('\ApplicationCable\Channel')) {
+            $connectionInfo = $this->connectionInfo($connectionId);
+            $tmpChannel = new \ApplicationCable\Channel();
+            if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
+                $tmpChannel->disconnect($connectionInfo['params'], $connectionInfo['cookie']);
+                unset($tmpChannel);
+            }
         }
+        $this->log(Logger::INFO, "Connection closed (id: $connectionId)");
     }
 
     /**
@@ -777,10 +892,7 @@ class WSWorker
      * @param $connectionId
      */
     protected function onError($connectionId) {
-        try {
-            Logger::error("[". self::class ."][". $this->_pid ."] An error has occurred: $connectionId");
-        } catch (\Exception $e) {
-        }
+        $this->log(Logger::ERROR, "An error has occurred: $connectionId");
     }
 
     /**
@@ -790,114 +902,80 @@ class WSWorker
      * @param $type
      */
     protected function onMessage($connectionId, $packet, $type) {
+        if (strcmp($type, 'text') !== 0) {
+            $this->log(Logger::ERROR, "Invalid incoming message type (id: $connectionId, type: $type)!");
+            return;
+        }
         $data = json_decode($packet, true);
         $identifier = [];
         if (isset($data['identifier']))
             $identifier = json_decode($data['identifier'], true);
-
-        if (isset($data['command']) && $data['command'] == 'subscribe') {
-            // --- subscribe ---
-            if (!isset($identifier['channel'])) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Not found channel name: $connectionId");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $channelName = $identifier['channel'];
-            if (empty($channelName)) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Empty channel name: $connectionId");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            if (!in_array($channelName, $this->_appChannels)) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Subscription class not found (id: $connectionId, channel: \"$channelName\")");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $channel = new $channelName();
-            if (!is_subclass_of($channel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-                unset($channel);
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Invalid subscription class [is not a subclass of '\FlyCubePHP\WebSockets\ActionCable\BaseChannel'] (id: $connectionId, channel: \"$channelName\")!");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $connectionInfo = $this->connectionInfo($connectionId);
-            $isSuccess = $channel->subscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
-            unset($channel);
-
-            $stateMessage = "confirm_subscription";
-            if ($isSuccess === false) {
-                $stateMessage = "reject_subscription";
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Subscription class reject subscribe (id: $connectionId, channel: \"$channelName\")! Close connection!");
-                } catch (\Exception $e) {
-                }
-            } else {
-                try {
-                    Logger::info("[". self::class ."][". $this->_pid ."] $channelName is transmitting the subscription confirmation (id: $connectionId)");
-                } catch (\Exception $e) {
-                }
-            }
-
-            // --- send response ---
-            $sData = [
-                'identifier' => $data['identifier'],
-                'type' => $stateMessage
-            ];
-            $this->sendToClient($connectionId, json_encode($sData));
-            if ($isSuccess === false)
-                $this->close($connectionId);
-
-        } else if (isset($data['command']) && $data['command'] == 'unsubscribe') {
-            // --- unsubscribe ---
-            if (!isset($identifier['channel'])) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Not found channel name: $connectionId");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $channelName = $identifier['channel'];
-            if (empty($channelName)) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Empty channel name: $connectionId");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            if (!in_array($channelName, $this->_appChannels)) {
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Subscription class not found (id: $connectionId, channel: \"$channelName\")");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $channel = new $channelName();
-            if (!is_subclass_of($channel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-                unset($channel);
-                try {
-                    Logger::error("[". self::class ."][". $this->_pid ."] Invalid subscription class [is not a subclass of '\FlyCubePHP\WebSockets\ActionCable\BaseChannel'] (id: $connectionId, channel: \"$channelName\")!");
-                } catch (\Exception $e) {
-                }
-                return;
-            }
-            $connectionInfo = $this->connectionInfo($connectionId);
-            $channel->unsubscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
-            unset($channel);
-            try {
-                Logger::info("[". self::class ."][". $this->_pid ."] Unsubscribing from channel: " . $data['identifier'] . " (id: $connectionId)");
-            } catch (\Exception $e) {
-            }
-        } else {
-            // TODO ...
+        if (!isset($identifier['channel'])) {
+            $this->log(Logger::ERROR, "Not found channel name: $connectionId");
+            return;
         }
+        $channelName = $identifier['channel'];
+        if (empty($channelName)) {
+            $this->log(Logger::ERROR, "Empty channel name: $connectionId");
+            return;
+        }
+        if (!in_array($channelName, $this->_appChannels)) {
+            $this->log(Logger::ERROR, "Subscription class not found (id: $connectionId, channel: \"$channelName\")");
+            return;
+        }
+        $channel = new $channelName();
+        if (!is_subclass_of($channel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
+            unset($channel);
+            $this->log(Logger::ERROR, "Invalid subscription class [is not a subclass of '\FlyCubePHP\WebSockets\ActionCable\BaseChannel'] (id: $connectionId, channel: \"$channelName\")!");
+            return;
+        }
+        $channel->setWSWorker($this);
+        $this->_currentClientId = $connectionId;
+        $connectionInfo = $this->connectionInfo($connectionId);
+
+        // --- process ---
+        if ((isset($data['command']) && $data['command'] == 'subscribe')
+            || (isset($data['command']) && $data['command'] == 'unsubscribe')) {
+            // --- subscribe / unsubscribe ---
+            if ($data['command'] == 'subscribe') {
+                $channel->subscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
+                $isReject = $channel->isRejectSubscription();
+                unset($channel);
+
+                $stateMessage = "confirm_subscription";
+                if ($isReject === true) {
+                    $stateMessage = "reject_subscription";
+                    $this->log(Logger::ERROR, "Subscription class reject subscribe (id: $connectionId, channel: \"$channelName\")! Close connection!");
+                } else {
+                    $this->log(Logger::INFO, "$channelName is transmitting the subscription confirmation (id: $connectionId)");
+                    $this->setConnectionInfoChannelId($connectionId, $data['identifier']);
+                }
+
+                // --- send response ---
+                $sData = [
+                    'identifier' => $data['identifier'],
+                    'type' => $stateMessage
+                ];
+                $this->sendToClient($connectionId, json_encode($sData));
+                if ($isReject === true)
+                    $this->close($connectionId);
+            } else {
+                $channel->unsubscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
+                unset($channel);
+                $this->log(Logger::INFO, "Unsubscribing from channel: " . $data['identifier'] . " (id: $connectionId)");
+            }
+        } else  {
+            // --- incoming data ---
+            if (!isset($data['message'])) {
+                unset($channel);
+                $this->log(Logger::ERROR, "Not found message path (id: $connectionId)!");
+                return;
+            }
+            $message = json_decode($data['message'], true);
+            $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
+            unset($channel);
+        }
+        $this->_currentClientId = null;
     }
 
     /**
@@ -905,7 +983,28 @@ class WSWorker
      * @param $data
      */
     protected function onMasterMessage($data) {
-        echo "DATA From MASTER: $data\r\n";
+        $data = json_decode($data, true);
+        if (!isset($data['broadcasting']) || isset($data['message'])) {
+            $this->log(Logger::ERROR, "Not found broadcasting or message path in master-message!");
+            return;
+        }
+        $subscribers = $this->subscribers($data['broadcasting']);
+        foreach ($subscribers as $connectionId => $connectionSettings) {
+            $identifier = $connectionSettings['identifier'];
+            $channelName = $connectionSettings['channel'];
+            $streamName = $connectionSettings['stream_name'];
+            if (empty($identifier)) {
+                $this->log(Logger::WARNING, "Not found client channel identifier (id: $connectionId)! Send skip!");
+                continue;
+            }
+            $sData = [
+                'identifier' => $identifier,
+                'message' => $data['message']
+            ];
+            $jsonData = json_encode($sData);
+            $this->sendToClient($connectionId, $jsonData);
+            $this->log(Logger::INFO, "$channelName transmitting " . $data['message'] . " (via streamed from $streamName)");
+        }
     }
 
     /**
@@ -913,10 +1012,7 @@ class WSWorker
      * @param $connectionId
      */
     protected function onMasterClose($connectionId) {
-        try {
-            Logger::info("[". self::class ."][". $this->_pid ."] Master connection closed (id: $connectionId)");
-        } catch (\Exception $e) {
-        }
+        $this->log(Logger::INFO, "Master connection closed (id: $connectionId)");
     }
 
     /**
@@ -928,9 +1024,7 @@ class WSWorker
             'message' => time()
         ];
         $jsonData = json_encode($sData);
-        foreach ($this->_clients as $clientId => $client) {
-            echo "[". $this->_pid . "] Send to: $clientId\r\n"; // TODO <-- delete this line
+        foreach ($this->_clients as $clientId => $client)
             $this->sendToClient($clientId, $jsonData);
-        }
     }
 }

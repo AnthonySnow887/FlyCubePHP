@@ -381,6 +381,7 @@ Options include:
     --controller-api                    Create new API controller
     --model                             Create new model
     --migration                         Create new migration
+    --channel                           Create new action cable channel
     --plugin                            Create new FlyCubePHP plugin
     --plugin-gui                        Create new FlyCubePHP Gui plugin
     --plugin-controller                 Create new FlyCubePHP plugin controller
@@ -436,34 +437,37 @@ Examples:
  4. Create new controller with actions:
      $app --new --controller --name=Example --actions=act_1,act_2
     
- 5. Create new plugin:
+ 5. Create new action cable channel:
+     $app --new --channel --name=Example
+    
+ 6. Create new plugin:
      $app --new --plugin --name=ExamplePlugin
     
- 6. Create new gui plugin:
+ 7. Create new gui plugin:
      $app --new --plugin-gui --name=ExamplePlugin
     
- 7. Create new plugin controller:
+ 8. Create new plugin controller:
      $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
     
- 8. Install all migrations:
+ 9. Install all migrations:
      $app --db-migrate
 
- 9. Install needed migrations:
+10. Install needed migrations:
      $app --db-migrate --to-version=20210309092620
     
-10. Uninstall last migration:
+11. Uninstall last migration:
      $app --db-rollback
     
-11. Uninstall last N-steps migrations:
+12. Uninstall last N-steps migrations:
      $app --db-rollback --step=3
 
-12. Upgrade current FlyCubePHP project:
+13. Upgrade current FlyCubePHP project:
      $app --upgrade
           
-13. Upgrade an existing FlyCubePHP project:
+14. Upgrade an existing FlyCubePHP project:
      $app --upgrade --path=/home/test/projects/MyProject
      
-14. Force upgrade an existing FlyCubePHP project:
+15. Force upgrade an existing FlyCubePHP project:
      $app --upgrade --force --path=/home/test/projects/MyProject
 
 
@@ -928,7 +932,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/application_controller_helper.php.tmpl"] = buildPath($path, "app", "helpers", "ApplicationHelper.php");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/cable.json.tmpl"] = buildPath($path, "config", "cable.json");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/cable.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "cable.js");
-    // TODO add channel php class template
+    $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/channel_base.php.tmpl"] = buildPath($path, "app", "channels", "Channel.php");
     // TODO add ws server systemd template
 
 
@@ -1697,6 +1701,50 @@ function createMigration($name) {
     // --- create migration ---
     $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/migration.php.tmpl";
     $resultFile = buildPath("db", "migrate", $curTime."_".$name.".php");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+}
+
+/**
+ * Создать новый Action Cable Channel
+ * @param $name
+ */
+function createChannel($name) {
+    if (empty($name)) {
+        echo "ERROR: Invalid new channel name!\r\n";
+        return;
+    }
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/channel.php.tmpl")) {
+        echo "ERROR: Not found templates!\r\n";
+        return;
+    }
+
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
+    $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+
+    // --- create channel ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/channel.php.tmpl";
+    $resultFile = buildPath("app", "channels", $name."Channel.php");
     $tmplParams = [];
     $tmplParams['USER'] = currentUser();
     $tmplParams['DATE'] = date('d.m.y');
@@ -2858,6 +2906,10 @@ if (in_array('--new', $arguments)) {
         echo "=== FlyCubePHP: Create new migration ===\r\n";
         createMigration($objName);
         echo "=== FlyCubePHP =========================\r\n";
+    } else if (in_array('--channel', $arguments)) {
+        echo "=== FlyCubePHP: Create new channel ===\r\n";
+        createChannel($objName);
+        echo "=== FlyCubePHP =======================\r\n";
     } else if (in_array('--plugin', $arguments)) {
         echo "=== FlyCubePHP: Create new plugin ===\r\n";
         createPlugin($objName);

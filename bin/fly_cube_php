@@ -550,7 +550,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $templatesList[__DIR__."/../templates/application_controller_helper.php.tmpl"] = buildPath($path, "app", "helpers", "ApplicationHelper.php");
     $templatesList[__DIR__."/../templates/cable.json.tmpl"] = buildPath($path, "config", "cable.json");
     $templatesList[__DIR__."/../templates/cable.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "cable.js");
-    // TODO add channel php class template
+    $templatesList[__DIR__."/../templates/channel_base.php.tmpl"] = buildPath($path, "app", "channels", "Channel.php");
     // TODO add ws server systemd template
 
 

@@ -131,3 +131,6 @@ CLIENT-RECEIVED:
 18:47:20 INFO: EventsChannel is streaming from test-channel
 18:47:22 INFO: Unsubscribing from channel: {"channel":"EventsChannel","stream_name":"test-channel"}
 18:47:22 INFO: EventsChannel stopped streaming from test-channel
+
+16:36:26 DEBUG: [ActionCable] Broadcasting to storage_data_events: {:command=>"INSERT", :guid=>"b1b4f8a2-1a1d-4ed1-ba45-f92a43167e53"}
+16:36:26 DEBUG: EventsChannel transmitting {"command"=>"INSERT", "guid"=>"b1b4f8a2-1a1d-4ed1-ba45-f92a43167e53"} (via streamed from storage_data_events)
