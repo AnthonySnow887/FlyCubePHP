@@ -174,14 +174,15 @@ class WSWorker
         if (!isset($this->_clientsSubscribers[$broadcasting]))
             $this->_clientsSubscribers[$broadcasting] = [];
         $tmpLst = $this->_clientsSubscribers[$broadcasting];
-        $this->_clientsSubscribers[$broadcasting] = array_merge($tmpLst, [
-            $this->_currentClientId => [
-                'channel' => $channel,
-                'stream_name' => $broadcasting,
-                'identifier' => json_encode([ 'channel' => $channel, 'stream_name' => $broadcasting ]),
-                'connection' => $tmpConnection
-            ]
-        ]);
+        if (isset($tmpLst[$this->_currentClientId]))
+            return;
+        $tmpLst[$this->_currentClientId] = [
+            'channel' => $channel,
+            'stream_name' => $broadcasting,
+            'identifier' => json_encode([ 'channel' => $channel, 'stream_name' => $broadcasting ]),
+            'connection' => $tmpConnection
+        ];
+        $this->_clientsSubscribers[$broadcasting] = $tmpLst;
         $this->log(Logger::INFO, "$channel is streaming from $broadcasting");
     }
 
@@ -672,6 +673,17 @@ class WSWorker
     }
 
     /**
+     * Получить имя класса канала
+     * @param string $channel
+     * @return string
+     */
+    protected function channelClassName(string $channel): string {
+        if (isset($this->_appChannels[$channel]))
+            return $this->_appChannels[$channel];
+        return "";
+    }
+
+    /**
      * Метод создания потока таймера
      * @return mixed|void
      */
@@ -919,19 +931,17 @@ class WSWorker
             $this->log(Logger::ERROR, "Empty channel name: $connectionId");
             return;
         }
-        if (!in_array($channelName, $this->_appChannels)) {
+        $channelClassName = $this->channelClassName($channelName);
+        if (empty($channelClassName)) {
             $this->log(Logger::ERROR, "Subscription class not found (id: $connectionId, channel: \"$channelName\")");
             return;
         }
-        $channel = new $channelName();
-        if (!is_subclass_of($channel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-            unset($channel);
-            $this->log(Logger::ERROR, "Invalid subscription class [is not a subclass of '\FlyCubePHP\WebSockets\ActionCable\BaseChannel'] (id: $connectionId, channel: \"$channelName\")!");
-            return;
-        }
-        $channel->setWSWorker($this);
         $this->_currentClientId = $connectionId;
         $connectionInfo = $this->connectionInfo($connectionId);
+
+        // --- create channel class ---
+        $channel = new $channelClassName();
+        $channel->setWSWorker($this);
 
         // --- process ---
         if ((isset($data['command']) && $data['command'] == 'subscribe')
@@ -984,7 +994,7 @@ class WSWorker
      */
     protected function onMasterMessage($data) {
         $data = json_decode($data, true);
-        if (!isset($data['broadcasting']) || isset($data['message'])) {
+        if (!isset($data['broadcasting']) || !isset($data['message'])) {
             $this->log(Logger::ERROR, "Not found broadcasting or message path in master-message!");
             return;
         }
@@ -993,6 +1003,10 @@ class WSWorker
             $identifier = $connectionSettings['identifier'];
             $channelName = $connectionSettings['channel'];
             $streamName = $connectionSettings['stream_name'];
+            if ($connectionId <= 0) {
+                $this->log(Logger::WARNING, "Not found client connection id! Send skip!");
+                continue;
+            }
             if (empty($identifier)) {
                 $this->log(Logger::WARNING, "Not found client channel identifier (id: $connectionId)! Send skip!");
                 continue;

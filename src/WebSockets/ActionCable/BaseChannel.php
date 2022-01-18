@@ -40,9 +40,9 @@ abstract class BaseChannel
      * @param mixed $message Данные
      * @throws
      */
-    final static public function broadcastTo(string $model, $message)
+    final protected function broadcastTo(string $model, $message)
     {
-        ActionCable::serverBroadcast(self::broadcastingFor($model), $message);
+        ActionCable::serverBroadcast($this->broadcastingFor($model), $message);
     }
 
     /**
@@ -51,9 +51,9 @@ abstract class BaseChannel
      * @return string
      * @throws
      */
-    final static public function broadcastingFor(string $model): string
+    final protected function broadcastingFor(string $model): string
     {
-        $chName = CoreHelper::underscore(self::channelName());
+        $chName = CoreHelper::underscore($this->channelClassName());
         $model = CoreHelper::underscore($model);
         return (empty($model)) ? $chName : "$chName:$model";
     }
@@ -77,12 +77,13 @@ abstract class BaseChannel
     /**
      * Начать трансляцию pub-sub для названной очереди (broadcasting).
      * @param string $broadcasting Уникальный идентификатор вещания
+     * @throws
      */
     final protected function streamFrom(string $broadcasting)
     {
         if (is_null($this->_wsWorker))
             return;
-        $this->_wsWorker->appendSubscriber(self::channelName(), $broadcasting);
+        $this->_wsWorker->appendSubscriber($this->channelClassName(), $broadcasting);
     }
 
     /**
@@ -91,7 +92,7 @@ abstract class BaseChannel
      */
     final protected function streamFor(string $model)
     {
-        $this->streamFrom(self::broadcastingFor($model));
+        $this->streamFrom($this->broadcastingFor($model));
     }
 
     /**
@@ -123,17 +124,18 @@ abstract class BaseChannel
      */
     final protected function stopStreamFor(string $model)
     {
-        $this->stopStreamFrom(self::broadcastingFor($model));
+        $this->stopStreamFrom($this->broadcastingFor($model));
     }
 
     /**
      * Отменяет подписку на все трансляции pub-sub, связанные с этим каналом.
+     * @throws 
      */
     final protected function stopAllStreams()
     {
         if (is_null($this->_wsWorker))
             return;
-        $this->_wsWorker->removeSubscribersByChannel(self::channelName());
+        $this->_wsWorker->removeSubscribersByChannel($this->channelClassName());
     }
 
     /**
@@ -175,8 +177,8 @@ abstract class BaseChannel
      * @return string
      * @throws
      */
-    final static protected function channelName(): string {
-        $tmpName = self::channelClassName();
+    final protected function channelName(): string {
+        $tmpName = $this->channelClassName();
         if (preg_match("/.*Channel$/", $tmpName))
             $tmpName = substr($tmpName, 0, strlen($tmpName) - 7);
         return $tmpName;
@@ -187,10 +189,10 @@ abstract class BaseChannel
      * @return string
      * @throws
      */
-    final static protected function channelClassName(): string {
+    final protected function channelClassName(): string {
         $tmpRef = null;
         try {
-            $tmpRef = new \ReflectionClass(self::class);
+            $tmpRef = new \ReflectionClass($this);
         } catch (\Exception $e) {
             throw new Error($e->getMessage(), "channel-base");
         }

@@ -9,6 +9,7 @@ Released under the MIT license
 namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Error\Error as Error;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\WebSockets\Config\WSConfig;
@@ -24,6 +25,7 @@ include_once __DIR__.'/../../Core/Config/Config.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 //include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php'; // TODO to add or not?
 include_once __DIR__.'/../Config/WSConfig.php';
+include_once __DIR__.'/../ActionCable/BaseChannel.php';
 
 include_once 'WSWorker.php';
 include_once 'Adapters/IPCServerAdapter.php';
@@ -91,8 +93,8 @@ class WSServer
         $infoMsg = "[". self::class ."] Loaded application channels: " . count($appChannels);
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
-        foreach ($appChannels as $channel) {
-            $infoMsg = "[". self::class ."]   - $channel";
+        foreach ($appChannels as $key => $channel) {
+            $infoMsg = "[". self::class ."]   - $key ($channel)";
             Logger::info($infoMsg);
             echo "$infoMsg\r\n";
         }
@@ -151,10 +153,29 @@ class WSServer
         $app_channels = CoreHelper::scanDir($app_channels_dir);
         foreach ($app_channels as $channel) {
             $tmpName = $this->channelClass($channel);
-            if (empty($tmpName))
+            if (empty($tmpName) || strcmp($tmpName, 'Channel') === 0)
                 continue;
-            $channel[] = $tmpName;
-            include_once $channel;
+            try {
+                $classes = get_declared_classes();
+                include_once $channel;
+                $diff = array_diff(get_declared_classes(), $classes);
+                reset($diff);
+                foreach ($diff as $cName) {
+                    try {
+                        $tmpClass = new $cName();
+                        if (is_subclass_of($tmpClass, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
+                            $tmpRef = new \ReflectionClass($tmpClass);
+                            $tmpName = $tmpRef->getShortName();
+                            $channels[$tmpName] = $cName;
+                        }
+                        unset($tmpClass);
+                    } catch (\Exception $e) {
+                        // nothing...
+                    }
+                }
+            } catch (\Exception $e) {
+                // nothing...
+            }
         }
         return $channels;
     }
