@@ -24,14 +24,14 @@ class IPCServerAdapter extends BaseServerAdapter
         $this->_sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
         if (empty($this->_sockPath)) {
             $errMsg = "[". self::class ."] Invalid IPC socket path!";
-            Logger::error($errMsg);
+            $this->log(Logger::ERROR, $errMsg);
             fwrite(STDERR, "$errMsg\r\n");
             die();
         }
         if (file_exists($this->_sockPath)
             && !unlink($this->_sockPath)) {
             $errMsg = "[". self::class ."] Remove old IPC socket failed! Abort!";
-            Logger::error($errMsg);
+            $this->log(Logger::ERROR, $errMsg);
             fwrite(STDERR, "$errMsg\r\n");
             die();
         }
@@ -47,7 +47,7 @@ class IPCServerAdapter extends BaseServerAdapter
         stream_set_blocking($this->_server, 0);
         if (!$this->_server) {
             $errMsg = "[". self::class ."] stream_socket_server: $errorString ($errorNumber)";
-            Logger::error($errMsg);
+            $this->log(Logger::ERROR, $errMsg);
             fwrite(STDERR, "$errMsg\r\n");
             die();
         }
@@ -72,32 +72,20 @@ class IPCServerAdapter extends BaseServerAdapter
             if ($read) { // data were obtained from the connected clients
                 foreach ($read as $client) {
                     if ($this->_server == $client) {
-                        echo "-> IN Connect\r\n";
                         // --- check is new incoming connection ---
                         if ($client = @stream_socket_accept($this->_server, 0)) {
                             stream_set_blocking($client, 0);
                             $clientId = $this->idByConnection($client);
                             $this->_clients[$clientId] = $client;
                         }
-                        // --- read new incoming data ---
-                        $connectionId = $this->idByConnection($client);
-                        echo "-> Can READ...\r\n";
-                        if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
-                            echo "-> READ failed! Close!\r\n";
-                            $this->close($connectionId);
-                            continue;
-                        }
-                    } else {
-                        // --- read new incoming data ---
-                        echo "-> Can READ 2...\r\n";
-                        $connectionId = $this->idByConnection($client);
-                        if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
-                            echo "-> READ 2 failed! Close!\r\n";
-                            $this->close($connectionId);
-                            continue;
-                        }
                     }
-                    echo "-> Send to workers...\r\n";
+                    // --- read new incoming data ---
+                    $connectionId = $this->idByConnection($client);
+                    if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
+                        $this->log(Logger::ERROR, "Read failed (id: $connectionId)! Close connection!");
+                        $this->close($connectionId);
+                        continue;
+                    }
                     // --- process incoming message ---
                     $this->sendToWorkers($connectionId);
                 }
@@ -154,9 +142,7 @@ class IPCServerAdapter extends BaseServerAdapter
      */
     protected function write($sock, $data)
     {
-        echo "-> Write: $data\r\n";
         $written = fwrite($sock, $data, self::SOCKET_BUFFER_SIZE);
-        echo "-> Write size: $written\r\n";
         $data = substr($data, $written);
         if (!empty($data))
             $this->write($sock, $data);
@@ -181,10 +167,7 @@ class IPCServerAdapter extends BaseServerAdapter
      * @param $connectionId
      */
     protected function error($connectionId) {
-        try {
-            Logger::error("[". self::class ."] An error has occurred: $connectionId");
-        } catch (\Exception $e) {
-        }
+        $this->log(Logger::ERROR, "An error has occurred: $connectionId");
     }
 
     /**
@@ -197,5 +180,19 @@ class IPCServerAdapter extends BaseServerAdapter
         $this->_read[$connectionId] = "";
         foreach ($this->_workersControls as $control)
             $this->write($control, $data . WSWorker::SOCKET_MESSAGE_DELIMITER);
+    }
+
+    /**
+     * Отправить сообщение в лог
+     * @param $level
+     * @param $message
+     * @param array $context
+     */
+    protected function log($level, $message, array $context = array())
+    {
+        try {
+            Logger::log($level, "[". self::class ."] $message", $context);
+        } catch (\Exception $e) {
+        }
     }
 }

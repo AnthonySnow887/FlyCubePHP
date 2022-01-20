@@ -33,8 +33,9 @@ class ActionCable
         if (is_null($adapter))
             throw new \RuntimeException("[ActionCable][serverBroadcast] Not found adapter with name \"$adapterName\"!");
 
-        $adapter->broadcast($broadcasting, $message);
+        $isOk = $adapter->broadcast($broadcasting, $message);
         unset($adapter);
-        Logger::info("[ActionCable] Broadcasting to $broadcasting: " . json_encode($message));
+        if ($isOk)
+            Logger::info("[ActionCable] Broadcasting to $broadcasting: " . json_encode($message));
     }
 }

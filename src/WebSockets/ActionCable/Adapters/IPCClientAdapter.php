@@ -14,9 +14,10 @@ class IPCClientAdapter implements BaseClientAdapter
      * Отправить данные клиентам
      * @param string $broadcasting Название канала вещания
      * @param mixed $message Данные
+     * @return bool
      * @throws
      */
-    public function broadcast(string $broadcasting, $message)
+    public function broadcast(string $broadcasting, $message): bool
     {
         $sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
 
@@ -24,7 +25,7 @@ class IPCClientAdapter implements BaseClientAdapter
         $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
         if ($socket === false) {
             Logger::error("[". self::class ."] Error: " . socket_strerror(socket_last_error()));
-            return;
+            return false;
         }
 
         socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, [ 'sec' => 30, 'usec' => 0 ]); // 30 sec
@@ -34,7 +35,7 @@ class IPCClientAdapter implements BaseClientAdapter
         $result = socket_connect($socket, $sockPath);
         if ($result === false) {
             Logger::error("[". self::class ."] Error: " . socket_strerror(socket_last_error($socket)));
-            return;
+            return false;
         }
 
         // Отправляем запрос
@@ -43,9 +44,7 @@ class IPCClientAdapter implements BaseClientAdapter
             'message' => $message
         ]);
         $result = socket_write($socket, $data, strlen($data));
-        if ($result === false)
-            return;
-
         socket_close($socket);
+        return !($result == false);
     }
 }

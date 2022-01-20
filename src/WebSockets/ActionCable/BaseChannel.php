@@ -26,12 +26,35 @@ abstract class BaseChannel
      */
     public function connect(array $params, array $cookie) {}
 
+    /**
+     * Обработка отключения клиента
+     * @param array $params Массив параметров от клиента
+     * @param array $cookie Массив cookie от клиента
+     */
     public function disconnect(array $params, array $cookie) {}
 
+    /**
+     * Обработка подписки на канала
+     * @param array $params Массив параметров от клиента
+     * @param array $cookie Массив cookie от клиента
+     *
+     * NOTE: if $this->rejectSubscription() -> subscription refused!
+     */
     public function subscribed(array $params, array $cookie) {}
 
+    /**
+     * Обработка отписки от канала
+     * @param array $params Массив параметров от клиента
+     * @param array $cookie Массив cookie от клиента
+     */
     public function unsubscribed(array $params, array $cookie) {}
 
+    /**
+     * Обработка входящих данных, полученных от клиента
+     * @param array $params Массив параметров от клиента
+     * @param array $cookie Массив cookie от клиента
+     * @param mixed $data Данные
+     */
     public function receive(array $params, array $cookie, $data) {}
 
     /**
@@ -129,7 +152,7 @@ abstract class BaseChannel
 
     /**
      * Отменяет подписку на все трансляции pub-sub, связанные с этим каналом.
-     * @throws 
+     * @throws
      */
     final protected function stopAllStreams()
     {

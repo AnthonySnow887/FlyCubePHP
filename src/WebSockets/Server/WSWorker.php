@@ -183,7 +183,7 @@ class WSWorker
             'connection' => $tmpConnection
         ];
         $this->_clientsSubscribers[$broadcasting] = $tmpLst;
-        $this->log(Logger::INFO, "$channel is streaming from $broadcasting");
+        $this->log(Logger::INFO, "$channel is streaming from $broadcasting (id:" . $this->_currentClientId . ")");
     }
 
     /**
@@ -200,8 +200,12 @@ class WSWorker
         if (isset($tmpLst[$this->_currentClientId])) {
             $channelName = $tmpLst[$this->_currentClientId]['channel'];
             unset($tmpLst[$this->_currentClientId]);
-            $this->_clientsSubscribers[$broadcasting] = $tmpLst;
-            $this->log(Logger::INFO, "$channelName stopped streaming $broadcasting");
+            if (!empty($tmpLst))
+                $this->_clientsSubscribers[$broadcasting] = $tmpLst;
+            else
+                unset($this->_clientsSubscribers[$broadcasting]);
+
+            $this->log(Logger::INFO, "$channelName stopped streaming $broadcasting (id: " . $this->_currentClientId . ")");
         }
     }
 
@@ -219,8 +223,12 @@ class WSWorker
                 if (strcmp($broadcastingInfo[$key]['channel'], $channel) !== 0)
                     continue;
                 unset($broadcastingInfo[$key]);
+                $this->log(Logger::INFO, "$channel stopped streaming $broadcasting (id: $key)");
             }
-            $this->_clientsSubscribers[$broadcasting] = $broadcastingInfo;
+            if (!empty($broadcastingInfo))
+                $this->_clientsSubscribers[$broadcasting] = $broadcastingInfo;
+            else
+                unset($this->_clientsSubscribers[$broadcasting]);
         }
     }
 
@@ -233,7 +241,10 @@ class WSWorker
         foreach ($this->_clientsSubscribers as $key => $value) {
             if (isset($value[$connectionId])) {
                 unset($value[$connectionId]);
-                $this->_clientsSubscribers[$key] = $value;
+                if (!empty($value))
+                    $this->_clientsSubscribers[$key] = $value;
+                else
+                    unset($this->_clientsSubscribers[$key]);
             }
         }
     }
@@ -974,16 +985,20 @@ class WSWorker
                 unset($channel);
                 $this->log(Logger::INFO, "Unsubscribing from channel: " . $data['identifier'] . " (id: $connectionId)");
             }
-        } else  {
+        } else if (isset($data['command']) && $data['command'] == 'message') {
             // --- incoming data ---
-            if (!isset($data['message'])) {
+            if (!isset($data['data'])) {
                 unset($channel);
-                $this->log(Logger::ERROR, "Not found message path (id: $connectionId)!");
+                $this->_currentClientId = null;
+                $this->log(Logger::ERROR, "Not found message data (id: $connectionId)!");
                 return;
             }
-            $message = json_decode($data['message'], true);
+            $this->log(Logger::INFO, "$channelName::receive(" . $data['data'] . ")");
+            $message = json_decode($data['data'], true);
             $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
             unset($channel);
+        } else {
+            $this->log(Logger::ERROR, "Unsupported incoming command (id: $connectionId)!", $data);
         }
         $this->_currentClientId = null;
     }
@@ -1017,7 +1032,7 @@ class WSWorker
             ];
             $jsonData = json_encode($sData);
             $this->sendToClient($connectionId, $jsonData);
-            $this->log(Logger::INFO, "$channelName transmitting " . $data['message'] . " (via streamed from $streamName)");
+            $this->log(Logger::INFO, "$channelName transmitting \"" . $data['message'] . "\" (via streamed from $streamName)");
         }
     }
 

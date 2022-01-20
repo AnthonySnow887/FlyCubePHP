@@ -107,7 +107,7 @@ CLIENT-RECEIVED:
 }
 
 
-4. messages (данные высылаются только конкретному адресату по имени канала):
+4. messages from server (данные высылаются только конкретному адресату по имени канала):
 
 {
   "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"storage_data_events\"}",
@@ -123,6 +123,15 @@ CLIENT-RECEIVED:
     "command": "unsubscribe",
     "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"test-channel\"}"
 }
+
+6. message from clien:
+
+{
+  "command": "message",
+  "identifier": "{\"channel\":\"EventsChannel\",\"stream_name\":\"test-channel\"}",
+  "data": "{\"message\":\"Thi, this test message from client.\"}"
+}
+
 
 
 ######################## LOG Messaged ###################################
