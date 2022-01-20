@@ -9,6 +9,7 @@ Released under the MIT license
 namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\Core\Session\Session;
 
 class WSWorker
 {
@@ -427,11 +428,22 @@ class WSWorker
 
         // --- check input connection ---
         if (class_exists('\ApplicationCable\Channel')) {
+            // --- init session ---
+            $_COOKIE = $cookie;
+            Session::instance()->init();
+
+            // --- create base channel ---
             $tmpChannel = new \ApplicationCable\Channel();
             if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
                 $tmpChannel->connect($params, $cookie);
                 $isReject = $tmpChannel->isRejectConnection();
                 unset($tmpChannel);
+
+                // --- close session ---
+                Session::instance()->destroy();
+                $_COOKIE = array();
+
+                // --- check result ---
                 if ($isReject === true) {
                     $this->log(Logger::WARNING, "Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Channel denied connection! Close connection!");
                     return false;
@@ -901,11 +913,20 @@ class WSWorker
     protected function onClose($connectionId) {
         if (class_exists('\ApplicationCable\Channel')) {
             $connectionInfo = $this->connectionInfo($connectionId);
+
+            // --- init session ---
+            $_COOKIE = $connectionInfo['cookie'];
+            Session::instance()->init();
+
+            // --- create base channel ---
             $tmpChannel = new \ApplicationCable\Channel();
             if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
                 $tmpChannel->disconnect($connectionInfo['params'], $connectionInfo['cookie']);
                 unset($tmpChannel);
             }
+            // --- close session ---
+            Session::instance()->destroy();
+            $_COOKIE = array();
         }
         $this->log(Logger::INFO, "Connection closed (id: $connectionId)");
     }
@@ -950,6 +971,10 @@ class WSWorker
         $this->_currentClientId = $connectionId;
         $connectionInfo = $this->connectionInfo($connectionId);
 
+        // --- init session ---
+        $_COOKIE = $connectionInfo['cookie'];
+        Session::instance()->init();
+
         // --- create channel class ---
         $channel = new $channelClassName();
         $channel->setWSWorker($this);
@@ -961,7 +986,6 @@ class WSWorker
             if ($data['command'] == 'subscribe') {
                 $channel->subscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
                 $isReject = $channel->isRejectSubscription();
-                unset($channel);
 
                 $stateMessage = "confirm_subscription";
                 if ($isReject === true) {
@@ -982,25 +1006,26 @@ class WSWorker
                     $this->close($connectionId);
             } else {
                 $channel->unsubscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
-                unset($channel);
                 $this->log(Logger::INFO, "Unsubscribing from channel: " . $data['identifier'] . " (id: $connectionId)");
             }
         } else if (isset($data['command']) && $data['command'] == 'message') {
             // --- incoming data ---
             if (!isset($data['data'])) {
-                unset($channel);
-                $this->_currentClientId = null;
                 $this->log(Logger::ERROR, "Not found message data (id: $connectionId)!");
-                return;
+            } else {
+                $this->log(Logger::INFO, "$channelName::receive(" . $data['data'] . ")");
+                $message = json_decode($data['data'], true);
+                $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
             }
-            $this->log(Logger::INFO, "$channelName::receive(" . $data['data'] . ")");
-            $message = json_decode($data['data'], true);
-            $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
-            unset($channel);
         } else {
             $this->log(Logger::ERROR, "Unsupported incoming command (id: $connectionId)!", $data);
         }
+        unset($channel);
         $this->_currentClientId = null;
+
+        // --- close session ---
+        Session::instance()->destroy();
+        $_COOKIE = array();
     }
 
     /**

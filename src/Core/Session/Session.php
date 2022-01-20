@@ -4,6 +4,9 @@
  * User: anton
  * Date: 17.08.21
  * Time: 12:13
+ *
+ * FlyCubePHP Session encode/decode based on the code and idea described in https://github.com/psr7-sessions/session-encode-decode.
+ * Released under the MIT license
  */
 
 namespace FlyCubePHP\Core\Session;
@@ -12,11 +15,15 @@ include_once __DIR__.'/../Routes/RouteCollector.php';
 
 use Exception;
 use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
+use \FlyCubePHP\HelperClasses\CoreHelper;
 
 class Session
 {
+    const SESSION_FILE_PREFIX = "sess_";
+
     private static $_instance = null;
     private $_isInit = false;
+    private $_isReadOnly = false;
 
     /**
      * gets the instance via lazy initialization (created on first usage)
@@ -49,9 +56,6 @@ class Session
      * to use the singleton, you have to obtain the instance from Singleton::instance() instead
      */
     private function __construct() {
-        if (!isset($_SERVER['SERVER_ADDR']))
-            return;
-        $this->_isInit = session_start();
     }
 
     function __destruct() {
@@ -72,11 +76,43 @@ class Session
     }
 
     /**
-     * Check is php session start success
+     * Инициализировать сессию
+     * @return bool
+     */
+    public function init(): bool {
+        if (!isset($_SERVER['SERVER_ADDR']))
+            return false;
+        if ($this->_isInit === true)
+            return true;
+        $this->_isInit = session_start();
+        // --- init read-only ---
+        if ($this->_isInit === false
+            && isset($_COOKIE[session_name()])
+            && file_exists(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]))) {
+            $sData = file_get_contents(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]));
+            if ($sData !== false) {
+                $_SESSION = $this->decode($sData);
+                $this->_isInit = true;
+                $this->_isReadOnly = true;
+            }
+        }
+        return $this->_isInit;
+    }
+
+    /**
+     * Проверка, запустилась php сессия
      * @return bool
      */
     public function isInit(): bool {
         return $this->_isInit;
+    }
+
+    /**
+     * Проверка, открыта ли сессия только на чтение
+     * @return bool
+     */
+    public function isReadOnly(): bool {
+        return $this->_isReadOnly;
     }
 
     /**
@@ -131,5 +167,71 @@ class Session
      */
     public function clearAll() {
         $_SESSION = array();
+    }
+
+    /**
+     * Закрыть и удалить сессию
+     * @return bool
+     */
+    public function destroy(): bool {
+        if ($this->_isInit === false)
+            return false;
+        // --- is read-only ---
+        if ($this->_isReadOnly === true) {
+            $this->_isInit = false;
+            $this->_isReadOnly = false;
+            $_SESSION = array();
+            return true;
+        }
+        // --- is open ---
+        $isOk = session_destroy();
+        if ($isOk === true) {
+            $this->_isInit = false;
+            $this->_isReadOnly = false;
+            $_SESSION = array();
+        }
+        return $isOk;
+    }
+
+    /**
+     * Упаковать данные сессии
+     * @return string
+     */
+    private function encode(): string {
+        if (empty($_SESSION)) {
+            return '';
+        }
+        $encodedData = '';
+        foreach ($_SESSION as $key => $value)
+            $encodedData .= $key . '|' . serialize($value);
+
+        return $encodedData;
+    }
+
+    /**
+     * Распаковать данные сесии
+     * @param string $encodedData
+     * @return array
+     */
+    private function decode(string $encodedData): array {
+        if ('' === $encodedData)
+            return [];
+
+        preg_match_all('/(^|;|\})(\w+)\|/i', $encodedData, $match, PREG_OFFSET_CAPTURE);
+        $decodedData = [];
+        $lastOffset = null;
+        $currentKey = '';
+        foreach ($match[2] as $value) {
+            $offset = $value[1];
+            if (null !== $lastOffset) {
+                $valueText = substr($encodedData, $lastOffset, $offset - $lastOffset);
+                $decodedData[$currentKey] = unserialize($valueText);
+            }
+            $currentKey = $value[0];
+            $lastOffset = $offset + strlen($currentKey) + 1;
+        }
+        $valueText = substr($encodedData, $lastOffset);
+        $decodedData[$currentKey] = unserialize($valueText);
+        return $decodedData;
     }
 }

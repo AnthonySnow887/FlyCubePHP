@@ -55,6 +55,8 @@ DatabaseFactory::instance()->loadConfig();
 
 // --- init session cookie params ---
 Session::initSessionCookieParams();
+// --- init session ---
+Session::instance()->init();
 // --- init flash messages ---
 FlashMessages::instance();
 

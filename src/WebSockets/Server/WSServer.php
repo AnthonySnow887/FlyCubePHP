@@ -9,7 +9,6 @@ Released under the MIT license
 namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Config\Config;
-use FlyCubePHP\Core\Error\Error as Error;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\WebSockets\Config\WSConfig;
@@ -22,6 +21,7 @@ include_once __DIR__.'/../../FlyCubePHPErrorHandling.php';
 include_once __DIR__.'/../../FlyCubePHPEnvLoader.php';
 include_once __DIR__.'/../../Core/Logger/Logger.php';
 include_once __DIR__.'/../../Core/Config/Config.php';
+include_once __DIR__.'/../../Core/Session/Session.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 //include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php'; // TODO to add or not?
 include_once __DIR__.'/../Config/WSConfig.php';
@@ -60,6 +60,10 @@ class WSServer
      */
     public function start()
     {
+        // --- set 'SERVER_ADDR' ---
+        $_SERVER['SERVER_ADDR'] = $this->_host;
+
+        // --- show info ---
         $infoMsg = "[". self::class ."] Start WSServer. PID: " . $this->_pid;
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
