@@ -7,9 +7,10 @@
 
 1. login by root user
 
-2. run command:
+2. run command fot start from console:
 
-su -s /bin/bash -l wwwrun -c '/opt/FlyCubePHP/test.php &'
+su -s /bin/bash -l wwwrun -c 'php /MyProject/bin/fly_cube_php_ws_server --start'
+
 
 
 ############### APACHE Conf #########################################
