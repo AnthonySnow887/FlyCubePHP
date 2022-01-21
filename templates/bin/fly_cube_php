@@ -933,8 +933,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/cable.json.tmpl"] = buildPath($path, "config", "cable.json");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/cable.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "cable.js");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/channel_base.php.tmpl"] = buildPath($path, "app", "channels", "Channel.php");
-    // TODO add ws server systemd template
-
+    $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/ws-server.service.tmpl"] = buildPath($path, "$nameUnderscore.ws_server.service");
 
     // --- copy ---
     foreach ($copyList as $key => $value) {
@@ -1007,6 +1006,12 @@ function checkingProjectCatalogsAndFiles(string $path) {
     // --- check project ---
     if (!is_dir($path)) {
         echo "ERROR: Project folder not found (path: $path)!\r\n";
+        return;
+    }
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/TemplateBuilder/TemplateBuilder.php";
+    if (!class_exists("\FlyCubePHP\TemplateBuilder\TemplateBuilder")) {
+        echo "ERROR: Not found TemplateBuilder!\r\n";
         return;
     }
 
