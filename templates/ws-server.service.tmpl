@@ -19,9 +19,9 @@ User=wwwrun
 Group=wwwrun
 
 # Exec commands:
-ExecStart={{ APP_PATH }}/bin/fly_cube_php_ws_server start
-ExecStop={{ APP_PATH }}/bin/fly_cube_php_ws_server stop
-ExecReload={{ APP_PATH }}/bin/fly_cube_php_ws_server restart
+ExecStart={{ APP_PATH }}/bin/fly_cube_php_ws_server --start
+ExecStop={{ APP_PATH }}/bin/fly_cube_php_ws_server --stop
+ExecReload={{ APP_PATH }}/bin/fly_cube_php_ws_server --restart
 
 # The server might be slow to stop, and that's fine. Don't kill it
 SendSIGKILL=no
