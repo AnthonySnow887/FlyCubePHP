@@ -4,10 +4,12 @@ namespace FlyCubePHP\WebSockets\ActionCable;
 
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\WebSockets\ActionCable\Adapters\IPCClientAdapter;
+use FlyCubePHP\WebSockets\ActionCable\Adapters\RedisClientAdapter;
 use FlyCubePHP\WebSockets\Config\WSConfig;
 
 include_once __DIR__.'/../Config/WSConfig.php';
 include_once 'Adapters/IPCClientAdapter.php';
+include_once 'Adapters/RedisClientAdapter.php';
 
 class ActionCable
 {
@@ -28,7 +30,7 @@ class ActionCable
         if (strcmp(trim(strtolower($adapterName)), 'ipc') === 0)
             $adapter = new IPCClientAdapter();
         else if (strcmp(trim(strtolower($adapterName)), 'redis') === 0)
-            $adapter = null;//new RedisClientAdapter();
+            $adapter = new RedisClientAdapter();
 
         if (is_null($adapter))
             throw new \RuntimeException("[ActionCable][serverBroadcast] Not found adapter with name \"$adapterName\"!");

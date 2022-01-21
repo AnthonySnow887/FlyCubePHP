@@ -13,6 +13,7 @@ use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\WebSockets\Config\WSConfig;
 use FlyCubePHP\WebSockets\Server\Adapters\IPCServerAdapter;
+use FlyCubePHP\WebSockets\Server\Adapters\RedisServerAdapter;
 
 
 include_once __DIR__.'/../../FlyCubePHPVersion.php';
@@ -29,6 +30,7 @@ include_once __DIR__.'/../ActionCable/BaseChannel.php';
 
 include_once 'WSWorker.php';
 include_once 'Adapters/IPCServerAdapter.php';
+include_once 'Adapters/RedisServerAdapter.php';
 
 class WSServer
 {
@@ -129,7 +131,7 @@ class WSServer
         if (strcmp(trim(strtolower($adapterName)), 'ipc') === 0)
             $adapter = new IPCServerAdapter($this->_workersControls);
         else if (strcmp(trim(strtolower($adapterName)), 'redis') === 0)
-            $adapter = null;//new RedisServerAdapter($this->_workersControls);
+            $adapter = new RedisServerAdapter($this->_workersControls);
 
         if (is_null($adapter)) {
             $errMsg = "[" . self::class . "] Not found adapter with name \"$adapterName\"!";

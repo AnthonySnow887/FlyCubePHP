@@ -18,8 +18,10 @@ class WSConfig
     const TAG_WS_SERVER_PORT        = "server_port";
     const TAG_WS_SERVER_WORKERS_NUM = "server_workers";
     const TAG_IPC_SOCK_PATH         = "adapter_socket";
-    const TAG_REDIS_URL             = "redis_url";
-    const TAG_REDIS_CHANNEL_PREFIX  = "redis_channel_prefix";
+    const TAG_REDIS_HOST            = "redis_host";
+    const TAG_REDIS_PORT            = "redis_port";
+    const TAG_REDIS_PASSWORD        = "redis_password";
+    const TAG_REDIS_CHANNEL         = "redis_channel";
 
     const DEFAULT_IPC_SOCK_PATH     = "/tmp/fly_cube_php.soc";
 

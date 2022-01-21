@@ -189,6 +189,8 @@ Additional required PHP modules
 - php7-pdo
 - php7-pgsql
 - php7-posix
+- php7-redis
+- php7-sockets
 - php7-sqlite
 - php7-xmlreader
 - php7-xmlwriter
