@@ -6,7 +6,8 @@
 
 FlyCubePHP is an MVC Web Framework developed in PHP and repeating the ideology and principles of building WEB applications, 
 embedded in Ruby on Rails. The main task set during the development was a quick and flexible transfer of project code 
-from Ruby on Rails to PHP with a minimum number of changes to the code base of projects, and maintaining application performance.
+from Ruby on Rails to PHP with a minimum number of changes to the code base of projects, application behavior logic,
+and maintaining application performance.
 
 An additional functionality added to the FlyCubePHP core is the plug-in mechanism support, 
 which allows you to extend or change the functionality of your application, taking into account the plug-in dependencies during operation. 
@@ -15,7 +16,7 @@ In terms of its structure, the plug-in partially repeats the architecture of the
 Currently FlyCubePHP supports
 -----------------------------
 
-- creating projects that architecturally repeat Ruby on Rails 5 projects:
+- creating projects that architecturally repeat Ruby on Rails 5 / 6 projects:
   - creation of controllers (gui / api);
   - creation of data models;
   - creation of templates for WEB pages;
@@ -34,7 +35,10 @@ Currently FlyCubePHP supports
   - access to project resources (images, files, etc.) using the Asset Pipeline;
   - to speed up the loading of resources, implemented:
     - automatic compression of assets using gzip or deflate;
-    - automatic check of ETag header.
+    - automatic check of ETag header;
+  - creation of Action Cable classes for working with Web Sockets channels.
+- Web Sockets support using FlyCubePHP WS Service (automatically created when generating new project files 
+  or when checking an existing project for missing directories and files);
 - creation of plugins that extend or change the functionality of your application;
 - creation of database migrations and a wide range of tools for working with migrations;
 - creation of extensions to the FlyCubePHP kernel allowing:

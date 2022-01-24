@@ -315,6 +315,134 @@ class RouteCollector
     }
 
     /**
+     * Получить информацию о браузере текущего клиента
+     * @return array
+     *
+     * Array keys:
+     * - [string] userAgent - current client user agent string
+     * - [string] name      - browser name
+     * - [string] platform  - browser platform
+     * - [string] version   - browser version (maybe empty)
+     * - [bool]   bot       - is it a bot
+     */
+    static public function currentClientBrowser(): array
+    {
+        $userAgent = self::currentClientUserAgent();
+        $bName = 'Unknown';
+        $bPlatform = self::browserPlatform($userAgent);
+        $bVersion= "";
+        $isBot = false;
+
+        // Follow up to Francesco R's post from 2016.
+
+        // Make case insensitive.
+        $t = strtolower($userAgent);
+
+        // If the string *starts* with the string, strpos returns 0 (i.e., FALSE). Do a ghetto hack and start with a space.
+        // "[strpos()] may return Boolean FALSE, but may also return a non-Boolean value which evaluates to FALSE."
+        //     http://php.net/manual/en/function.strpos.php
+        $t = " " . $t;
+
+        // Humans / Regular Users
+        if (strpos($t, 'opera') || strpos($t, 'opr/')) {
+            $bName = 'Opera';
+            $bVersion = self::browserVersion($userAgent, 'Opera');
+        } elseif (strpos($t, 'edge')) {
+            $bName = 'Edge';
+            $bVersion = self::browserVersion($userAgent, 'Edge');
+        } elseif (strpos($t, 'chrome')) {
+            $bName = 'Chrome';
+            $bVersion = self::browserVersion($userAgent, 'Chrome');
+        } elseif (strpos($t, 'safari')) {
+            $bName = 'Safari';
+            $bVersion = self::browserVersion($userAgent, 'Safari');
+        } elseif (strpos($t, 'firefox')) {
+            $bName = 'Firefox';
+            $bVersion = self::browserVersion($userAgent, 'Firefox');
+        } elseif (strpos($t, 'msie') || strpos($t, 'trident/7')) {
+            $bName = 'Internet Explorer';
+            if (strpos($t, 'trident/7'))
+                $bVersion = self::browserVersion($userAgent, 'rv');
+            else
+                $bVersion = self::browserVersion($userAgent, 'MSIE');
+        }
+
+        // Search Engines
+        elseif (strpos($t, 'google')) {
+            $bName = 'Googlebot';
+            $isBot = true;
+        } elseif (strpos($t, 'bing')) {
+            $bName = 'Bingbot';
+            $isBot = true;
+        } elseif (strpos($t, 'slurp')) {
+            $bName = 'Yahoo! Slurp';
+            $isBot = true;
+        } elseif (strpos($t, 'duckduckgo')) {
+            $bName = 'DuckDuckBot';
+            $isBot = true;
+        } elseif (strpos($t, 'baidu')) {
+            $bName = 'Baidu';
+            $isBot = true;
+        } elseif (strpos($t, 'yandex')) {
+            $bName = 'Yandex';
+            $isBot = true;
+        } elseif (strpos($t, 'sogou')) {
+            $bName = 'Sogou';
+            $isBot = true;
+        } elseif (strpos($t, 'exabot')) {
+            $bName = 'Exabot';
+            $isBot = true;
+        } elseif (strpos($t, 'msn')) {
+            $bName = 'MSN';
+            $isBot = true;
+        }
+
+        // Common Tools and Bots
+        elseif (strpos($t, 'mj12bot')) {
+            $bName = 'Majestic';
+            $isBot = true;
+        } elseif (strpos($t, 'ahrefs')) {
+            $bName = 'Ahrefs';
+            $isBot = true;
+        } elseif (strpos($t, 'semrush')) {
+            $bName = 'SEMRush';
+            $isBot = true;
+        } elseif (strpos($t, 'rogerbot') || strpos($t, 'dotbot')) {
+            $bName = 'Moz or OpenSiteExplorer';
+            $isBot = true;
+        } elseif (strpos($t, 'frog') || strpos($t, 'screaming')) {
+            $bName = 'Screaming Frog';
+            $isBot = true;
+        }
+
+        // Miscellaneous
+        elseif (strpos($t, 'facebook')) {
+            $bName = 'Facebook';
+            $isBot = true;
+        } elseif (strpos($t, 'pinterest')) {
+            $bName = 'Pinterest';
+            $isBot = true;
+        }
+
+        // Check for strings commonly used in bot user agents
+        elseif (strpos($t, 'crawler') || strpos($t, 'api')
+            || strpos($t, 'spider') || strpos($t, 'http')
+            || strpos($t, 'bot') || strpos($t, 'archive')
+            || strpos($t, 'info') || strpos($t, 'data')) {
+            $bName = 'Other';
+            $isBot = true;
+        }
+
+        return [
+            'userAgent' => $userAgent,
+            'name' => $bName,
+            'platform' => $bPlatform,
+            'version' => $bVersion,
+            'bot' => $isBot
+        ];
+    }
+
+    /**
      * Получить текущий URL
      * @return string
      */
@@ -466,134 +594,6 @@ class RouteCollector
             return $headers[$name];
 
         return null;
-    }
-
-    /**
-     * Получить информацию о браузере текущего клиента
-     * @return array
-     *
-     * Array keys:
-     * - [string] userAgent - current client user agent string
-     * - [string] name      - browser name
-     * - [string] platform  - browser platform
-     * - [string] version   - browser version (maybe empty)
-     * - [bool]   bot       - is it a bot
-     */
-    static public function currentClientBrowser(): array
-    {
-        $userAgent = self::currentClientUserAgent();
-        $bName = 'Unknown';
-        $bPlatform = self::browserPlatform($userAgent);
-        $bVersion= "";
-        $isBot = false;
-
-        // Follow up to Francesco R's post from 2016.
-
-        // Make case insensitive.
-        $t = strtolower($userAgent);
-
-        // If the string *starts* with the string, strpos returns 0 (i.e., FALSE). Do a ghetto hack and start with a space.
-        // "[strpos()] may return Boolean FALSE, but may also return a non-Boolean value which evaluates to FALSE."
-        //     http://php.net/manual/en/function.strpos.php
-        $t = " " . $t;
-
-        // Humans / Regular Users
-        if (strpos($t, 'opera') || strpos($t, 'opr/')) {
-            $bName = 'Opera';
-            $bVersion = self::browserVersion($userAgent, 'Opera');
-        } elseif (strpos($t, 'edge')) {
-            $bName = 'Edge';
-            $bVersion = self::browserVersion($userAgent, 'Edge');
-        } elseif (strpos($t, 'chrome')) {
-            $bName = 'Chrome';
-            $bVersion = self::browserVersion($userAgent, 'Chrome');
-        } elseif (strpos($t, 'safari')) {
-            $bName = 'Safari';
-            $bVersion = self::browserVersion($userAgent, 'Safari');
-        } elseif (strpos($t, 'firefox')) {
-            $bName = 'Firefox';
-            $bVersion = self::browserVersion($userAgent, 'Firefox');
-        } elseif (strpos($t, 'msie') || strpos($t, 'trident/7')) {
-            $bName = 'Internet Explorer';
-            if (strpos($t, 'trident/7'))
-                $bVersion = self::browserVersion($userAgent, 'rv');
-            else
-                $bVersion = self::browserVersion($userAgent, 'MSIE');
-        }
-
-        // Search Engines
-        elseif (strpos($t, 'google')) {
-            $bName = 'Googlebot';
-            $isBot = true;
-        } elseif (strpos($t, 'bing')) {
-            $bName = 'Bingbot';
-            $isBot = true;
-        } elseif (strpos($t, 'slurp')) {
-            $bName = 'Yahoo! Slurp';
-            $isBot = true;
-        } elseif (strpos($t, 'duckduckgo')) {
-            $bName = 'DuckDuckBot';
-            $isBot = true;
-        } elseif (strpos($t, 'baidu')) {
-            $bName = 'Baidu';
-            $isBot = true;
-        } elseif (strpos($t, 'yandex')) {
-            $bName = 'Yandex';
-            $isBot = true;
-        } elseif (strpos($t, 'sogou')) {
-            $bName = 'Sogou';
-            $isBot = true;
-        } elseif (strpos($t, 'exabot')) {
-            $bName = 'Exabot';
-            $isBot = true;
-        } elseif (strpos($t, 'msn')) {
-            $bName = 'MSN';
-            $isBot = true;
-        }
-
-        // Common Tools and Bots
-        elseif (strpos($t, 'mj12bot')) {
-            $bName = 'Majestic';
-            $isBot = true;
-        } elseif (strpos($t, 'ahrefs')) {
-            $bName = 'Ahrefs';
-            $isBot = true;
-        } elseif (strpos($t, 'semrush')) {
-            $bName = 'SEMRush';
-            $isBot = true;
-        } elseif (strpos($t, 'rogerbot') || strpos($t, 'dotbot')) {
-            $bName = 'Moz or OpenSiteExplorer';
-            $isBot = true;
-        } elseif (strpos($t, 'frog') || strpos($t, 'screaming')) {
-            $bName = 'Screaming Frog';
-            $isBot = true;
-        }
-
-        // Miscellaneous
-        elseif (strpos($t, 'facebook')) {
-            $bName = 'Facebook';
-            $isBot = true;
-        } elseif (strpos($t, 'pinterest')) {
-            $bName = 'Pinterest';
-            $isBot = true;
-        }
-
-        // Check for strings commonly used in bot user agents
-        elseif (strpos($t, 'crawler') || strpos($t, 'api')
-                || strpos($t, 'spider') || strpos($t, 'http')
-                || strpos($t, 'bot') || strpos($t, 'archive')
-                || strpos($t, 'info') || strpos($t, 'data')) {
-            $bName = 'Other';
-            $isBot = true;
-        }
-
-        return [
-            'userAgent' => $userAgent,
-            'name' => $bName,
-            'platform' => $bPlatform,
-            'version' => $bVersion,
-            'bot' => $isBot
-        ];
     }
 
     /**
