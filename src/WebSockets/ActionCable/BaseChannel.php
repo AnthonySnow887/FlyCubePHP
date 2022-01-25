@@ -110,7 +110,7 @@ abstract class BaseChannel
     }
 
     /**
-     * Начать потоковую передачу очереди pub-sub для модели в этом канале.
+     * Начать трансляцию pub-sub очереди для модели в этом канале.
      * @param string $model Модель канала
      */
     final protected function streamFor(string $model)
@@ -119,7 +119,7 @@ abstract class BaseChannel
     }
 
     /**
-     * Вызывает stream_for с заданной моделью, если она присутствует, чтобы начать потоковую передачу, в противном случае отклоняет подписку.
+     * Вызывает "streamFor" с заданной моделью, если она присутствует, чтобы начать трансляцию, в противном случае отклоняет подписку.
      * @param string $model
      */
     final protected function streamOrRejectFor(string $model)
@@ -142,7 +142,7 @@ abstract class BaseChannel
     }
 
     /**
-     * Останавливает трансляцию pub-sub в этом канала для модели.
+     * Останавливает трансляцию pub-sub в этом канале для модели.
      * @param string $model
      */
     final protected function stopStreamFor(string $model)
