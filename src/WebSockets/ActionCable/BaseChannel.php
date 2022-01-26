@@ -197,6 +197,66 @@ abstract class BaseChannel
     }
 
     /**
+     * Получить описание метода если он есть в классе
+     * @param string $name
+     * @return array
+     */
+    final public function channelMethod(string $name): array
+    {
+        $tmpMethods = $this->channelMethods();
+        if (!isset($tmpMethods[$name]))
+            return [];
+        return $tmpMethods[$name];
+    }
+
+    /**
+     * Получить список доступных методов с описанием
+     * @return array
+     */
+    final public function channelMethods(): array
+    {
+        $tmpRef = null;
+        try {
+            $tmpRef = new \ReflectionClass($this);
+        } catch (\Exception $e) {
+            return [];
+        }
+        $tmpMethods = array();
+        $methods = $tmpRef->getMethods(\ReflectionMethod::IS_STATIC | \ReflectionMethod::IS_PUBLIC);
+        foreach ($methods as $method) {
+            $mName = $method->name;
+            $mArgs = array();
+            if (strlen($mName) > 2) {
+                if ($mName[0] === "_" || $mName[0].$mName[1] === "__")
+                    continue;
+                if (strcmp($mName, 'connect') === 0
+                    || strcmp($mName, 'disconnect') === 0
+                    || strcmp($mName, 'subscribed') === 0
+                    || strcmp($mName, 'unsubscribed') === 0
+                    || strcmp($mName, 'receive') === 0
+                    || strcmp($mName, 'broadcastTo') === 0
+                    || strcmp($mName, 'broadcastingFor') === 0
+                    || strcmp($mName, 'setWSWorker') === 0
+                    || strcmp($mName, 'streamFrom') === 0
+                    || strcmp($mName, 'streamFor') === 0
+                    || strcmp($mName, 'streamOrRejectFor') === 0
+                    || strcmp($mName, 'stopStreamFrom') === 0
+                    || strcmp($mName, 'stopStreamFor') === 0
+                    || strcmp($mName, 'stopAllStreams') === 0
+                    || strcmp($mName, 'rejectConnection') === 0
+                    || strcmp($mName, 'isRejectConnection') === 0
+                    || strcmp($mName, 'rejectSubscription') === 0
+                    || strcmp($mName, 'isRejectSubscription') === 0)
+                    continue;
+            }
+            foreach ($method->getParameters() as $arg)
+                $mArgs[] = $arg->name;
+            $tmpMethods[$mName] = array("name" => $mName, "args" => $mArgs);
+        }
+        return $tmpMethods;
+    }
+
+    /**
      * Имя текущего канала
      * @return string
      * @throws

@@ -242,7 +242,7 @@ abstract class ActiveRecord
     }
 
     /**
-     * Генерировать глобальный идентификатор модели данных
+     * Генерировать глобальный идентификатор объекта модели данных
      * @return string
      */
     final public function modelGlobalID(): string {
