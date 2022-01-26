@@ -241,6 +241,17 @@ abstract class ActiveRecord
         return password_verify($plainPassword, $this->$tmpName);
     }
 
+    /**
+     * Генерировать глобальный идентификатор модели данных
+     * @return string
+     */
+    final public function modelGlobalID(): string {
+        $modelName = self::class;
+        $pkName = $this->primaryKey();
+        $pkValue = $this->preparePKeyValue();
+        return sha1("$modelName:$pkName:$pkValue");
+    }
+
     // --- callbacks ---
 
     /**

@@ -8,21 +8,16 @@ Released under the MIT license
 
 namespace FlyCubePHP\WebSockets\Server;
 
-use FlyCubePHP\Core\Config\Config;
-use FlyCubePHP\Core\Logger\Logger;
-use FlyCubePHP\HelperClasses\CoreHelper;
-use FlyCubePHP\WebSockets\Config\WSConfig;
-use FlyCubePHP\WebSockets\Server\Adapters\IPCServerAdapter;
-use FlyCubePHP\WebSockets\Server\Adapters\RedisServerAdapter;
-
-
 include_once __DIR__.'/../../FlyCubePHPVersion.php';
 include_once __DIR__.'/../../FlyCubePHPAutoLoader.php';
 include_once __DIR__.'/../../FlyCubePHPErrorHandling.php';
 include_once __DIR__.'/../../FlyCubePHPEnvLoader.php';
 include_once __DIR__.'/../../Core/Logger/Logger.php';
 include_once __DIR__.'/../../Core/Config/Config.php';
+include_once __DIR__.'/../../Core/ActiveRecord/ActiveRecord.php';
 include_once __DIR__.'/../../Core/Session/Session.php';
+include_once __DIR__.'/../../Core/Cookie/Cookie.php';
+include_once __DIR__.'/../../Core/Database/DatabaseFactory.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 //include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php'; // TODO to add or not?
 include_once __DIR__.'/../Config/WSConfig.php';
@@ -31,6 +26,16 @@ include_once __DIR__.'/../ActionCable/BaseChannel.php';
 include_once 'WSWorker.php';
 include_once 'Adapters/IPCServerAdapter.php';
 include_once 'Adapters/RedisServerAdapter.php';
+
+
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\WebSockets\Config\WSConfig;
+use FlyCubePHP\WebSockets\Server\Adapters\IPCServerAdapter;
+use FlyCubePHP\WebSockets\Server\Adapters\RedisServerAdapter;
+
 
 class WSServer
 {
@@ -92,6 +97,28 @@ class WSServer
         $infoMsg = "[". self::class ."] Listen on: tcp://$host:$port";
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
+
+        // --- include env file ---
+        $env_devel = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "environments", "development.php");
+        $env_prod = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "environments", "production.php");
+        if (Config::instance()->isProduction() && is_file($env_prod))
+            include_once $env_prod;
+        elseif (Config::instance()->isDevelopment() && is_file($env_devel))
+            include_once $env_devel;
+
+        // --- init database factory ---
+        DatabaseFactory::instance()->loadExtensions();
+        DatabaseFactory::instance()->loadConfig();
+
+        // --- include all app models ---
+        $app_models_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "models");
+        $app_models = CoreHelper::scanDir($app_models_dir);
+        foreach ($app_models as $model) {
+            $fExt = pathinfo($model, PATHINFO_EXTENSION);
+            if (strcmp(strtolower($fExt), "php") !== 0)
+                continue;
+            include_once $model;
+        }
 
         // --- load & include app channels ---
         $appChannels = $this->loadApplicationChannels();

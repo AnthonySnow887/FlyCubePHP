@@ -3,6 +3,7 @@
 namespace FlyCubePHP\WebSockets\ActionCable;
 
 use FlyCubePHP\Core\Error\Error as Error;
+use FlyCubePHP\Core\ActiveRecord\ActiveRecord;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\WebSockets\Server\WSWorker;
 
@@ -59,26 +60,26 @@ abstract class BaseChannel
 
     /**
      * Отправить данные клиентам
-     * @param string $model Модель канала
+     * @param ActiveRecord $model Модель данных
      * @param mixed $message Данные
      * @throws
      */
-    final protected function broadcastTo(string $model, $message)
+    final protected function broadcastTo(ActiveRecord $model, $message)
     {
         ActionCable::serverBroadcast($this->broadcastingFor($model), $message);
     }
 
     /**
      * Возвращает уникальный идентификатор вещания для этой модели в этом канале
-     * @param string $model Модель канала
+     * @param ActiveRecord $model Модель данных
      * @return string
      * @throws
      */
-    final protected function broadcastingFor(string $model): string
+    final protected function broadcastingFor(ActiveRecord $model): string
     {
         $chName = CoreHelper::underscore($this->channelClassName());
-        $model = CoreHelper::underscore($model);
-        return (empty($model)) ? $chName : "$chName:$model";
+        $modelGID = $model->modelGlobalID();
+        return (empty($modelGID)) ? $chName : "$chName:$modelGID";
     }
 
     /**
@@ -111,18 +112,18 @@ abstract class BaseChannel
 
     /**
      * Начать трансляцию pub-sub очереди для модели в этом канале.
-     * @param string $model Модель канала
+     * @param ActiveRecord $model Модель данных
      */
-    final protected function streamFor(string $model)
+    final protected function streamFor(ActiveRecord $model)
     {
         $this->streamFrom($this->broadcastingFor($model));
     }
 
     /**
      * Вызывает "streamFor" с заданной моделью, если она присутствует, чтобы начать трансляцию, в противном случае отклоняет подписку.
-     * @param string $model
+     * @param ActiveRecord $model Модель данных
      */
-    final protected function streamOrRejectFor(string $model)
+    final protected function streamOrRejectFor(ActiveRecord $model)
     {
         if (!empty($model))
             $this->streamFor($model);
@@ -143,9 +144,9 @@ abstract class BaseChannel
 
     /**
      * Останавливает трансляцию pub-sub в этом канале для модели.
-     * @param string $model
+     * @param ActiveRecord $model Модель данных
      */
-    final protected function stopStreamFor(string $model)
+    final protected function stopStreamFor(ActiveRecord $model)
     {
         $this->stopStreamFrom($this->broadcastingFor($model));
     }
