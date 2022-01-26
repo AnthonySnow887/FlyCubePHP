@@ -121,11 +121,11 @@ abstract class BaseChannel
 
     /**
      * Вызывает "streamFor" с заданной моделью, если она присутствует, чтобы начать трансляцию, в противном случае отклоняет подписку.
-     * @param ActiveRecord $model Модель данных
+     * @param ActiveRecord|null $model Модель данных
      */
-    final protected function streamOrRejectFor(ActiveRecord $model)
+    final protected function streamOrRejectFor(/*ActiveRecord|null*/ $model)
     {
-        if (!empty($model))
+        if (!is_null($model))
             $this->streamFor($model);
         else
             $this->rejectSubscription();
