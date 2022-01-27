@@ -20,43 +20,33 @@ abstract class BaseChannel
 
     /**
      * Обработка входящего соединения
-     * @param array $params Массив параметров от клиента
-     * @param array $cookie Массив cookie от клиента
      *
      * NOTE: if $this->rejectConnection() -> connection refused!
      */
-    public function connect(array $params, array $cookie) {}
+    public function connect() {}
 
     /**
      * Обработка отключения клиента
-     * @param array $params Массив параметров от клиента
-     * @param array $cookie Массив cookie от клиента
      */
-    public function disconnect(array $params, array $cookie) {}
+    public function disconnect() {}
 
     /**
      * Обработка подписки на канала
-     * @param array $params Массив параметров от клиента
-     * @param array $cookie Массив cookie от клиента
      *
      * NOTE: if $this->rejectSubscription() -> subscription refused!
      */
-    public function subscribed(array $params, array $cookie) {}
+    public function subscribed() {}
 
     /**
      * Обработка отписки от канала
-     * @param array $params Массив параметров от клиента
-     * @param array $cookie Массив cookie от клиента
      */
-    public function unsubscribed(array $params, array $cookie) {}
+    public function unsubscribed() {}
 
     /**
      * Обработка входящих данных, полученных от клиента
-     * @param array $params Массив параметров от клиента
-     * @param array $cookie Массив cookie от клиента
      * @param mixed $data Данные
      */
-    public function receive(array $params, array $cookie, $data) {}
+    public function receive($data) {}
 
     /**
      * Отправить данные клиентам

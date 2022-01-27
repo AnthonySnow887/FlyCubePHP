@@ -10,6 +10,7 @@ namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Session\Session;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class WSWorker
 {
@@ -386,7 +387,7 @@ class WSWorker
         // --- parse input headers ---
         $cookie = [];
         $headers = $this->parseHttpHeaders($this->_read[$connectionId]);
-        $params = [];
+        $additionalInfo = [];
         if (isset($headers['set-cookie'])) {
             $cookie = array_merge($cookie, $headers['set-cookie']);
             unset($headers['set-cookie']);
@@ -399,8 +400,8 @@ class WSWorker
         // --- parse input client host & port ---
         $source = explode(':', stream_socket_get_name($this->_clients[$connectionId], true));
         if (count($source) >= 2) {
-            $params['remote-host'] = $source[0];
-            $params['remote-port'] = $source[1];
+            $additionalInfo['remote-host'] = $source[0];
+            $additionalInfo['remote-port'] = $source[1];
         }
 
         // --- clear read buffer ---
@@ -410,7 +411,7 @@ class WSWorker
         $info = [
             'HTTP HEADERS' => $headers,
             'COOKIE' => $cookie,
-            'PARAMS' => $params
+            'ADDITIONAL INFO' => $additionalInfo
         ];
         $this->log(Logger::INFO, "Incoming connection (id: $connectionId)", $info);
 
@@ -432,22 +433,23 @@ class WSWorker
         if (strcmp($headers['request-method']['url'], $this->_mountPath) !== 0)
             $this->log(Logger::WARNING, "Failed to upgrade to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)! Invalid input URL (id: $connectionId; url: " . $headers['request-method']['url'] . ")! Close connection!");
 
+        // --- make connection info ---
+        $connectionInfo = $this->makeConnectionInfo($headers, $cookie, $additionalInfo, $connectionId);
+
         // --- check input connection ---
         if (class_exists('\ApplicationCable\Channel')) {
-            // --- init session ---
-            $_COOKIE = $cookie;
-            Session::instance()->init();
+            // --- init client settings ---
+            $this->initClientSettings($connectionInfo);
 
             // --- create base channel ---
             $tmpChannel = new \ApplicationCable\Channel();
             if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-                $tmpChannel->connect($params, $cookie);
+                $tmpChannel->connect();
                 $isReject = $tmpChannel->isRejectConnection();
                 unset($tmpChannel);
 
-                // --- close session ---
-                Session::instance()->destroy();
-                $_COOKIE = array();
+                // --- clear client settings ---
+                $this->clearClientSettings();
 
                 // --- check result ---
                 if ($isReject === true) {
@@ -458,9 +460,9 @@ class WSWorker
         }
 
         // --- save connection info ---
-        $this->setConnectionInfo($connectionId, $headers, $cookie, $params);
+        $this->setConnectionInfo($connectionId, $connectionInfo);
 
-        // send a header according to the protocol websocket
+        // --- send a header according to the protocol websocket ---
         $SecWebSocketAccept = base64_encode(pack('H*', sha1($match[1] . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
         $upgrade = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
             "Upgrade: websocket\r\n" .
@@ -471,7 +473,7 @@ class WSWorker
         $this->write($connectionId, $upgrade);
         unset($this->_handshakes[$connectionId]);
 
-        $this->onOpen($connectionId, $headers, $cookie, $params);
+        $this->onOpen($connectionId, $connectionInfo);
         return true;
     }
 
@@ -656,24 +658,32 @@ class WSWorker
     }
 
     /**
-     * Задать информацию подключения клиента
-     * @param $connectionId
+     * Создать массив с информацией подключения клиента
      * @param array $headers
      * @param array $cookie
-     * @param array $params
+     * @param array $additionalInfo
      * @param string $channelId
+     * @return array
      */
-    protected function setConnectionInfo($connectionId,
-                                         array $headers,
-                                         array $cookie,
-                                         array $params,
-                                         string $channelId = "") {
-        $this->_clientsInfo[$connectionId] = [
+    protected function makeConnectionInfo(array $headers,
+                                          array $cookie,
+                                          array $additionalInfo,
+                                          string $channelId = ""): array {
+        return [
             'headers' => $headers,
             'cookie' => $cookie,
-            'params' => $params,
+            'additional-info' => $additionalInfo,
             'channel-id' => $channelId
         ];
+    }
+
+    /**
+     * Задать информацию подключения клиента
+     * @param $connectionId
+     * @param array $connectionInfo
+     */
+    protected function setConnectionInfo($connectionId, array $connectionInfo) {
+        $this->_clientsInfo[$connectionId] = $connectionInfo;
     }
 
     /**
@@ -688,17 +698,72 @@ class WSWorker
     /**
      * Получить информацию подключения клиента
      * @param $connectionId
-     * @return array[]
+     * @return array
      */
     protected function connectionInfo($connectionId): array {
         if (isset($this->_clientsInfo[$connectionId]))
             return $this->_clientsInfo[$connectionId];
-        return [
-            'headers' => [],
-            'cookie' => [],
-            'params' => [],
-            'channel-id' => ''
-        ];
+        return $this->makeConnectionInfo([], [], [], '');
+    }
+
+    /**
+     * Инициализировать глобальные объекты с данными клиента
+     * @param array $connectionInfo Информация подключения клиента
+     */
+    protected function initClientSettings(array $connectionInfo, array $params = [])
+    {
+        // --- set http headers ---
+        foreach ($connectionInfo['headers'] as $header => $value) {
+            if (strcmp($header, 'request-method') === 0)
+                continue;
+            $header = str_replace('-', '_', $header);
+            $_SERVER["HTTP_" . strtoupper($header)] = $value;
+        }
+
+        // --- set other client information ---
+        $_SERVER['HTTP_CLIENT_IP'] = $connectionInfo['additional-info']['remote-host'];
+        $_SERVER['REMOTE_ADDR'] = $connectionInfo['additional-info']['remote-host'];
+        $_SERVER['REMOTE_PORT'] = $connectionInfo['additional-info']['remote-port'];
+        $_SERVER['REQUEST_URI'] = $connectionInfo['headers']['request-method']['url-full'];
+        $_SERVER['REQUEST_METHOD'] = $connectionInfo['headers']['request-method']['type'];
+
+        // --- set $_GET / $_POST ---
+        if (strcmp($_SERVER['REQUEST_METHOD'], 'GET') === 0)
+            $_GET = array_merge($connectionInfo['headers']['request-method']['url-args'], $params);
+        else
+            $_POST = array_merge($connectionInfo['headers']['request-method']['url-args'], $params);
+
+        // --- set $_COOKIE ---
+        $_COOKIE = $connectionInfo['cookie'];
+
+        // --- init session ---
+        Session::instance()->init();
+    }
+
+    /**
+     * Очитстить глобальные объекты с данными клиента
+     */
+    protected function clearClientSettings()
+    {
+        // --- close session ---
+        Session::instance()->destroy();
+
+        // --- clear http headers ---
+        foreach ($_SERVER as $key => $value) {
+            if (strcmp(substr($key, 0, 5),'HTTP_') !== 0)
+                continue;
+            $_SERVER[$key] = "";
+        }
+        // --- clear other client information ---
+        $_SERVER['REMOTE_ADDR'] = "";
+        $_SERVER['REMOTE_PORT'] = "";
+        $_SERVER['REQUEST_URI'] = "";
+        $_SERVER['REQUEST_METHOD'] = "";
+
+        // --- clear global arrays ---
+        $_GET = [];
+        $_POST = [];
+        $_COOKIE = [];
     }
 
     /**
@@ -891,22 +956,20 @@ class WSWorker
     /**
      * Обработчик нового входящего соединения
      * @param $connectionId
-     * @param array $headers
-     * @param array $cookie
-     * @param array $params
+     * @param array $connectionInfo
      */
-    protected function onOpen($connectionId, array $headers, array $cookie, array $params) {
+    protected function onOpen($connectionId, array $connectionInfo) {
         $reqMethod = "???";
-        if (isset($headers['request-method']['type']))
-            $reqMethod = $headers['request-method']['type'];
+        if (isset($connectionInfo['headers']['request-method']['type']))
+            $reqMethod = $connectionInfo['headers']['request-method']['type'];
 
         $httpConnection = "???";
-        if (isset($headers['connection']))
-            $httpConnection = $headers['connection'];
+        if (isset($connectionInfo['headers']['connection']))
+            $httpConnection = $connectionInfo['headers']['connection'];
 
         $httpUpgrade = "???";
-        if (isset($headers['upgrade']))
-            $httpUpgrade = $headers['upgrade'];
+        if (isset($connectionInfo['headers']['upgrade']))
+            $httpUpgrade = $connectionInfo['headers']['upgrade'];
 
         $this->log(Logger::INFO, "Successfully upgraded to WebSocket (REQUEST_METHOD: $reqMethod, HTTP_CONNECTION: $httpConnection, HTTP_UPGRADE: $httpUpgrade)");
         $this->sendToClient($connectionId, "{\"type\":\"welcome\"}");
@@ -920,19 +983,17 @@ class WSWorker
         if (class_exists('\ApplicationCable\Channel')) {
             $connectionInfo = $this->connectionInfo($connectionId);
 
-            // --- init session ---
-            $_COOKIE = $connectionInfo['cookie'];
-            Session::instance()->init();
+            // --- init client settings ---
+            $this->initClientSettings($connectionInfo);
 
             // --- create base channel ---
             $tmpChannel = new \ApplicationCable\Channel();
             if (is_subclass_of($tmpChannel, '\FlyCubePHP\WebSockets\ActionCable\BaseChannel')) {
-                $tmpChannel->disconnect($connectionInfo['params'], $connectionInfo['cookie']);
+                $tmpChannel->disconnect();
                 unset($tmpChannel);
             }
-            // --- close session ---
-            Session::instance()->destroy();
-            $_COOKIE = array();
+            // --- clear client settings ---
+            $this->clearClientSettings();
         }
         $this->log(Logger::INFO, "Connection closed (id: $connectionId)");
     }
@@ -977,9 +1038,8 @@ class WSWorker
         $this->_currentClientId = $connectionId;
         $connectionInfo = $this->connectionInfo($connectionId);
 
-        // --- init session ---
-        $_COOKIE = $connectionInfo['cookie'];
-        Session::instance()->init();
+        // --- init client settings ---
+        $this->initClientSettings($connectionInfo, $identifier);
 
         // --- create channel class ---
         $channel = new $channelClassName();
@@ -990,7 +1050,7 @@ class WSWorker
             || (isset($data['command']) && $data['command'] == 'unsubscribe')) {
             // --- subscribe / unsubscribe ---
             if ($data['command'] == 'subscribe') {
-                $channel->subscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
+                $channel->subscribed();
                 $isReject = $channel->isRejectSubscription();
 
                 $stateMessage = "confirm_subscription";
@@ -1011,7 +1071,7 @@ class WSWorker
                 if ($isReject === true)
                     $this->close($connectionId);
             } else {
-                $channel->unsubscribed(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie']);
+                $channel->unsubscribed();
                 $this->log(Logger::INFO, "Unsubscribing from channel: " . $data['identifier'] . " (id: $connectionId)");
             }
         } else if (isset($data['command']) && $data['command'] == 'message') {
@@ -1022,7 +1082,7 @@ class WSWorker
                 $message = json_decode($data['data'], true);
                 if (!isset($message['action'])) {
                     $this->log(Logger::INFO, "$channelName::receive(" . $data['data'] . ")");
-                    $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
+                    $channel->receive($message);
                 } else {
                     $actName = $message['action'];
                     unset($message['action']);
@@ -1051,9 +1111,8 @@ class WSWorker
         unset($channel);
         $this->_currentClientId = null;
 
-        // --- close session ---
-        Session::instance()->destroy();
-        $_COOKIE = array();
+        // --- clear client settings ---
+        $this->clearClientSettings();
     }
 
     /**

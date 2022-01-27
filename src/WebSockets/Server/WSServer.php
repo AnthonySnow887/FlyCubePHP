@@ -17,6 +17,7 @@ include_once __DIR__.'/../../Core/Config/Config.php';
 include_once __DIR__.'/../../Core/ActiveRecord/ActiveRecord.php';
 include_once __DIR__.'/../../Core/Session/Session.php';
 include_once __DIR__.'/../../Core/Cookie/Cookie.php';
+include_once __DIR__.'/../../Core/Routes/RouteCollector.php';
 include_once __DIR__.'/../../Core/Database/DatabaseFactory.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 //include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php'; // TODO to add or not?
@@ -69,8 +70,9 @@ class WSServer
      */
     public function start()
     {
-        // --- set 'SERVER_ADDR' ---
+        // --- set 'SERVER_ADDR' & 'HTTP_HOST ---
         $_SERVER['SERVER_ADDR'] = $this->_host;
+        $_SERVER['HTTP_HOST'] = $this->_host;
 
         // --- show info ---
         $infoMsg = "[". self::class ."] Start WSServer. PID: " . $this->_pid;
