@@ -31,7 +31,7 @@ abstract class BaseChannel
     public function disconnect() {}
 
     /**
-     * Обработка подписки на канала
+     * Обработка подписки на канал
      *
      * NOTE: if $this->rejectSubscription() -> subscription refused!
      */
