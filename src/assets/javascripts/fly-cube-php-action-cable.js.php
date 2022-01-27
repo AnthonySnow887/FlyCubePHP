@@ -528,13 +528,22 @@ Released under the MIT license
           extend(this, mixin);
         }
 
-        Subscription.prototype.perform = function(action, data) {
-          if (data == null) {
-            data = {};
-          }
-          data.action = action;
-          return this.send(data);
-        };
+        <?php
+        if (\FlyCubePHP\HelperClasses\CoreHelper::toBool(
+            \FlyCubePHP\Core\Config\Config::instance()->arg(
+                \FlyCubePHP\Core\Config\Config::TAG_ACTION_CABLE_ENABLE_PERFORM, true)) === true) {
+            $js = <<<EOT
+            Subscription.prototype.perform = function(action, data) {
+              if (data == null) {
+                data = {};
+              }
+              data.action = action;
+              return this.send(data);
+            };
+EOT;
+            echo $js;
+        }
+        ?>
 
         Subscription.prototype.send = function(data) {
           return this.consumer.send({

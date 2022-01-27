@@ -31,10 +31,16 @@ class WSWorker
     private $_handshakes = array();
     private $_timerSec = 1;
     private $_mountPath = "";
+    private $_isEnabledPerform = true;
 
-    function __construct(string $mountPath, array $appChannels, $server, $controlSocket)
+    function __construct(string $mountPath,
+                         bool $isEnabledPerform,
+                         array $appChannels,
+                         $server,
+                         $controlSocket)
     {
         $this->_mountPath = $mountPath;
+        $this->_isEnabledPerform = $isEnabledPerform;
         $this->_appChannels = $appChannels;
         $this->_server = $server;
         $this->_controlSocket = $controlSocket;
@@ -1019,17 +1025,22 @@ class WSWorker
                     $channel->receive(array_merge($connectionInfo['params'], $identifier), $connectionInfo['cookie'], $message);
                 } else {
                     $actName = $message['action'];
-                    $actInfo = $channel->channelMethod($actName);
-                    if (empty($actInfo)) {
-                        $this->log(Logger::ERROR, "Not found method \"$actName\" in class $channelName! Action Cable perform failed!");
-                    } else if (count($actInfo['args']) > 1) {
-                        $this->log(Logger::ERROR, "Method $channelName::$actName(". implode(', ', $actInfo['args']) .") has more than one argument! Action Cable perform failed!");
+                    unset($message['action']);
+                    if ($this->_isEnabledPerform === false) {
+                        $this->log(Logger::WARNING, "Action Cable perform disabled! Method $channelName::$actName(" . $data['data'] . ") refused to run!");
                     } else {
-                        try {
-                            $this->log(Logger::INFO, "$channelName::$actName(" . $data['data'] . ")");
-                            $channel->$actName($message);
-                        } catch (\Throwable $e) {
-                            $this->log(Logger::ERROR, $e->getMessage());
+                        $actInfo = $channel->channelMethod($actName);
+                        if (empty($actInfo)) {
+                            $this->log(Logger::ERROR, "Not found method \"$actName\" in class $channelName! Action Cable perform failed!");
+                        } else if (count($actInfo['args']) > 1) {
+                            $this->log(Logger::ERROR, "Method $channelName::$actName(" . implode(', ', $actInfo['args']) . ") has more than one argument! Action Cable perform failed!");
+                        } else {
+                            try {
+                                $this->log(Logger::INFO, "$channelName::$actName(" . $data['data'] . ")");
+                                $channel->$actName($message);
+                            } catch (\Throwable $e) {
+                                $this->log(Logger::ERROR, $e->getMessage());
+                            }
                         }
                     }
                 }
