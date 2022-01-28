@@ -131,7 +131,7 @@ abstract class ActiveRecord
      * ПРИМЕЧАНИЕ:
      * $columnMappings должен иметь следующий вид:
      *   * key    - название параметра класса
-     *   * value  - название колнки в таблице
+     *   * value  - название колонки в таблице
      *
      * Example:
      * setColumnMappings([ 'name' => 'name_', 'password' => 'password_' ])
