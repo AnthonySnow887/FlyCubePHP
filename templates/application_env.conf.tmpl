@@ -155,10 +155,6 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #
 # --- asset pipeline settings ---
 #
-# Supported compression types:
-#  - gzip
-#  - deflate
-#
 # In production mode:
 #  - enable compression             - default true (enable/disable assets compression)
 #  - compression type               - default gzip (set assets compression type)
@@ -173,3 +169,17 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #
 #FLY_CUBE_PHP_ENABLE_ASSETS_COMPRESSION: true
 #FLY_CUBE_PHP_ASSETS_COMPRESSION_TYPE: gzip
+
+#
+# --- action cable settings ---
+#
+# In production mode:
+#  - mount path                     - default '/cable' (set Action Cable mount path)
+#  - enable perform                 - default true (enable/disable remote method call of channel classes)
+#
+# In development mode:
+#  - mount path                     - default '/cable' (set Action Cable mount path)
+#  - enable perform                 - default true (enable/disable remote method call of channel classes)
+#
+#FLY_CUBE_PHP_ACTION_CABLE_MOUNT_PATH: /cable
+#FLY_CUBE_PHP_ACTION_CABLE_ENABLE_PERFORM: true

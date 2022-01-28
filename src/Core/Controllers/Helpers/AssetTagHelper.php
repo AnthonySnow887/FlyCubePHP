@@ -10,6 +10,7 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
 
+use FlyCubePHP\ComponentsCore\ComponentsManager;
 use \FlyCubePHP\Core\Routes\RouteType as RouteType;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
@@ -26,11 +27,27 @@ class AssetTagHelper extends BaseControllerHelper
         $this->appendSafeFunction("image_tag");
         $this->appendSafeFunction("link_to");
 
-        $this->setFunctionSettings('add_plugin_view_javascripts', [
+        $this->setFunctionSettings('add_view_javascripts', [
             'safe' => true,
             'need_context' => true
         ]);
-        $this->setFunctionSettings('add_plugin_view_stylesheets', [
+        $this->setFunctionSettings('add_view_stylesheets', [
+            'safe' => true,
+            'need_context' => true
+        ]);
+        $this->setFunctionSettings('current_plugin_directory', [
+            'safe' => false,
+            'need_context' => true
+        ]);
+        $this->setFunctionSettings('plugin_controller_stylesheets_file', [
+            'safe' => true,
+            'need_context' => true
+        ]);
+        $this->setFunctionSettings('plugin_controller_javascript_file', [
+            'safe' => true,
+            'need_context' => true
+        ]);
+        $this->setFunctionSettings('plugin_controller_action_javascript_file', [
             'safe' => true,
             'need_context' => true
         ]);
@@ -514,11 +531,11 @@ class AssetTagHelper extends BaseControllerHelper
      * ==== Examples in Twig notations
      *
      * {% block head %}
-     * {{ add_plugin_view_javascripts("application") }}
+     * {{ add_view_javascripts("application") }}
      * {% endblock %}
      *
      */
-    public function add_plugin_view_javascripts($context, string $name): string {
+    public function add_view_javascripts($context, string $name): string {
         if (!isset($context['display_head'])
             || CoreHelper::toBool($context['display_head']) !== true)
             return "";
@@ -537,16 +554,150 @@ class AssetTagHelper extends BaseControllerHelper
      * ==== Examples in Twig notations
      *
      * {% block head %}
-     * {{ add_plugin_view_stylesheets("application") }}
+     * {{ add_view_stylesheets("application") }}
      * {% endblock %}
      *
      */
-    public function add_plugin_view_stylesheets($context, string $name): string {
+    public function add_view_stylesheets($context, string $name): string {
         if (!isset($context['display_head'])
             || CoreHelper::toBool($context['display_head']) !== true)
             return "";
 
         return $this->stylesheet_link_tag($name);
+    }
+
+    /**
+     * Получить название каталога текущего плагина
+     * @param $context
+     * @return string
+     *
+     * ==== Examples in Twig notations
+     *
+     *   current_plugin_directory()
+     *   * => "" // if not found
+     *   * => "plugins/TestPlugin" // if found
+     *
+     */
+    public function current_plugin_directory($context): string {
+        if (!isset($context['params']))
+            return "";
+        $controller = $context['params']['controller'];
+        $pl = ComponentsManager::instance()->pluginByControllerName($controller);
+        if (is_null($pl))
+            return "";
+
+        return $pl->directory();
+    }
+
+    /**
+     * Получить название CSS файла контроллера плагина
+     * @param $context
+     * @return string
+     *
+     * ==== Examples in Twig notations
+     *
+     *   plugin_controller_stylesheets_file()
+     *   * => "" // if not found
+     *   * => "test_worker" // if found and controller name "TestWorker" (real path: plugins/TestPlugin/app/assets/stylesheets/test_worker.[css/scss])
+     *
+     */
+    public function plugin_controller_stylesheets_file($context): string {
+        if (!isset($context['params']))
+            return "";
+        $fileBaseName = CoreHelper::underscore($context['params']['controller']);
+        $plDir = $this->current_plugin_directory($context);
+        $cssFile = CoreHelper::buildPath(
+            CoreHelper::rootDir(),
+            ComponentsManager::PLUGINS_DIR,
+            $plDir,
+            'app',
+            'assets',
+            'stylesheets',
+            "$fileBaseName.css"
+        );
+        $scssFile = CoreHelper::buildPath(
+            CoreHelper::rootDir(),
+            ComponentsManager::PLUGINS_DIR,
+            $plDir,
+            'app',
+            'assets',
+            'stylesheets',
+            "$fileBaseName.scss"
+        );
+        if (is_file($cssFile) && is_file($scssFile))
+            trigger_error("There are two files (*.css and *.scss)! The system does not know which one to take! Invalid files: $cssFile; $scssFile", E_USER_ERROR);
+        if (is_file($cssFile) || is_file($scssFile))
+            return $fileBaseName;
+        return "";
+    }
+
+    /**
+     * Получить название JS файла контроллера плагина
+     * @param $context
+     * @return string
+     *
+     * ==== Examples in Twig notations
+     *
+     *   plugin_controller_javascript_file()
+     *   * => "" // if not found
+     *   * => "test_worker" // if found and controller name "TestWorker" (real path: plugins/TestPlugin/app/assets/javascripts/test_worker.[js/js.php])
+     *
+     */
+    public function plugin_controller_javascript_file($context): string {
+        if (!isset($context['params']))
+            return "";
+        $fileBaseName = CoreHelper::underscore($context['params']['controller']);
+        $plDir = $this->current_plugin_directory($context);
+        $jsFile = CoreHelper::buildPath(
+            CoreHelper::rootDir(),
+            ComponentsManager::PLUGINS_DIR,
+            $plDir,
+            'app',
+            'assets',
+            'javascripts',
+            "$fileBaseName.js"
+        );
+        $jsPhpFile = $jsFile . ".php";
+        if (is_file($jsFile) && is_file($jsPhpFile))
+            trigger_error("There are two files (*.js and *.js.php)! The system does not know which one to take! Invalid files: $jsFile; $jsPhpFile", E_USER_ERROR);
+        if (is_file($jsFile) || is_file($jsPhpFile))
+            return $fileBaseName;
+        return "";
+    }
+
+    /**
+     * Получить название JS файла метода контроллера плагина
+     * @param $context
+     * @return string
+     *
+     * ==== Examples in Twig notations
+     *
+     *   plugin_controller_action_javascript_file()
+     *   * => "" // if not found
+     *   * => "test_worker_act" // if found file for action "act" and controller name "TestWorker" (real path: plugins/TestPlugin/app/assets/javascripts/test_worker_act.[js/js.php])
+     *
+     */
+    public function plugin_controller_action_javascript_file($context): string {
+        if (!isset($context['params']))
+            return "";
+        $jsBaseName = $context['params']['controller'] . "_" . $context['params']['action'];
+        $fileBaseName = CoreHelper::underscore($jsBaseName);
+        $plDir = $this->current_plugin_directory($context);
+        $jsFile = CoreHelper::buildPath(
+            CoreHelper::rootDir(),
+            ComponentsManager::PLUGINS_DIR,
+            $plDir,
+            'app',
+            'assets',
+            'javascripts',
+            "$fileBaseName.js"
+        );
+        $jsPhpFile = $jsFile . ".php";
+        if (is_file($jsFile) && is_file($jsPhpFile))
+            trigger_error("There are two files (*.js and *.js.php)! The system does not know which one to take! Invalid files: $jsFile; $jsPhpFile", E_USER_ERROR);
+        if (is_file($jsFile) || is_file($jsPhpFile))
+            return $fileBaseName;
+        return "";
     }
 
     // --- private ---

@@ -1,0 +1,34 @@
+#
+# Created by FlyCubePHP generator.
+# User: {{ USER }}
+# Date: {{ DATE }}
+# Time: {{ TIME }}
+#
+
+[Unit]
+Description=FlyCubePHP WebSockets Service for {{ APP_NAME }}
+After=syslog.target
+After=network.target
+
+[Service]
+Type=forking
+PrivateTmp=false
+
+# Web server user and group (default for Apache on OpenSUSE):
+User=wwwrun
+Group=wwwrun
+
+# Exec commands:
+ExecStart={{ APP_PATH }}/bin/fly_cube_php_ws_server --start
+ExecStop={{ APP_PATH }}/bin/fly_cube_php_ws_server --stop
+ExecReload={{ APP_PATH }}/bin/fly_cube_php_ws_server --restart
+
+# The server might be slow to stop, and that's fine. Don't kill it
+SendSIGKILL=no
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+ 
+ 

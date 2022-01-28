@@ -464,8 +464,10 @@ function checkAndMakeProjectDirs(string $path): bool {
     $pats = [
         buildPath($path, "app", "assets", "images"),
         buildPath($path, "app", "assets", "javascripts"),
+        buildPath($path, "app", "assets", "javascripts", "channels"),
         buildPath($path, "app", "assets", "stylesheets"),
         buildPath($path, "app", "controllers"),
+        buildPath($path, "app", "channels"),
         buildPath($path, "app", "helpers"),
         buildPath($path, "app", "models"),
         buildPath($path, "app", "views", "layouts"),
@@ -503,6 +505,110 @@ function checkAndMakeProjectDirs(string $path): bool {
     // --- change mode ---
     foreach ($chmodPats as $p) {
         if (!chmod($p, 0777))
+            return false;
+    }
+    return true;
+}
+
+/**
+ * Проверить и создать необходимые базовые файлы проекта
+ * @param string $path - путь до проекта
+ * @return bool
+ */
+function checkAndMakeProjectDefFiles(string $path): bool {
+    $path = realpath($path);
+    // --- check project ---
+    if (!is_dir($path))
+        return false;
+
+    $nameUnderscore = underscore(basename($path));
+    $copyList = [];
+    $templatesList = [];
+    $chmodList = [];
+
+    // --- make copy list for bin/* templates ---
+    $binFiles = scanDirectory(__DIR__."/../templates/bin/");
+    foreach ($binFiles as $file) {
+        $tmpPath = buildPath($path, "bin", basename($file));
+        $copyList[$file] = $tmpPath;
+        $chmodList[] = $tmpPath;
+    }
+
+    // --- make copy list for other templates ---
+    $templatesList[__DIR__."/../templates/index.php.tmpl"] = buildPath($path, "index.php");
+    $templatesList[__DIR__."/../templates/apache24.conf.tmpl"] = buildPath($path, $nameUnderscore.".apache24.conf");
+    $templatesList[__DIR__."/../templates/application_env.conf.tmpl"] = buildPath($path, "config", "application_env.conf");
+    $templatesList[__DIR__."/../templates/ignore-list.conf.tmpl"] = buildPath($path, "config", "ignore-list.conf");
+    $templatesList[__DIR__."/../templates/database.json.tmpl"] = buildPath($path, "config", "database.json");
+    $templatesList[__DIR__."/../templates/development.php.tmpl"] = buildPath($path, "config", "environments", "development.php");
+    $templatesList[__DIR__."/../templates/production.php.tmpl"] = buildPath($path, "config", "environments", "production.php");
+    $templatesList[__DIR__."/../templates/application.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "application.js");
+    $templatesList[__DIR__."/../templates/application.css.tmpl"] = buildPath($path, "app", "assets", "stylesheets", "application.css");
+    $templatesList[__DIR__."/../templates/application.html.tmpl"] = buildPath($path, "app", "views", "layouts", "application.html");
+    $templatesList[__DIR__."/../templates/application_controller.php.tmpl"] = buildPath($path, "app", "controllers", "ApplicationController.php");
+    $templatesList[__DIR__."/../templates/application_controller_api.php.tmpl"] = buildPath($path, "app", "controllers", "ApplicationControllerAPI.php");
+    $templatesList[__DIR__."/../templates/application_controller_helper.php.tmpl"] = buildPath($path, "app", "helpers", "ApplicationHelper.php");
+    $templatesList[__DIR__."/../templates/cable.json.tmpl"] = buildPath($path, "config", "cable.json");
+    $templatesList[__DIR__."/../templates/cable.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "cable.js");
+    $templatesList[__DIR__."/../templates/channel_base.php.tmpl"] = buildPath($path, "app", "channels", "Channel.php");
+    $templatesList[__DIR__."/../templates/ws-server.service.tmpl"] = buildPath($path, "$nameUnderscore.ws_server.service");
+
+    // --- copy ---
+    foreach ($copyList as $key => $value) {
+        if (file_exists($value))
+            continue;
+        if (!copy($key, $value))
+            return false;
+    }
+    // --- copy templates ---
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
+    $tmplParams['APP_PATH'] = spliceUrlLast($path);
+    $tmplParams['APP_URL_PREFIX'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
+    foreach ($templatesList as $key => $value) {
+        if (file_exists($value))
+            continue;
+        if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($key, $value, $tmplParams))
+            return false;
+    }
+    // --- change mode ---
+    foreach ($chmodList as $p) {
+        if (!chmod($p, 0555))
+            return false;
+    }
+    return true;
+}
+
+/**
+ * Пересоздать необходимые базовые бинарные файлы проекта
+ * @param string $path - путь до проекта
+ * @return bool
+ */
+function replaceProjectDefBinary(string $path): bool {
+    $path = realpath($path);
+    // --- check project ---
+    if (!is_dir($path))
+        return false;
+
+    $copyList = [];
+
+    // --- make copy list for bin/* templates ---
+    $binFiles = scanDirectory(__DIR__."/../vendor/FlyCubePHP/templates/bin/");
+    foreach ($binFiles as $file) {
+        $tmpPath = buildPath($path, "bin", basename($file));
+        $copyList[$file] = $tmpPath;
+    }
+
+    // --- copy ---
+    foreach ($copyList as $key => $value) {
+        if (file_exists($value) && !unlink($value))
+            return false;
+        if (!copy($key, $value))
+            return false;
+        if (!chmod($value, 0555))
             return false;
     }
     return true;
@@ -591,11 +697,20 @@ function upgradeFlyCubePhpProject(string $path,
         echo "\r\nInvalid input value!\r\n\r\n";
     }
 
-    // --- check & make projects dirs ---
+    // --- check & make project dirs ---
     echo "  - Checking project catalogs: ";
     if (!checkAndMakeProjectDirs($path)) {
         echo "FAILED\r\n";
         echo "    ERROR: Check and create missing project catalogs failed!\r\n";
+        return;
+    }
+    echo "OK\r\n";
+
+    // --- check & make project base files ---
+    echo "  - Checking project base files: ";
+    if (!checkAndMakeProjectDefFiles($path)) {
+        echo "FAILED\r\n";
+        echo "    ERROR: Check and create missing project base files failed!\r\n";
         return;
     }
     echo "OK\r\n";
@@ -630,22 +745,15 @@ function upgradeFlyCubePhpProject(string $path,
     }
     // --- remove old version ---
     recursiveDeleteDir(buildPath($path, "vendor", "FlyCubePHP"));
-    unlink(buildPath($path, "bin", "fly_cube_php"));
     // --- up latest version ---
     rename(buildPath($path, "vendor", "FlyCubePHP-$latestVers"),
         buildPath($path, "vendor", "FlyCubePHP"));
     rename(buildPath($path, "vendor", "FlyCubePHP", "src"),
         buildPath($path, "vendor", "FlyCubePHP", "FlyCubePHP"));
     unlink($fPath);
-    if (!copy(buildPath($path, "vendor", "FlyCubePHP", "templates", "bin", "fly_cube_php"),
-        buildPath($path, "bin", "fly_cube_php"))) {
+    if (!replaceProjectDefBinary($path)) {
         echo "FAILED\r\n";
-        echo "    ERROR: Copy bin/fly_cube_php failed!\r\n";
-        return;
-    }
-    if (!chmod(buildPath($path, "bin", "fly_cube_php"), 0555)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Change bin/fly_cube_php mod failed!\r\n";
+        echo "    ERROR: Copy FlyCubePHP binary files failed!\r\n";
         return;
     }
     echo "OK\r\n";
@@ -864,7 +972,6 @@ function createNewProject(string $name,
                           string $path,
                           bool $downloadRequires,
                           bool &$useDelete): bool {
-    $nameUnderscore = underscore($name);
     $useDelete = true;
     // --- create project dir ---
     echo "  - Create project dir: ";
@@ -903,218 +1010,13 @@ function createNewProject(string $name,
 
     echo "OK\r\n";
 
-    // --- templates ---
-    echo "  - Copy FlyCubePHP templates: ";
-    if (!class_exists('\FlyCubePHP\TemplateBuilder\TemplateBuilder')) {
+    // --- copy base files ---
+    echo "  - Copy FlyCubePHP base files: ";
+    if (!checkAndMakeProjectDefFiles($tmpPath)) {
         echo "FAILED\r\n";
-        echo "    ERROR: Not found class 'TemplateBuilder'!\r\n";
+        echo "    ERROR: Copy FlyCubePHP base files failed!\r\n";
         return false;
     }
-
-    // --- copy bin/fly_cube_php template ---
-    $tmplFile = __DIR__."/../templates/bin/fly_cube_php";
-    if (!copy($tmplFile, buildPath($tmpPath, "bin", "fly_cube_php"))) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-    if (!chmod(buildPath($tmpPath, "bin", "fly_cube_php"), 0555)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Change template mod failed!\r\n";
-        return false;
-    }
-
-    // --- copy index.php template ---
-    $tmplFile = __DIR__."/../templates/index.php.tmpl";
-    $resultFile = buildPath($tmpPath, "index.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy apache conf template ---
-    $tmplFile = __DIR__."/../templates/apache24.conf.tmpl";
-    $resultFile = buildPath($tmpPath, $nameUnderscore.".apache24.conf");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
-    $tmplParams['APP_PATH'] = spliceUrlLast($tmpPath);
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app env template ---
-    $tmplFile = __DIR__ . "/../templates/application_env.conf.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "application_env.conf");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_URL_PREFIX'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app ignore list template ---
-    $tmplFile = __DIR__ . "/../templates/ignore-list.conf.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "ignore-list.conf");
-    $tmplParams = [];
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app db template ---
-    $tmplFile = __DIR__."/../templates/database.json.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "database.json");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app routes template ---
-    $tmplFile = __DIR__."/../templates/routes.php.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "routes.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app env types template ---
-    $tmplFile = __DIR__."/../templates/development.php.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "environments", "development.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    $tmplFile = __DIR__."/../templates/production.php.tmpl";
-    $resultFile = buildPath($tmpPath, "config", "environments", "production.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app js template ---
-    $tmplFile = __DIR__."/../templates/application.js.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "assets", "javascripts", "application.js");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app css template ---
-    $tmplFile = __DIR__."/../templates/application.css.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "assets", "stylesheets", "application.css");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app view template ---
-    $tmplFile = __DIR__."/../templates/application.html.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "views", "layouts", "application.html");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app controller template ---
-    $tmplFile = __DIR__."/../templates/application_controller.php.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "controllers", "ApplicationController.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app controller api template ---
-    $tmplFile = __DIR__."/../templates/application_controller_api.php.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "controllers", "ApplicationControllerAPI.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
-    // --- copy app controller helper template ---
-    $tmplFile = __DIR__."/../templates/application_controller_helper.php.tmpl";
-    $resultFile = buildPath($tmpPath, "app", "helpers", "ApplicationHelper.php");
-    $tmplParams = [];
-    $tmplParams['USER'] = currentUser();
-    $tmplParams['DATE'] = date('d.m.y');
-    $tmplParams['TIME'] = date('H:i');
-    $tmplParams['NAME'] = "Application";
-    $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($name));
-    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams)) {
-        echo "FAILED\r\n";
-        echo "    ERROR: Copy template failed!\r\n";
-        return false;
-    }
-
     echo "OK\r\n";
 
     // --- download requires ---

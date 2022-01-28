@@ -13,6 +13,11 @@
 # NOTE: This is config for rpm-base systems (CentOS, OpenSUSE...)
 # ----------------------------------------------------------------
 
+# --- Load proxy mode modules ---
+LoadModule proxy_module /usr/lib64/apache2/mod_proxy.so
+LoadModule proxy_http_module /usr/lib64/apache2/mod_proxy_http.so
+LoadModule proxy_wstunnel_module /usr/lib64/apache2/mod_proxy_wstunnel.so
+
 # --- For listen eny port ---
 Listen 8080
 <VirtualHost *:8080>
@@ -21,6 +26,16 @@ Listen 8080
 
     Alias /{{ APP_NAME }} "{{ APP_PATH }}"
 
+    # Redirect all web socket connections to fly-cube-php ws-service
+    <Location /{{ APP_NAME }}/cable >
+        ProxyPass "ws://127.0.0.1:8000/cable"
+        ProxyPassReverse "ws://127.0.0.1:8000/cable"
+        RewriteEngine on
+        RewriteCond %{HTTP:Upgrade} websocket [NC]
+        RewriteCond %{HTTP:Connection} upgrade [NC]
+        RewriteRule ^/?(.*) "ws://127.0.0.1:8000/cable" [P,L]
+    </Location>
+    
     <Directory "{{ APP_PATH }}">
       Options Indexes FollowSymLinks
       Require all granted
@@ -37,6 +52,11 @@ Listen 8080
 # NOTE: This is config for debian systems (Astra Linux 1.6 supported)
 # --------------------------------------------------------------------
 
+## --- Load proxy mode modules ---
+#LoadModule proxy_module /usr/lib/apache2/modules/mod_proxy.so
+#LoadModule proxy_http_module /usr/lib/apache2/modules/mod_proxy_http.so
+#LoadModule proxy_wstunnel_module /usr/lib/apache2/modules/mod_proxy_wstunnel.so
+
 ## --- For listen eny port ---
 #Listen 8080
 #<VirtualHost *:8080>
@@ -47,6 +67,16 @@ Listen 8080
 #    AliasMatch "^/{{ APP_NAME }}" "{{ APP_PATH }}"
 #    DocumentRoot {{ APP_PATH }}
 #
+#    # Redirect all web socket connections to fly-cube-php ws-service
+#    <Location /{{ APP_NAME }}/cable >
+#        ProxyPass "ws://127.0.0.1:8000/cable"
+#        ProxyPassReverse "ws://127.0.0.1:8000/cable"
+#        RewriteEngine on
+#        RewriteCond %{HTTP:Upgrade} websocket [NC]
+#        RewriteCond %{HTTP:Connection} upgrade [NC]
+#        RewriteRule ^/?(.*) "ws://127.0.0.1:8000/cable" [P,L]
+#    </Location>
+#    
 #    # Redirect all requests to index.php
 #    RewriteEngine On
 #    RewriteRule . /index.php [QSA,L]

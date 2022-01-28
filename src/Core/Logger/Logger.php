@@ -144,10 +144,10 @@ class Logger
             $logFileName = "production.log";
 
         if ($useRotate === true) {
-            $fDateFormat = trim(\FlyCubePHP\configValue(Config::TAG_LOG_ROTATE_MAX_FILES, "Y_m_d"));
+            $fDateFormat = trim(\FlyCubePHP\configValue(Config::TAG_LOG_ROTATE_FILE_DATE_FORMAT, "Y_m_d"));
             if (empty($fDateFormat))
                 $fDateFormat = "Y_m_d";
-            $fNameFormat = trim(\FlyCubePHP\configValue(Config::TAG_LOG_ROTATE_MAX_FILES, "{date}_{filename}"));
+            $fNameFormat = trim(\FlyCubePHP\configValue(Config::TAG_LOG_ROTATE_FILE_NAME_FORMAT, "{date}_{filename}"));
             if (empty($fNameFormat))
                 $fNameFormat = "{date}_{filename}";
 

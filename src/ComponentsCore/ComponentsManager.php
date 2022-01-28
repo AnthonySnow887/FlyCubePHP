@@ -42,6 +42,7 @@ class ComponentsManager
     const PLUGINS_DIR = "plugins";
     const CONFIG_DIR = "config";
     const CONTROLLERS_DIR = "controllers";
+    const CHANNELS_DIR = "channels";
     const MODELS_DIR = "models";
     const PLUGIN_INIT_FILE = "init.php";
     const PLUGIN_ROUTES_FILE = "routes.php";

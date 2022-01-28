@@ -1,7 +1,72 @@
+# 1.5.0 (28.01.2022)
+
+ * Update Development Guide RUS
+ * Add required PHP modules: 
+   * php7-redis
+   * php7-sockets
+   
+ * Add Action Cable Web Sockets support:
+   * add FlyCubePHP Web Sockets Service
+   * add base server files & classes
+   * add base client files
+   * add supported adapters:
+     * IPC
+     * Redis
+   * add ActionCableHelper class
+   * update fly_cube_php bin (add command '--channel' for create new Action Cable Channel)
+
+ * Update fly_cube_php bin:
+   * small code refactoring
+   * add command '--channel' for create new Action Cable Channel
+   * change command '--check-dirs' to '--check-project'
+
+ * Update AssetTagHelper:
+   * change helper methods (see UPGRADE-1.5.0 how to upgrade to the latest version):
+     * 'add_plugin_view_javascripts' to 'add_view_javascripts'
+     * 'add_plugin_view_stylesheets' to 'add_view_stylesheets'
+   * add helper methods:
+     * current_plugin_directory
+     * plugin_controller_stylesheets_file
+     * plugin_controller_javascript_file
+     * plugin_controller_action_javascript_file
+
+ * Update templates:
+   * application_env.conf.tmpl (add Action Cable settings)
+   * application.html.tmpl (add code for load plugins JS/CSS files)
+   * apache24.conf.tmpl (add web sockets support)
+
+ * Add templates:
+   * ws-server.service.tmpl (systemd service template)
+   * cable.json.tmpl (Action Cable config)
+   * cable.js.tmpl (Action Cable base JS file)
+   * channel_base.php.tmpl (Action Cable base php class for project)
+   * channel.js.tmpl (Action Cable js channel class)
+   * channel.php.tmpl (Action Cable php channel class)
+
+ * Update ActiveRecord (add modelGlobalID)
+
+ * Update Session:
+   * add read-only state
+   * add decode default php session data
+   * add encode default php session data
+
+ * Update RouteCollector:
+   * refactoring (changed the order of the functions in the class)
+   * add currentHostProtocol
+   * add currentClientPort
+   * add currentClientBrowser
+   * add browserPlatform
+   * add browserVersion
+  
+ * Update Config.php (add Action Cable defines)
+ * Fix Logger (fix get TAG_LOG_ROTATE_FILE_DATE_FORMAT & TAG_LOG_ROTATE_FILE_NAME_FORMAT)
+ * Fix comments
+ 
 # 1.4.0 (21.12.2021)
 
+ * Update Development Guide RUS 
  * Add required PHP module: zlib
-
+ 
  * Add ApiDoc:
    * load api-doc files from json
    * build support in markdown
@@ -32,6 +97,7 @@
 
 # 1.3.0 (01.12.2021)
 
+ * Update Development Guide RUS
  * Update fly_cube_php bin file:
    * fix --assets-precompile
    * fix backtrace log trim
@@ -78,6 +144,7 @@
 
 # 1.2.0 (22.11.2021)
 
+ * Update Development Guide RUS
  * Update BaseActionController:
    * add Twig global variable 'router'
    * add skipRenderForActions

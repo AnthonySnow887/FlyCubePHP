@@ -4,12 +4,38 @@
     <!--<link rel='icon' type='image/png' href='{# image_path("logo.png") #}' />-->
     <title>{{ APP_NAME }}</title>
 
+    {{ action_cable_meta_tag() }}
     {{ csrf_meta_tags() }}
     {{ csp_meta_tag() }}
 
-    {{ stylesheet_link_tag("application") }}
+    <!-- core stylesheets -->
+    {{ stylesheet_link_tag("application", { "type":"text/css", "media":"all" }) }}
+    
+    <!-- plugin stylesheets -->
+    {% set plugin_dir = current_plugin_directory() %}
+    {% if plugin_dir is not empty %}
+    {% set plugin_css_file = plugin_controller_stylesheets_file() %}
+    {% if plugin_css_file is not empty %}
+    {{ stylesheet_link_tag(plugin_css_file, { "type":"text/css", "media":"all" }) }}
+    {% endif %}
+    {% endif %}
+    
+    <!-- core javascripts -->
     {{ javascript_include_tag("application") }}
+    
+    <!-- plugin javascripts -->
+    {% set plugin_dir = current_plugin_directory() %}
+    {% if plugin_dir is not empty %}
+    {% set plugin_js_file = plugin_controller_javascript_file() %}
+    {% set plugin_act_js_file = plugin_controller_action_javascript_file() %}
+    {% if plugin_act_js_file is not empty %}
+    {{ javascript_include_tag(plugin_act_js_file) }}
+    {% elseif plugin_js_file is not empty %}
+    {{ javascript_include_tag(plugin_js_file) }}
+    {% endif %}
+    {% endif %}
 
+    <!-- block 'head' stylesheets and javascripts -->
     {% if block("head", render_action) is defined %}
     {% set display_head = true %}
     {{ block("head", render_action) }}

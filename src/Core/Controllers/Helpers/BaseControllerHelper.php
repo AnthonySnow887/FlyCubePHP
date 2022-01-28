@@ -24,7 +24,7 @@ abstract class BaseControllerHelper
         try {
             $tmpRef = new \ReflectionClass($this);
         } catch (\Exception $e) {
-            echo 'Exception: ',  $e->getMessage(), "\n";
+            return [];
         }
         $tmpMethods = array();
         $methods = $tmpRef->getMethods(\ReflectionMethod::IS_STATIC | \ReflectionMethod::IS_PUBLIC);

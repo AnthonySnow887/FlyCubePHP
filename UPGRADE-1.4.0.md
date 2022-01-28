@@ -40,10 +40,6 @@ Application config
    #
    # --- asset pipeline settings ---
    #
-   # Supported compression types:
-   #  - gzip
-   #  - deflate
-   #
    # In production mode:
    #  - enable compression             - default true (enable/disable assets compression)
    #  - compression type               - default gzip (set assets compression type)

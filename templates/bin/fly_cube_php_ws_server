@@ -1,0 +1,97 @@
+#!/usr/bin/env php
+<?php
+
+if (version_compare(PHP_VERSION, '7.0') < 0)
+    die("ERROR: Requires PHP 7.0 or above\r\n");
+
+chdir(__DIR__."/../"); // go to app root
+if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/WebSockets/Server/WSServiceApplication.php"))
+    include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/WebSockets/Server/WSServiceApplication.php";
+if (!class_exists("\FlyCubePHP\WebSockets\Server\WSServiceApplication")) {
+    echo "ERROR: Not found WSServiceApplication!\r\n";
+    return;
+}
+
+/**
+ * Вывести справку приложения
+ * @param string $app - название приложения
+ */
+function printHelp(string $app) {
+    $HELP = <<<EOT
+
+Usage: $app [options]
+
+Options include:
+
+    --help          Show this message [-h, -?]
+    --version       Print the version [-v]
+    --env=[VALUE]   Set current environment (production/development; default: development)
+    
+    --start         Start web sockets server
+    --stop          Stop web sockets server
+    --restart       Restart web sockets server
+
+
+EOT;
+    exit($HELP);
+}
+
+/**
+ * Получить значение аргумента
+ * @param string $key - ключ
+ * @param array $args - массив аргументов
+ * @param null $defVal - базовое значение
+ * @return string|null
+ */
+function argumentValue(string $key, array $args, $defVal = null)/*: string|null */ {
+    for ($i = 0; $i < count($args); $i++) {
+        $arg = $args[$i];
+        $reg = "^$key=(.*)$";
+        preg_match("/$reg/", $arg, $matches, PREG_OFFSET_CAPTURE);
+        if (count($matches) >= 2 && strlen($matches[1][0]) > 0)
+            return $matches[1][0];
+    }
+    return $defVal;
+}
+
+/**
+ * Запросить версию ядра FlyCubePHP
+ * @return string
+ */
+function flyCubePhpVersion(): string {
+    return \FlyCubePHP\VERSION_STR();
+}
+
+$app = $argv[0];
+$arguments = [];
+for ($i = 1; $i < $argc; $i++)
+    $arguments[] = $argv[$i];
+
+// --- check help ---
+if (in_array('-?', $arguments)
+    || in_array('-h', $arguments)
+    || in_array('--help', $arguments)) {
+    printHelp($app);
+    exit();
+}
+if (in_array('--version', $arguments)
+    || in_array('-v', $arguments)) {
+    $vStr = flyCubePhpVersion();
+    exit("[FlyCubePHP] Core version: $vStr\r\n");
+}
+
+// --- set env ---
+$envValue = argumentValue('--env', $arguments);
+if (!empty($envValue))
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, strval($envValue));
+
+$ws = new FlyCubePHP\WebSockets\Server\WSServiceApplication();
+if (in_array('--start', $arguments))
+    $ws->start();
+else if (in_array('--stop', $arguments))
+    $ws->stop();
+else if (in_array('--restart', $arguments))
+    $ws->restart();
+else
+    exit("Invalid arguments! Use --help!\r\n");
+

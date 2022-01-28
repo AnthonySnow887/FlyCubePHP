@@ -1,0 +1,18 @@
+//
+// Created by FlyCubePHP generator.
+// User: {{ USER }}
+// Date: {{ DATE }}
+// Time: {{ TIME }}
+//
+// Action Cable provides the framework to deal with WebSockets in FlyCubePHP.
+// You can generate new channels where WebSocket features live using the `MyProject/bin> ./fly_cube_php --new --channel --name=ExampleChannel` command.
+//
+//= require fly-cube-php-action-cable
+//= require_tree ./channels
+
+(function() {
+  this.App || (this.App = {});
+
+  App.cable = FlyCubePHPActionCable.createConsumer();
+
+}).call(this);

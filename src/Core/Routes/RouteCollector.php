@@ -265,14 +265,32 @@ class RouteCollector
     }
 
     /**
+     * Получить текущий протокол хоста
+     * @return string
+     */
+    static public function currentHostProtocol(): string {
+        $protocol = "http";
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+            $protocol = "https";
+
+        return $protocol;
+    }
+
+    /**
      * Получить текущий URL хоста
      * @return string
      */
     static public function currentHostUri(): string {
-        $protocol = "http";
-        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
-            $protocol = "https";
+        $protocol = self::currentHostProtocol();
         return "$protocol://$_SERVER[HTTP_HOST]";
+    }
+
+    /**
+     * Получить информацию о USER AGENT текущего клиента
+     * @return string
+     */
+    static public function currentClientUserAgent(): string {
+        return $_SERVER['HTTP_USER_AGENT'];
     }
 
     /**
@@ -286,6 +304,142 @@ class RouteCollector
             return $_SERVER['HTTP_X_FORWARDED_FOR'];
 
         return $_SERVER['REMOTE_ADDR'];
+    }
+
+    /**
+     * Получить PORT текущего клиента
+     * @return int
+     */
+    static public function currentClientPort(): int {
+        return intval($_SERVER['REMOTE_PORT']);
+    }
+
+    /**
+     * Получить информацию о браузере текущего клиента
+     * @return array
+     *
+     * Array keys:
+     * - [string] userAgent - current client user agent string
+     * - [string] name      - browser name
+     * - [string] platform  - browser platform
+     * - [string] version   - browser version (maybe empty)
+     * - [bool]   bot       - is it a bot
+     */
+    static public function currentClientBrowser(): array
+    {
+        $userAgent = self::currentClientUserAgent();
+        $bName = 'Unknown';
+        $bPlatform = self::browserPlatform($userAgent);
+        $bVersion= "";
+        $isBot = false;
+
+        // Follow up to Francesco R's post from 2016.
+
+        // Make case insensitive.
+        $t = strtolower($userAgent);
+
+        // If the string *starts* with the string, strpos returns 0 (i.e., FALSE). Do a ghetto hack and start with a space.
+        // "[strpos()] may return Boolean FALSE, but may also return a non-Boolean value which evaluates to FALSE."
+        //     http://php.net/manual/en/function.strpos.php
+        $t = " " . $t;
+
+        // Humans / Regular Users
+        if (strpos($t, 'opera') || strpos($t, 'opr/')) {
+            $bName = 'Opera';
+            $bVersion = self::browserVersion($userAgent, 'Opera');
+        } elseif (strpos($t, 'edge')) {
+            $bName = 'Edge';
+            $bVersion = self::browserVersion($userAgent, 'Edge');
+        } elseif (strpos($t, 'chrome')) {
+            $bName = 'Chrome';
+            $bVersion = self::browserVersion($userAgent, 'Chrome');
+        } elseif (strpos($t, 'safari')) {
+            $bName = 'Safari';
+            $bVersion = self::browserVersion($userAgent, 'Safari');
+        } elseif (strpos($t, 'firefox')) {
+            $bName = 'Firefox';
+            $bVersion = self::browserVersion($userAgent, 'Firefox');
+        } elseif (strpos($t, 'msie') || strpos($t, 'trident/7')) {
+            $bName = 'Internet Explorer';
+            if (strpos($t, 'trident/7'))
+                $bVersion = self::browserVersion($userAgent, 'rv');
+            else
+                $bVersion = self::browserVersion($userAgent, 'MSIE');
+        }
+
+        // Search Engines
+        elseif (strpos($t, 'google')) {
+            $bName = 'Googlebot';
+            $isBot = true;
+        } elseif (strpos($t, 'bing')) {
+            $bName = 'Bingbot';
+            $isBot = true;
+        } elseif (strpos($t, 'slurp')) {
+            $bName = 'Yahoo! Slurp';
+            $isBot = true;
+        } elseif (strpos($t, 'duckduckgo')) {
+            $bName = 'DuckDuckBot';
+            $isBot = true;
+        } elseif (strpos($t, 'baidu')) {
+            $bName = 'Baidu';
+            $isBot = true;
+        } elseif (strpos($t, 'yandex')) {
+            $bName = 'Yandex';
+            $isBot = true;
+        } elseif (strpos($t, 'sogou')) {
+            $bName = 'Sogou';
+            $isBot = true;
+        } elseif (strpos($t, 'exabot')) {
+            $bName = 'Exabot';
+            $isBot = true;
+        } elseif (strpos($t, 'msn')) {
+            $bName = 'MSN';
+            $isBot = true;
+        }
+
+        // Common Tools and Bots
+        elseif (strpos($t, 'mj12bot')) {
+            $bName = 'Majestic';
+            $isBot = true;
+        } elseif (strpos($t, 'ahrefs')) {
+            $bName = 'Ahrefs';
+            $isBot = true;
+        } elseif (strpos($t, 'semrush')) {
+            $bName = 'SEMRush';
+            $isBot = true;
+        } elseif (strpos($t, 'rogerbot') || strpos($t, 'dotbot')) {
+            $bName = 'Moz or OpenSiteExplorer';
+            $isBot = true;
+        } elseif (strpos($t, 'frog') || strpos($t, 'screaming')) {
+            $bName = 'Screaming Frog';
+            $isBot = true;
+        }
+
+        // Miscellaneous
+        elseif (strpos($t, 'facebook')) {
+            $bName = 'Facebook';
+            $isBot = true;
+        } elseif (strpos($t, 'pinterest')) {
+            $bName = 'Pinterest';
+            $isBot = true;
+        }
+
+        // Check for strings commonly used in bot user agents
+        elseif (strpos($t, 'crawler') || strpos($t, 'api')
+            || strpos($t, 'spider') || strpos($t, 'http')
+            || strpos($t, 'bot') || strpos($t, 'archive')
+            || strpos($t, 'info') || strpos($t, 'data')) {
+            $bName = 'Other';
+            $isBot = true;
+        }
+
+        return [
+            'userAgent' => $userAgent,
+            'name' => $bName,
+            'platform' => $bPlatform,
+            'version' => $bVersion,
+            'bot' => $isBot
+        ];
     }
 
     /**
@@ -540,6 +694,60 @@ class RouteCollector
             }
         }
         return $uri;
+    }
+
+    /**
+     * Получить платформу браузера (на которой запущен)
+     * @param string $userAgent
+     * @return string
+     */
+    static private function browserPlatform(string $userAgent): string
+    {
+        if (preg_match('/linux/i', $userAgent))
+            return 'linux';
+        elseif (preg_match('/macintosh|mac os x/i', $userAgent))
+            return 'mac';
+        elseif (preg_match('/windows|win32/i', $userAgent))
+            return 'windows';
+
+        return 'Unknown';
+    }
+
+    /**
+     * Получить версию браузера
+     * @param string $userAgent
+     * @param string $vPrefix префикс поиска версии
+     * @return string
+     */
+    static private function browserVersion(string $userAgent, string $vPrefix): string
+    {
+        // Get the correct version number
+        // Added "|:"
+        $known = array('Version', $vPrefix, 'other');
+        $pattern = '#(?<browser>' . join('|', $known) . ')[/|: ]+(?<version>[0-9.|a-zA-Z.]*)#';
+        if (!preg_match_all($pattern, $userAgent, $matches)) {
+            // we have no matching number just continue
+            return "";
+        }
+
+        // see how many we have
+        $i = count($matches['browser']);
+        if ($i != 1) {
+            // we will have two since we are not using 'other' argument yet
+            // see if version is before or after the name
+            if (strripos($userAgent, "Version") < strripos($userAgent, $vPrefix))
+                $version = $matches['version'][0];
+            else
+                $version = $matches['version'][1];
+        } else {
+            $version = $matches['version'][0];
+        }
+
+        // check if we have a number
+        if ($version == null || $version == "")
+            $version = "?";
+
+        return $version;
     }
 
     /**

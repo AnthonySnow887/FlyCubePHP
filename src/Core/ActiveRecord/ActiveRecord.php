@@ -131,7 +131,7 @@ abstract class ActiveRecord
      * ПРИМЕЧАНИЕ:
      * $columnMappings должен иметь следующий вид:
      *   * key    - название параметра класса
-     *   * value  - название колнки в таблице
+     *   * value  - название колонки в таблице
      *
      * Example:
      * setColumnMappings([ 'name' => 'name_', 'password' => 'password_' ])
@@ -239,6 +239,17 @@ abstract class ActiveRecord
         if (!isset($this->$tmpName))
             return false;
         return password_verify($plainPassword, $this->$tmpName);
+    }
+
+    /**
+     * Генерировать глобальный идентификатор объекта модели данных
+     * @return string
+     */
+    final public function modelGlobalID(): string {
+        $modelName = self::class;
+        $pkName = $this->primaryKey();
+        $pkValue = $this->preparePKeyValue();
+        return sha1("$modelName:$pkName:$pkValue");
     }
 
     // --- callbacks ---
