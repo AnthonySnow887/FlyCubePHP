@@ -173,8 +173,13 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #
 # --- action cable settings ---
 #
-# Default mount path: /cable
-# Default enable perform: true
+# In production mode:
+#  - mount path                     - default '/cable' (set Action Cable mount path)
+#  - enable perform                 - default true (enable/disable remote method call of channel classes)
+#
+# In development mode:
+#  - mount path                     - default '/cable' (set Action Cable mount path)
+#  - enable perform                 - default true (enable/disable remote method call of channel classes)
 #
 #FLY_CUBE_PHP_ACTION_CABLE_MOUNT_PATH: /cable
 #FLY_CUBE_PHP_ACTION_CABLE_ENABLE_PERFORM: true
