@@ -10,5 +10,20 @@ namespace ApplicationCable;
  
 class {{ NAME }}Channel extends Channel
 {
+    final public function subscribed()
+    {
+        // Start channel subscription...
+        // Example:
+        // $this->streamFrom("some_channel");
+    }
+
+    final public function unsubscribed()
+    {
+        // Any cleanup needed when channel is unsubscribed...
+        // Example:
+        // $this->stopStreamFrom("some_channel");
+    }
+    
+    {{ ACTIONS }}
 }
  

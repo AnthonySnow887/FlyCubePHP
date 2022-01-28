@@ -439,35 +439,38 @@ Examples:
     
  5. Create new action cable channel:
      $app --new --channel --name=Example
+     
+ 6. Create new action cable channel with actions:
+     $app --new --channel --name=Example --actions=act_1,act_2
     
- 6. Create new plugin:
+ 7. Create new plugin:
      $app --new --plugin --name=ExamplePlugin
     
- 7. Create new gui plugin:
+ 8. Create new gui plugin:
      $app --new --plugin-gui --name=ExamplePlugin
     
- 8. Create new plugin controller:
+ 9. Create new plugin controller:
      $app --new --plugin-controller --plugin-name=ExamplePlugin --name=ExampleController
     
- 9. Install all migrations:
+10. Install all migrations:
      $app --db-migrate
 
-10. Install needed migrations:
+11. Install needed migrations:
      $app --db-migrate --to-version=20210309092620
     
-11. Uninstall last migration:
+12. Uninstall last migration:
      $app --db-rollback
     
-12. Uninstall last N-steps migrations:
+13. Uninstall last N-steps migrations:
      $app --db-rollback --step=3
 
-13. Upgrade current FlyCubePHP project:
+14. Upgrade current FlyCubePHP project:
      $app --upgrade
           
-14. Upgrade an existing FlyCubePHP project:
+15. Upgrade an existing FlyCubePHP project:
      $app --upgrade --path=/home/test/projects/MyProject
      
-15. Force upgrade an existing FlyCubePHP project:
+16. Force upgrade an existing FlyCubePHP project:
      $app --upgrade --force --path=/home/test/projects/MyProject
 
 
@@ -1720,8 +1723,9 @@ function createMigration($name) {
 /**
  * Создать новый Action Cable Channel
  * @param $name
+ * @param $actions
  */
-function createChannel($name) {
+function createChannel($name, $actions) {
     if (empty($name)) {
         echo "ERROR: Invalid new channel name!\r\n";
         return;
@@ -1739,15 +1743,29 @@ function createChannel($name) {
         echo "ERROR: Not found CoreHelper!\r\n";
         return;
     }
-    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/channel.php.tmpl")) {
+    if (!is_file(__DIR__."/../vendor/FlyCubePHP/templates/channel.php.tmpl")
+        || !is_file(__DIR__."/../vendor/FlyCubePHP/templates/channel.js.tmpl")) {
         echo "ERROR: Not found templates!\r\n";
         return;
     }
 
     $name = \FlyCubePHP\HelperClasses\CoreHelper::fileName($name, true);
     $name = \FlyCubePHP\HelperClasses\CoreHelper::camelcase($name);
+    $nameUnderscore = \FlyCubePHP\HelperClasses\CoreHelper::underscore($name);
 
-    // --- create channel ---
+    $actionsDataPhp = "";
+    $actionsDataJs = "";
+    if (!is_null($actions)) {
+        $actions = explode(',', $actions);
+        $actions = array_filter($actions,'strlen');
+        foreach ($actions as $act) {
+            $actionsDataPhp .= "\n    public function $act(\$data) {\n    }\n";
+            $actionsDataJs .=  ",\n\n    $act: function() {\n        return this.perform('$act');\n    }";
+        }
+        $actionsDataJs .= "\n";
+    }
+
+    // --- create channel php ---
     $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/channel.php.tmpl";
     $resultFile = buildPath("app", "channels", $name."Channel.php");
     $tmplParams = [];
@@ -1755,6 +1773,23 @@ function createChannel($name) {
     $tmplParams['DATE'] = date('d.m.y');
     $tmplParams['TIME'] = date('H:i');
     $tmplParams['NAME'] = $name;
+    $tmplParams['NAME_UNDERSCORE'] = $nameUnderscore;
+    $tmplParams['ACTIONS'] = $actionsDataPhp;
+    if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
+        echo "ERROR: Copy template failed!\r\n";
+        return;
+    }
+
+    // --- create channel js ---
+    $tmplFile = __DIR__."/../vendor/FlyCubePHP/templates/channel.js.tmpl";
+    $resultFile = buildPath("app", "assets", "javascripts", "channels", $nameUnderscore.".js");
+    $tmplParams = [];
+    $tmplParams['USER'] = currentUser();
+    $tmplParams['DATE'] = date('d.m.y');
+    $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = $name;
+    $tmplParams['NAME_UNDERSCORE'] = $nameUnderscore;
+    $tmplParams['ACTIONS'] = $actionsDataJs;
     if (!\FlyCubePHP\TemplateBuilder\TemplateBuilder::buildFromTemplate($tmplFile, $resultFile, $tmplParams, true)) {
         echo "ERROR: Copy template failed!\r\n";
         return;
@@ -2912,8 +2947,9 @@ if (in_array('--new', $arguments)) {
         createMigration($objName);
         echo "=== FlyCubePHP =========================\r\n";
     } else if (in_array('--channel', $arguments)) {
+        $cActions = argumentValue('--actions', $arguments, "");
         echo "=== FlyCubePHP: Create new channel ===\r\n";
-        createChannel($objName);
+        createChannel($objName, $cActions);
         echo "=== FlyCubePHP =======================\r\n";
     } else if (in_array('--plugin', $arguments)) {
         echo "=== FlyCubePHP: Create new plugin ===\r\n";
