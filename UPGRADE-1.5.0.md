@@ -8,7 +8,7 @@ After updating the project, you need to check for missing project files.
 
 Example command:
 ```bash
-MyProject/bin> sudo ./fly_cube_php --check-project
+MyProject/bin> ./fly_cube_php --check-project
 ```
 
 ---
