@@ -20,7 +20,7 @@ Application config
    The absence of these sections in the configuration file will tell the FlyCubePHP core to use the default values.
 
    ### Action Cable Settings
-   
+
    ```
    #
    # --- action cable settings ---
@@ -109,10 +109,72 @@ Gui Controller Asset-Tag-Helper
  {{ add_view_stylesheets("test_2") }}
  ```
 
+Apache 2.4 config
+-----------------
+
+ * Update your Apache webserver configuration file with settings for web sockets. 
+
+ 
+### New web sockets settings
+ 
+ ```
+ # Redirect all web socket connections to fly-cube-php ws-service
+ <Location /[APP PREFIX]/cable >
+   ProxyPass "ws://127.0.0.1:8000/cable"
+   ProxyPassReverse "ws://127.0.0.1:8000/cable"
+   RewriteEngine on
+   RewriteCond %{HTTP:Upgrade} websocket [NC]
+   RewriteCond %{HTTP:Connection} upgrade [NC]
+   RewriteRule ^/?(.*) "ws://127.0.0.1:8000/cable" [P,L]
+ </Location>
+ ```
+ 
+### New Apache 2.4 config example
+ 
+ ```
+ # ----------------------------------------------------------------
+ # NOTE: This is config for rpm-base systems (CentOS, OpenSUSE...)
+ # ----------------------------------------------------------------
+
+ # --- Load proxy mode modules ---
+ LoadModule proxy_module /usr/lib64/apache2/mod_proxy.so
+ LoadModule proxy_http_module /usr/lib64/apache2/mod_proxy_http.so
+ LoadModule proxy_wstunnel_module /usr/lib64/apache2/mod_proxy_wstunnel.so
+
+ # --- For listen eny port ---
+ Listen 8080
+ <VirtualHost *:8080>
+     # Set your server name
+     #ServerName my-server.com
+
+     Alias /test "/opt/test/"
+
+     # Redirect all web socket connections to fly-cube-php ws-service
+     <Location /test/cable >
+         ProxyPass "ws://127.0.0.1:8000/cable"
+         ProxyPassReverse "ws://127.0.0.1:8000/cable"
+         RewriteEngine on
+         RewriteCond %{HTTP:Upgrade} websocket [NC]
+         RewriteCond %{HTTP:Connection} upgrade [NC]
+         RewriteRule ^/?(.*) "ws://127.0.0.1:8000/cable" [P,L]
+     </Location>
+    
+     <Directory "/opt/test/">
+       Options Indexes FollowSymLinks
+       Require all granted
+
+       # Redirect all requests to index.php
+       RewriteEngine On
+       RewriteBase /test
+       RewriteRule ^(.+)$ index.php [QSA,L]
+    </Directory>
+ </VirtualHost>
+ ```
+ 
 Web Sockets Support
 -------------------
 
- * Starting from version 1.5.0, support for web sockets has been added. t
+ * Starting from version 1.5.0, support for web sockets has been added.
    They use a separate service 'FlyCubePHP Web Sockets Service' ([MyProhject/bin/fly_cube_php_ws_server]).
 
 ### Recommendations for configuring and running FlyCubePHP Web Sockets Server
