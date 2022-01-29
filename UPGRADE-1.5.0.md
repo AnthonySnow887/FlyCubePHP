@@ -84,8 +84,8 @@ Action Cable config
        "server_workers": 5
      },
    
-     "production": "default_ipc_prod",
-     "development": "default_redis_dev"
+     "production": "default_redis_prod",
+     "development": "default_ipc_dev"
    }
    ```
 
