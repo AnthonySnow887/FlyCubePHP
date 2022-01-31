@@ -880,7 +880,7 @@ class WSWorker
         $cookieArray = explode("=", $rawCookie);
         if (!isset($cookieArray[0]) || !isset($cookieArray[1]))
             return [];
-        return [ trim($cookieArray[0]) => trim($cookieArray[1]) ];
+        return [ trim($cookieArray[0]) => urldecode(trim($cookieArray[1])) ];
     }
 
     /**

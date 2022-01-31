@@ -128,6 +128,15 @@ class WSServer
             include_once $model;
         }
 
+        // --- load initializers ---
+        $initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");
+        $app_initializers = CoreHelper::scanDir($initializers_dir);
+        foreach ($app_initializers as $initializer) {
+            if (!preg_match("/^.*\.php$/", $initializer))
+                continue;
+            include_once $initializer;
+        }
+
         // --- load & include app channels ---
         $appChannels = $this->loadApplicationChannels();
 
