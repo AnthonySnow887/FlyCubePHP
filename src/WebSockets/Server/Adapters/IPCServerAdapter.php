@@ -44,7 +44,7 @@ class IPCServerAdapter extends BaseServerAdapter
     {
         $sockPath = $this->_sockPath;
         $this->_server = stream_socket_server("unix://$sockPath", $errorNumber, $errorString);
-        stream_set_blocking($this->_server, 0);
+        stream_set_blocking($this->_server, 1);
         if (!$this->_server) {
             $errMsg = "[". self::class ."] stream_socket_server: $errorString ($errorNumber)";
             $this->log(Logger::ERROR, $errMsg);
@@ -74,7 +74,7 @@ class IPCServerAdapter extends BaseServerAdapter
                     if ($this->_server == $client) {
                         // --- check is new incoming connection ---
                         if ($client = @stream_socket_accept($this->_server, 0)) {
-                            stream_set_blocking($client, 0);
+                            stream_set_blocking($client, 1);
                             $clientId = $this->idByConnection($client);
                             $this->_clients[$clientId] = $client;
                         }
@@ -86,6 +86,8 @@ class IPCServerAdapter extends BaseServerAdapter
                         $this->close($connectionId);
                         continue;
                     }
+                    // --- send confirm ---
+                    $this->write($client, 'OK');
                     // --- process incoming message ---
                     $this->sendToWorkers($connectionId);
                 }
@@ -128,8 +130,9 @@ class IPCServerAdapter extends BaseServerAdapter
      */
     protected function read($connectionId) {
         $data = fread($this->connectionById($connectionId), self::SOCKET_BUFFER_SIZE);
-        if (!strlen($data))
+        if (!strlen($data)) {
             return 0;
+        }
 
         @$this->_read[$connectionId] .= $data; // add the data into the read buffer
         return strlen($this->_read[$connectionId]) < self::MAX_SOCKET_BUFFER_SIZE;

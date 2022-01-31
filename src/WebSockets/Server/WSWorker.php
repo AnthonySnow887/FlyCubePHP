@@ -1144,7 +1144,7 @@ class WSWorker
             ];
             $jsonData = json_encode($sData);
             $this->sendToClient($connectionId, $jsonData);
-            $this->log(Logger::INFO, "$channelName transmitting \"" . $data['message'] . "\" (via streamed from $streamName)");
+            $this->log(Logger::INFO, "$channelName transmitting \"".json_encode($data['message'])."\" (via streamed from $streamName)");
         }
     }
 

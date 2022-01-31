@@ -44,7 +44,12 @@ class IPCClientAdapter implements BaseClientAdapter
             'message' => $message
         ]);
         $result = socket_write($socket, $data, strlen($data));
+
+        // --- wait confirm ---
+        $recvBytes = socket_recv($socket, $r_data, 2, MSG_WAITALL);
+
+        // --- close connection ---
         socket_close($socket);
-        return !($result == false);
+        return !($result == false || $recvBytes == false);
     }
 }
