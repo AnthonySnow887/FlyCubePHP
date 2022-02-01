@@ -31,7 +31,13 @@ class RedisClientAdapter implements BaseClientAdapter
         }
 
         $redis = new \Redis();
-        $connected = $redis->connect($host, $port);
+        try {
+            $connected = $redis->connect($host, $port, 30); // timeout 30 sec
+        } catch (\Throwable $e) {
+            Logger::error("[". self::class ."] Connect to Redis failed (host: $host:$port)! Error: " . $e->getMessage());
+            unset($redis);
+            return false;
+        }
         if ($connected === false) {
             Logger::error("[". self::class ."] Connect to Redis failed (host: $host:$port)!");
             unset($redis);
@@ -41,6 +47,7 @@ class RedisClientAdapter implements BaseClientAdapter
             $isAuth = $redis->auth($password);
             if ($isAuth === false) {
                 Logger::error("[". self::class ."] Redis authorization failed (host: $host:$port)!");
+                $redis->close();
                 unset($redis);
                 return false;
             }
@@ -51,7 +58,15 @@ class RedisClientAdapter implements BaseClientAdapter
             'broadcasting' => $broadcasting,
             'message' => $message
         ]);
-        $redis->publish($channelName, $data);
+        try {
+            $redis->publish($channelName, $data);
+        } catch (\Throwable $e) {
+            Logger::error("[". self::class ."] Publishing data to Redis failed (host: $host:$port)! Error: " . $e->getMessage());
+            $redis->close();
+            unset($redis);
+            return false;
+        }
+        $redis->close();
         unset($redis);
         return true;
     }

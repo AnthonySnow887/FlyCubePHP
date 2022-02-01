@@ -624,8 +624,9 @@ function recursiveDeleteDir(string $dir, bool $showOutput = false) {
  * Удалить все файлы каталога
  * @param string $dir
  * @param bool $showOutput
+ * @param bool $skipHidden
  */
-function deleteDirFiles(string $dir, bool $showOutput = false) {
+function deleteDirFiles(string $dir, bool $showOutput = false, bool $skipHidden = true) {
     if (is_dir($dir)) {
         $objects = scandir($dir);
         foreach ($objects as $object) {
@@ -633,6 +634,8 @@ function deleteDirFiles(string $dir, bool $showOutput = false) {
                 if (is_dir(buildPath($dir, $object))) {
                     continue;
                 } else {
+                    if ($skipHidden && strlen($object) > 0 && strcmp($object[0], ".") === 0)
+                        continue;
                     $path = buildPath($dir, $object);
                     $state = "[Delete]";
                     if (unlink($path) === false)
