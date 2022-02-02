@@ -1,7 +1,8 @@
 # 1.5.0 (29.01.2022)
 
  * Update Development Guide RUS
- * Add required PHP modules: 
+ * Add required PHP modules:
+   * php7-pcntl
    * php7-redis
    * php7-sockets
    
