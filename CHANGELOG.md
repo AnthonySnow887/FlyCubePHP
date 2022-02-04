@@ -1,3 +1,21 @@
+# 1.5.1 (04.02.2022)
+
+ * Update Development Guide RUS
+ * Update fly_cube_php bin:
+   * added display of information about current env mode
+   * add skip hidden files in deleteDirFiles
+   
+ * Update RouteCollector (add currentRouteIsRoot)
+ * Update JSBuilder (add [ 'flaggedComments' => false ] when build *.min.js (i.e. assembly without comments))
+ * Fix Web Sockets:
+   * IPC adapter (fix intermittent incorrect data sending (blocking socket type set))
+   * Redis adapter (added exception checking and error handling)
+   * add load initializers
+   * fix cookie decode
+   
+ * Fix Session (fix decode default php session)
+ * Fix HttpResponse (fix cookie decode)
+
 # 1.5.0 (29.01.2022)
 
  * Update Development Guide RUS
