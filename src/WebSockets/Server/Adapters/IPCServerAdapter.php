@@ -44,7 +44,7 @@ class IPCServerAdapter extends BaseServerAdapter
     {
         $sockPath = $this->_sockPath;
         $this->_server = stream_socket_server("unix://$sockPath", $errorNumber, $errorString);
-        stream_set_blocking($this->_server, 0);
+        stream_set_blocking($this->_server, true);
         if (!$this->_server) {
             $errMsg = "[". self::class ."] stream_socket_server: $errorString ($errorNumber)";
             $this->log(Logger::ERROR, $errMsg);
@@ -58,7 +58,7 @@ class IPCServerAdapter extends BaseServerAdapter
         // --- start worker loop ---
         while (true) {
             // --- prepare the array of sockets that need to be processed ---
-            $read = [];
+            $read = $this->_clients;
             $read[] = $this->_server;
 
             // --- write array ---
@@ -74,20 +74,19 @@ class IPCServerAdapter extends BaseServerAdapter
                     if ($this->_server == $client) {
                         // --- check is new incoming connection ---
                         if ($client = @stream_socket_accept($this->_server, 0)) {
-                            stream_set_blocking($client, 0);
                             $clientId = $this->idByConnection($client);
                             $this->_clients[$clientId] = $client;
                         }
+                    } else {
+                        // --- read new incoming data ---
+                        $connectionId = $this->idByConnection($client);
+                        if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
+                            $this->close($connectionId);
+                            continue;
+                        }
+                        // --- process incoming message ---
+                        $this->sendToWorkers($connectionId);
                     }
-                    // --- read new incoming data ---
-                    $connectionId = $this->idByConnection($client);
-                    if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
-                        $this->log(Logger::ERROR, "Read failed (id: $connectionId)! Close connection!");
-                        $this->close($connectionId);
-                        continue;
-                    }
-                    // --- process incoming message ---
-                    $this->sendToWorkers($connectionId);
                 }
             }
 
@@ -128,8 +127,9 @@ class IPCServerAdapter extends BaseServerAdapter
      */
     protected function read($connectionId) {
         $data = fread($this->connectionById($connectionId), self::SOCKET_BUFFER_SIZE);
-        if (!strlen($data))
+        if (!strlen($data)) {
             return 0;
+        }
 
         @$this->_read[$connectionId] .= $data; // add the data into the read buffer
         return strlen($this->_read[$connectionId]) < self::MAX_SOCKET_BUFFER_SIZE;

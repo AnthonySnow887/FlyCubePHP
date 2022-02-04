@@ -190,6 +190,7 @@ Additional required PHP modules
 - php7-mbstring
 - php7-mysql
 - php7-openssl
+- php7-pcntl
 - php7-pdo
 - php7-pgsql
 - php7-posix

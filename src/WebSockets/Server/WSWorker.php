@@ -880,7 +880,7 @@ class WSWorker
         $cookieArray = explode("=", $rawCookie);
         if (!isset($cookieArray[0]) || !isset($cookieArray[1]))
             return [];
-        return [ trim($cookieArray[0]) => trim($cookieArray[1]) ];
+        return [ trim($cookieArray[0]) => urldecode(trim($cookieArray[1])) ];
     }
 
     /**
@@ -1144,7 +1144,7 @@ class WSWorker
             ];
             $jsonData = json_encode($sData);
             $this->sendToClient($connectionId, $jsonData);
-            $this->log(Logger::INFO, "$channelName transmitting \"" . $data['message'] . "\" (via streamed from $streamName)");
+            $this->log(Logger::INFO, "$channelName transmitting \"".json_encode($data['message'])."\" (via streamed from $streamName)");
         }
     }
 

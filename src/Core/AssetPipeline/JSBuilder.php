@@ -441,7 +441,7 @@ class JSBuilder
 
         // --- build min.js ---
         try {
-            $tmpFileData = \JShrink\Minifier::minify(trim($tmpFileData));
+            $tmpFileData = \JShrink\Minifier::minify(trim($tmpFileData), [ 'flaggedComments' => false ]);
         } catch (\Exception $e) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',

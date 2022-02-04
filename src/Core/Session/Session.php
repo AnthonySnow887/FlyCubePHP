@@ -217,7 +217,7 @@ class Session
         if ('' === $encodedData)
             return [];
 
-        preg_match_all('/(^|;|\})(\w+)\|/i', $encodedData, $match, PREG_OFFSET_CAPTURE);
+        preg_match_all('/(^|;|\})([\w\-\.\,\:]+)\|/i', $encodedData, $match, PREG_OFFSET_CAPTURE);
         $decodedData = [];
         $lastOffset = null;
         $currentKey = '';

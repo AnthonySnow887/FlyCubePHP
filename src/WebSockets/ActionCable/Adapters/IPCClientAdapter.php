@@ -10,6 +10,8 @@ include_once __DIR__.'/../../Config/WSConfig.php';
 
 class IPCClientAdapter implements BaseClientAdapter
 {
+    const SOCKET_BUFFER_SIZE = 1024;
+
     /**
      * Отправить данные клиентам
      * @param string $broadcasting Название канала вещания
@@ -43,8 +45,29 @@ class IPCClientAdapter implements BaseClientAdapter
             'broadcasting' => $broadcasting,
             'message' => $message
         ]);
-        $result = socket_write($socket, $data, strlen($data));
+        $result = $this->write($socket, $data);
+        if ($result === false)
+            Logger::error("[". self::class ."] Error: Write to socket failed!");
+
+        // --- close connection ---
         socket_close($socket);
         return !($result == false);
+    }
+
+    /**
+     * Запись данных в сокет
+     * @param $sock
+     * @param string $data
+     * @return bool
+     */
+    protected function write($sock, string $data): bool
+    {
+        $written = socket_write($sock, $data, self::SOCKET_BUFFER_SIZE);
+        if ($written === false)
+            return false;
+        $data = substr($data, $written);
+        if (!empty($data))
+            return $this->write($sock, $data);
+        return true;
     }
 }

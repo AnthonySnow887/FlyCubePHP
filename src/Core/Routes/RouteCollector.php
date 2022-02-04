@@ -188,6 +188,17 @@ class RouteCollector
     }
 
     /**
+     * Является ли текущий маршрут корневым?
+     * @return bool
+     */
+    public function currentRouteIsRoot(): bool {
+        $route = $this->currentRoute();
+        if (is_null($route))
+            return false;
+        return ($route->type() == RouteType::GET && $route->uri() == "/");
+    }
+
+    /**
      * Метод проверки маршрутов на корректность (верно ли заданы контроллеры и их методы)
      * @return bool
      * @throws ErrorRoutes

@@ -624,8 +624,9 @@ function recursiveDeleteDir(string $dir, bool $showOutput = false) {
  * Удалить все файлы каталога
  * @param string $dir
  * @param bool $showOutput
+ * @param bool $skipHidden
  */
-function deleteDirFiles(string $dir, bool $showOutput = false) {
+function deleteDirFiles(string $dir, bool $showOutput = false, bool $skipHidden = true) {
     if (is_dir($dir)) {
         $objects = scandir($dir);
         foreach ($objects as $object) {
@@ -633,6 +634,8 @@ function deleteDirFiles(string $dir, bool $showOutput = false) {
                 if (is_dir(buildPath($dir, $object))) {
                     continue;
                 } else {
+                    if ($skipHidden && strlen($object) > 0 && strcmp($object[0], ".") === 0)
+                        continue;
                     $path = buildPath($dir, $object);
                     $state = "[Delete]";
                     if (unlink($path) === false)
@@ -2903,6 +2906,11 @@ if (!empty($envValue))
 // --- disable logging system ---
 \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_LOG, false);
 
+// --- save env mode ---
+$envMode = "Development";
+if (\FlyCubePHP\Core\Config\Config::instance()->isProduction() === true)
+    $envMode = "Production";
+
 // --- processing ---
 if (in_array('--new', $arguments)) {
     $objName = argumentValue('--name', $arguments);
@@ -2989,47 +2997,59 @@ if (in_array('--new', $arguments)) {
     $version = argumentValue('--to-version', $arguments);
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Migrate database ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbMigrate($version, $showOut);
     echo "=== FlyCubePHP =====================\r\n";
     exit();
 } else if (in_array('--db-migrate-status', $arguments)) {
     echo "=== FlyCubePHP: Migrate status ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbMigrateStatus();
     echo "=== FlyCubePHP ===================\r\n";
     exit();
 } else if (in_array('--db-version', $arguments)) {
     $vStr = currentDbMigrationVersion();
-    exit("[FlyCubePHP] Current database version: $vStr\r\n");
+    echo "=== FlyCubePHP: database version ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
+    echo "Database version: $vStr\r\n";
+    echo "=== FlyCubePHP =====================\r\n";
+    exit();
 } else if (in_array('--db-migrate-redo', $arguments)) {
     $step = argumentValue('--step', $arguments, 1);
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Re-Install database migration ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbMigrateRedo($step, $showOut);
     echo "=== FlyCubePHP ==================================\r\n";
 } else if (in_array('--db-rollback', $arguments)) {
     $step = argumentValue('--step', $arguments, 1);
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Rollback database ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbRollback($step, $showOut);
     echo "=== FlyCubePHP ======================\r\n";
 } else if (in_array('--db-rollback-all', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Rollback all database ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbRollback(-1, $showOut);
     echo "=== FlyCubePHP ==========================\r\n";
 } else if (in_array('--db-schema-dump', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Create database schema dump ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbSchemaDump($showOut);
     echo "=== FlyCubePHP ================================\r\n";
 } else if (in_array('--db-schema-load', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Load database schema dump ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbSchemaLoad($showOut);
     echo "=== FlyCubePHP ==============================\r\n";
 } else if (in_array('--db-create', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Create database ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbCreate($showOut);
     echo "=== FlyCubePHP ====================\r\n";
 } else if (in_array('--db-create-all', $arguments)) {
@@ -3040,6 +3060,7 @@ if (in_array('--new', $arguments)) {
 } else if (in_array('--db-drop', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Drop database ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbDrop($showOut);
     echo "=== FlyCubePHP ==================\r\n";
 } else if (in_array('--db-drop-all', $arguments)) {
@@ -3050,19 +3071,23 @@ if (in_array('--new', $arguments)) {
 } else if (in_array('--db-setup', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Database setup ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbSetup($showOut);
     echo "=== FlyCubePHP ===================\r\n";
 } else if (in_array('--db-reset', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Database reset ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbReset($showOut);
     echo "=== FlyCubePHP ===================\r\n";
 } else if (in_array('--db-seed', $arguments)) {
     echo "=== FlyCubePHP: Load database Seed.php ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     dbSeed();
     echo "=== FlyCubePHP ===========================\r\n";
 } else if (in_array('--assets-precompile', $arguments)) {
     echo "=== FlyCubePHP: Assets precompile ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
     assetsPrecompile();
     echo "=== FlyCubePHP ======================\r\n";
     exit();
