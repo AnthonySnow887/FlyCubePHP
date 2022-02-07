@@ -18,11 +18,13 @@ include_once __DIR__.'/Core/Database/DatabaseFactory.php';
 include_once __DIR__.'/Core/Cookie/Cookie.php';
 include_once __DIR__.'/Core/Session/Session.php';
 include_once __DIR__.'/Core/ApiDoc/ApiDoc.php';
+include_once __DIR__.'/Core/HelpDoc/HelpDoc.php';
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 include_once 'FlyCubePHPEnvLoader.php';
 
 use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
+use \FlyCubePHP\Core\HelpDoc\HelpDoc as HelpDoc;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Session\Session as Session;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
@@ -151,6 +153,10 @@ if (!RouteCollector::instance()->checkRoutes())
 // --- load api-doc ---
 $app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
 ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
+
+// --- load help-doc ---
+$app_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help");
+HelpDoc::instance()->appendHelpDocDir($app_help_doc_dir);
 
 // --- load initializers ---
 $initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");
