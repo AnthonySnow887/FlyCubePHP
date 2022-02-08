@@ -2,26 +2,42 @@
 
 namespace FlyCubePHP\Core\HelpDoc;
 
-use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
-use FlyCubePHP\Core\Error\Error;
-
 class HelpPart
 {
+    private $_id;
     private $_level;
     private $_heading;
     private $_data;
     private $_subParts = [];
+    private $_enableHeadingLinks = false;
 
     /**
+     * @param string $id ИД раздела
      * @param int $level Уровень раздела
      * @param string $heading Название раздела
      * @param string $data Данные раздела
+     * @param bool $enableHeadingLinks
      */
-    function __construct(int $level, string $heading, string $data)
+    function __construct(string $id,
+                         int $level,
+                         string $heading,
+                         string $data,
+                         bool $enableHeadingLinks = false)
     {
+        $this->_id = $id;
         $this->_level = $level;
         $this->_heading = trim($heading);
         $this->_data = rtrim(ltrim($data, "\n\r"));
+        $this->_enableHeadingLinks = $enableHeadingLinks;
+    }
+
+    /**
+     * ИД раздела
+     * @return string
+     */
+    public function id(): string
+    {
+        return $this->_id;
     }
 
     /**
@@ -110,7 +126,11 @@ class HelpPart
      */
     public function buildMarkdown(): string
     {
-        $md  = str_repeat("#", $this->_level) . " " . $this->_heading . "\n\n";
+        $headingID = "";
+        if ($this->_enableHeadingLinks === true)
+            $headingID = " {#". $this->_id ."}";
+
+        $md  = str_repeat("#", $this->_level) . " " . $this->_heading . "$headingID\n\n";
         $md .= $this->_data . "\n";
         foreach ($this->_subParts as $part)
             $md .= "\n" . trim($part->buildMarkdown()) . "\n";

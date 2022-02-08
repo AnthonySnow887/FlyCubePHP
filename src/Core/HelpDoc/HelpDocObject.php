@@ -6,16 +6,20 @@ include_once 'Helpers/HelpDocHelper.php';
 include_once 'Helpers/HelpDocAssetHelper.php';
 include_once 'HelpPart.php';
 
+use FlyCubePHP\Core\Config\Config as Config;
 use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHelper;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class HelpDocObject
 {
     private $_parts = [];
     private $_helpers = [];
+    private $_enableHeadingLinks = false;
 
     function __construct()
     {
+        $this->_enableHeadingLinks = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_HEADING_LINKS, false));
         $this->_helpers['image_path'] = new HelpDocHelper('image_path', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocAssetHelper', 'image_path' ]);
     }
 
@@ -32,8 +36,6 @@ class HelpDocObject
         $hlp = new HelpDocObject();
         foreach ($files as $file)
             $hlp->parseHeadings($file);
-
-        // TODO build unique hash for all parts
 
         if (!empty($heading)) {
             $tmpPart = $hlp->findHelpPart($level, $heading);
@@ -118,7 +120,8 @@ class HelpDocObject
             if (!is_null($tmpPart))
                 return $tmpPart;
         }
-        $tmpPart = new HelpPart($level, $heading, $data);
+        $tmpID = sha1("$level:$heading");
+        $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks);
         $this->_parts[] = $tmpPart;
         return $tmpPart;
     }
@@ -165,13 +168,15 @@ class HelpDocObject
 
         $curRoot = null;
         $curParent = null;
-        $prevLine = "";
+        $prevRawLine = "";
         $headingLevel = -1;
         $headingName = "";
         $headingData = "";
         $lineNum = 0;
         while (!feof($file)) {
-            $line = fgets($file);
+            $rawLine = fgets($file);
+            $line = trim($rawLine);
+            $prevLine = trim($prevRawLine);
             $lineNum += 1;
             if (!empty($line) && preg_match('/^(\#{1,6})\s(.*)$/', $line, $matches)) {
                 // --- save prev ---
@@ -189,7 +194,7 @@ class HelpDocObject
                 // --- save prev ---
                 if (!empty($headingName)) {
                     // --- remove prev line ---
-                    $headingData = substr($headingData, 0, strlen($headingData) - strlen($prevLine));
+                    $headingData = substr($headingData, 0, strlen($headingData) - strlen($prevRawLine));
                     // --- make part ---
                     $this->makePart($curRoot, $curParent, $headingLevel, $headingName, $headingData);
                 }
@@ -205,7 +210,7 @@ class HelpDocObject
                 // --- save prev ---
                 if (!empty($headingName)) {
                     // --- remove prev line ---
-                    $headingData = substr($headingData, 0, strlen($headingData) - strlen($prevLine));
+                    $headingData = substr($headingData, 0, strlen($headingData) - strlen($prevRawLine));
                     // --- make part ---
                     $this->makePart($curRoot, $curParent, $headingLevel, $headingName, $headingData);
                 }
@@ -274,14 +279,14 @@ class HelpDocObject
                                 ]);
                             }
                         }
-                        $line = str_replace($replaceStr, $replaceValue, $line);
+                        $rawLine = str_replace($replaceStr, $replaceValue, $rawLine);
                     }
                 }
             }
             if (!empty($headingName))
-                $headingData .= $line;
+                $headingData .= $rawLine;
 
-            $prevLine = $line;
+            $prevRawLine = $rawLine;
         }
         // --- save prev ---
         if (!empty($headingName))
@@ -312,14 +317,16 @@ class HelpDocObject
             if ($currentParent->level() < $level) {
                 $tmpPart = $currentParent->findSubPart($level, $heading);
                 if (is_null($tmpPart)) {
-                    $tmpPart = new HelpPart($level, $heading, $data);
+                    $tmpID = sha1($currentParent->id().":$level:$heading");
+                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks);
                     $currentParent->appendSubPart($tmpPart);
                 }
                 $currentParent = $tmpPart;
             } else if ($currentRoot->level() < $level) {
                 $tmpPart = $currentRoot->findSubPart($level, $heading);
                 if (is_null($tmpPart)) {
-                    $tmpPart = new HelpPart($level, $heading, $data);
+                    $tmpID = sha1($currentParent->id().":$level:$heading");
+                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks);
                     $currentRoot->appendSubPart($tmpPart);
                 }
                 $currentParent = $tmpPart;
@@ -370,13 +377,21 @@ class HelpDocObject
         $md = "";
         if (is_null($helpPart)) {
             foreach ($this->_parts as $part) {
-                $md .= "$tab * " . $part->heading() . "\n";
+                if ($this->_enableHeadingLinks === true)
+                    $md .= "$tab * [" . $part->heading() . "](#".$part->id().")\n";
+                else
+                    $md .= "$tab * " . $part->heading() . "\n";
+
                 if ($part->hasSubParts())
                     $md .= $this->makeTableOfContents($part, "$tab  ");
             }
         } else {
             foreach ($helpPart->subParts() as $part) {
-                $md .= "$tab * " . $part->heading() . "\n";
+                if ($this->_enableHeadingLinks === true)
+                    $md .= "$tab * [" . $part->heading() . "](#".$part->id().")\n";
+                else
+                    $md .= "$tab * " . $part->heading() . "\n";
+
                 if ($part->hasSubParts())
                     $md .= $this->makeTableOfContents($part, "$tab  ");
             }
