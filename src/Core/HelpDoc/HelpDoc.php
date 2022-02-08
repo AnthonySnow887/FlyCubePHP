@@ -2,7 +2,7 @@
 
 namespace FlyCubePHP\Core\HelpDoc;
 
-include_once 'HelpParser.php';
+include_once 'HelpDocObject.php';
 
 use \Exception;
 use FlyCubePHP\Core\Config\Config as Config;
@@ -106,21 +106,36 @@ class HelpDoc
     }
 
     /**
+     * Получить объект с разобранным описанием help-doc
+     * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
+     * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
+     * @return HelpDocObject|null
+     * @throws
+     */
+    public function helpDoc(string $heading = "", int $level = -1)/*: HelpDocObject|null */ {
+        if (!$this->_isEnabled || empty($this->_helpDocList))
+            return null;
+        return HelpDocObject::parseHelpDoc(array_values($this->_helpDocList), $heading, $level);
+    }
+
+    /**
      * Получить help-doc в формате markdown
+     * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
+     * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
      * @return string
      * @throws
      */
-    public function helpDocMarkdown(): string {
+    public function helpDocMarkdown(string $heading = "", int $level = -1): string {
         if (!$this->_isEnabled)
             return "";
-        $tmpName = "help-data";
+        $tmpName = $this->buildCacheFileName($heading, $level);
         if ($this->_rebuildCache === false) {
             if (isset($this->_cacheList[$tmpName]))
                 return file_get_contents($this->_cacheList[$tmpName]);
 
-            return file_get_contents($this->buildCacheFile($tmpName));
+            return file_get_contents($this->buildCacheFile($heading, $level));
         }
-        return file_get_contents($this->buildCacheFile($tmpName));
+        return file_get_contents($this->buildCacheFile($heading, $level));
     }
 
     /**
@@ -201,33 +216,62 @@ class HelpDoc
     }
 
     /**
+     * Создать имя для файла
+     * @param string $heading
+     * @param int $level
+     * @return string
+     */
+    private function buildCacheFileName(string $heading = "", int $level = -1): string {
+        if ($level <= 0)
+            $level = 0;
+        return CoreHelper::camelcase("$level-$heading");
+    }
+
+    /**
      * Создать кэш файл и вернуть путь до него
-     * @param string $name
+     * @param string $heading
+     * @param int $level
      * @return string
      * @throws
      */
-    private function buildCacheFile(string $name): string {
-        $helpData = HelpParser::parse(array_values($this->_helpDocList));
-        $fLastModified = -1;
-        $cacheSettings = $this->generateCacheSettings($name, $fLastModified);
-        if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
+    private function buildCacheFile(string $heading, int $level): string {
+        $obj = $this->helpDoc($heading, $level);
+        if (is_null($obj))
             throw Error::makeError([
                 'tag' => 'help-doc',
-                'message' => "Invalid cache settings for help-doc file! Name: $name",
+                'message' => "Not found needed help-doc object! Level: $level; Heading: $heading",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        if ($obj->isEmpty())
+            throw Error::makeError([
+                'tag' => 'help-doc',
+                'message' => "Help-doc object is Empty! Level: $level; Heading: $heading",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
 
-        if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $helpData))
+        $fLastModified = -1;
+        $tmpName = $this->buildCacheFileName($heading, $level);
+        $cacheSettings = $this->generateCacheSettings($tmpName, $fLastModified);
+        if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw Error::makeError([
                 'tag' => 'help-doc',
-                'message' => "Write cache help-doc file failed! Name: $name",
+                'message' => "Invalid cache settings for help-doc file! Name: $tmpName",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+
+        if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $obj->buildMarkdown()))
+            throw Error::makeError([
+                'tag' => 'help-doc',
+                'message' => "Write cache help-doc file failed! Name: $tmpName",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
 
         // --- update cache settings ---
-        $this->_cacheList[$name] = $cacheSettings["f-path"];
+        $this->_cacheList[$tmpName] = $cacheSettings["f-path"];
         $this->updateCacheList();
         return $cacheSettings["f-path"];
     }
