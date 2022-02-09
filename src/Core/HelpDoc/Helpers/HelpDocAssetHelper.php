@@ -26,11 +26,8 @@ class HelpDocAssetHelper
      *   {{ image_path("http://www.example.com/img/edit.png") }}
      *   * => http://www.example.com/img/edit.png
      *
-     * ==== Not yet supported ====
-     *
      *   {{ image_path("icons/edit_2.png", {"skip_asset_pipeline": true}) }}
      *   * => /assets/icons/edit_2.png
-     *
      */
     static public function image_path(string $name, array $options = []): string
     {

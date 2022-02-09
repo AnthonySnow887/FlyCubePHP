@@ -68,6 +68,18 @@ class HelpPart
     }
 
     /**
+     * Добавить данные в раздел
+     * @param string $data
+     */
+    public function appendData(string $data)
+    {
+        $tmpData = rtrim(ltrim($data, "\n\r"));
+        if (strlen($tmpData) === 0)
+            return;
+        $this->_data .= "\n$tmpData";
+    }
+
+    /**
      * Содержит ли подразделы?
      * @return bool
      */

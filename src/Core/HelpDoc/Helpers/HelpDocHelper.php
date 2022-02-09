@@ -30,7 +30,7 @@ class HelpDocHelper
     }
 
     /**
-     * Функция обратного вызова для метода call_user_func(...)
+     * Функция обратного вызова для метода call_user_func_array(...)
      * @return null
      */
     public function callable()

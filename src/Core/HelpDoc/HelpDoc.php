@@ -14,7 +14,6 @@ class HelpDoc
     private static $_instance = null;
 
     private $_isEnabled = false;
-    private $_isEnabledTOC = false;
     private $_rebuildCache = false;
     private $_helpDocList = array();
     private $_cacheList = array();
@@ -41,7 +40,6 @@ class HelpDoc
         $this->_isEnabled = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC, false));
         if ($this->_isEnabled === false)
             return;
-        $this->_isEnabledTOC = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_TOC, false));
         $defVal = !Config::instance()->isProduction();
         $this->_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
         $this->loadCacheList();
@@ -66,14 +64,6 @@ class HelpDoc
      * @return bool
      */
     public function isEnabled(): bool {
-        return $this->_isEnabled;
-    }
-
-    /**
-     * Включена ли генерация содержимого при создании markdown
-     * @return bool
-     */
-    public function isEnabledTOC(): bool {
         return $this->_isEnabled;
     }
 
@@ -272,7 +262,7 @@ class HelpDoc
                 'class-method' => __FUNCTION__
             ]);
 
-        if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $obj->buildMarkdown($this->_isEnabledTOC)))
+        if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $obj->buildMarkdown()))
             throw Error::makeError([
                 'tag' => 'help-doc',
                 'message' => "Write cache help-doc file failed! Name: $tmpName",
