@@ -1,10 +1,10 @@
 <?php
 
-namespace FlyCubePHP\Core\HelpDoc\Helpers;
+namespace FlyCubePHP\Core\TemplateCompiler;
 
 use FlyCubePHP\Core\Error\Error;
 
-class HelpDocHelper
+class TCHelperFunction
 {
     private $_name;
     private $_callable;
@@ -12,7 +12,7 @@ class HelpDocHelper
     /**
      * Конструктор класса вспомогательной функции
      * @param string $name Название
-     * @param null $callable Функция обратного вызова для метода call_user_func(...)
+     * @param null $callable Функция обратного вызова для метода call_user_func_array(...)
      */
     function __construct(string $name, $callable = null)
     {
@@ -48,7 +48,7 @@ class HelpDocHelper
     {
         if (is_null($this->_callable))
             throw Error::makeError([
-                'tag' => 'help-doc',
+                'tag' => 'template-compiler',
                 'message' => "Invalid callable (NULL)! Function: \"".$this->_name."\"",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__

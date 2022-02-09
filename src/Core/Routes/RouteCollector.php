@@ -293,6 +293,10 @@ class RouteCollector
      */
     static public function currentHostUri(): string {
         $protocol = self::currentHostProtocol();
+        $appPrefix = RouteCollector::applicationUrlPrefix();
+        if (!empty($appPrefix) && $appPrefix !== "/")
+            return "$protocol://$_SERVER[HTTP_HOST]$appPrefix";
+
         return "$protocol://$_SERVER[HTTP_HOST]";
     }
 

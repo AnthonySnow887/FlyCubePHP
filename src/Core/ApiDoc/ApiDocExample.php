@@ -2,8 +2,14 @@
 
 namespace FlyCubePHP\Core\ApiDoc;
 
+include_once __DIR__.'/../TemplateCompiler/TemplateCompiler.php';
+include_once 'Helpers/ApiDocUrlHelper.php';
+
+use FlyCubePHP\Core\ApiDoc\Helpers\ApiDocUrlHelper;
 use FlyCubePHP\Core\Error\Error;
-use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\Route;
+use FlyCubePHP\Core\TemplateCompiler\TCHelperFunction;
+use FlyCubePHP\Core\TemplateCompiler\TemplateCompiler;
 
 class ApiDocExample
 {
@@ -90,12 +96,13 @@ class ApiDocExample
 
     /**
      * Метод разбора данных секции
+     * @param Route $route
      * @param string $name
      * @param array $data
      * @return ApiDocExample
      * @throws
      */
-    static public function parse(string $name, array $data): ApiDocExample {
+    static public function parse(Route &$route, string $name, array $data): ApiDocExample {
         $obj = new ApiDocExample();
         $obj->_name = trim($name);
         foreach ($data as $key => $val) {
@@ -116,10 +123,48 @@ class ApiDocExample
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'additional-data' => [
-                    'section' => 'example',
-                    'name' => $name
+                    'section' => [ 'example' ],
+                    'name' => [ $name ]
                 ]
             ]);
+
+        // --- prepare request / response data ---
+        $helper = new ApiDocUrlHelper($route);
+        $templateCompiler = new TemplateCompiler();
+        $templateCompiler->appendHelpFunction(new TCHelperFunction('current_action_url', [ $helper, 'current_action_url' ]));
+        $templateCompiler->appendHelpFunction(new TCHelperFunction('action_url', [ $helper, 'action_url' ]));
+        try {
+            if (!empty($obj->_request))
+                $obj->_request = $templateCompiler->compile($obj->_request);
+            if (!empty($obj->_response))
+                $obj->_response = $templateCompiler->compile($obj->_response);
+        } catch (Error $ex) {
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => $ex->getMessage(),
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'additional-data' => [
+                    'section' => [ 'example' ],
+                    'name' => [ $name ],
+                    'error-line-data' => $ex->additionalDataValue('error-line-data')
+                ]
+            ]);
+        } catch (\Throwable $ex) {
+            throw Error::makeError([
+                'tag' => 'api-doc',
+                'message' => $ex->getMessage(),
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'additional-data' => [
+                    'section' => [ 'example' ],
+                    'name' => [ $name ]
+                ]
+            ]);
+        }
+        unset($templateCompiler);
+        unset($helper);
+
         return $obj;
     }
 

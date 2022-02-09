@@ -2,20 +2,21 @@
 
 namespace FlyCubePHP\Core\HelpDoc;
 
-include_once 'Helpers/HelpDocHelper.php';
+include_once __DIR__.'/../TemplateCompiler/TemplateCompiler.php';
 include_once 'Helpers/HelpDocAssetHelper.php';
 include_once 'Helpers/HelpDocHeadingHelper.php';
 include_once 'HelpPart.php';
 
 use FlyCubePHP\Core\Config\Config as Config;
 use FlyCubePHP\Core\Error\Error;
-use FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHelper;
+use FlyCubePHP\Core\TemplateCompiler\TCHelperFunction;
+use FlyCubePHP\Core\TemplateCompiler\TemplateCompiler;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
 class HelpDocObject
 {
     private $_parts = [];
-    private $_helpers = [];
+    private $_templateCompiler = null;
     private $_isEnabledTOC = false;
     private $_enableHeadingLinks = false;
     private $_enableAppendData = false;
@@ -27,9 +28,10 @@ class HelpDocObject
         $this->_enableAppendData = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_APPEND_DATA, false));
 
         // --- append helpers ---
-        $this->_helpers['image_path'] = new HelpDocHelper('image_path', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocAssetHelper', 'image_path' ]);
-        $this->_helpers['heading_id'] = new HelpDocHelper('heading_id', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHeadingHelper', 'heading_id' ]);
-        $this->_helpers['heading_link'] = new HelpDocHelper('heading_link', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHeadingHelper', 'heading_link' ]);
+        $this->_templateCompiler = new TemplateCompiler();
+        $this->_templateCompiler->appendHelpFunction(new TCHelperFunction('image_path', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocAssetHelper', 'image_path' ]));
+        $this->_templateCompiler->appendHelpFunction(new TCHelperFunction('heading_id', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHeadingHelper', 'heading_id' ]));
+        $this->_templateCompiler->appendHelpFunction(new TCHelperFunction('heading_link', [ 'FlyCubePHP\Core\HelpDoc\Helpers\HelpDocHeadingHelper', 'heading_link' ]));
     }
 
     /**
@@ -260,65 +262,17 @@ class HelpDocObject
             }
             // --- prepare line data ---
             if (!empty($line)) {
-                preg_match_all("/\{([\{\#])\s{0,}([\w]+)\s{0,}\(\s{0,}([a-zA-Z0-9_\-\.\,\'\"\:\{\}\[\]\s\/]+)\s{0,}\)\s{0,}([\}\#])\}/", $line, $matches);
-                if (count($matches) >= 5) {
-                    $size = count($matches[0]);
-                    for ($i = 0; $i < $size; $i++) {
-                        $replaceStr   = $matches[0][$i];
-                        $tagOpen      = $matches[1][$i];
-                        $helpFunc     = $matches[2][$i];
-                        $helpFuncArgs = $this->parseHelpFunctionArgs($matches[3][$i]);
-                        $tagClose     = $matches[4][$i];
-                        // --- check ---
-                        if (strcmp($tagOpen, '{') === 0 && strcmp($tagClose, '}') !== 0)
-                            throw Error::makeError([
-                                'tag' => 'help-doc',
-                                'message' => 'Invalid closed symbol (not \'}\')!',
-                                'class-name' => __CLASS__,
-                                'class-method' => __FUNCTION__,
-                                'file' => $filePath,
-                                'line' => $lineNum
-                            ]);
-                        else if (strcmp($tagOpen, '#') === 0 && strcmp($tagClose, '#') !== 0)
-                            throw Error::makeError([
-                                'tag' => 'help-doc',
-                                'message' => 'Invalid closed symbol (not \'#\')!',
-                                'class-name' => __CLASS__,
-                                'class-method' => __FUNCTION__,
-                                'file' => $filePath,
-                                'line' => $lineNum
-                            ]);
-                        else if (!$this->hasSupportedHelpFunction($helpFunc))
-                            throw Error::makeError([
-                                'tag' => 'help-doc',
-                                'message' => "Unsupported help function (name: $helpFunc)!",
-                                'class-name' => __CLASS__,
-                                'class-method' => __FUNCTION__,
-                                'file' => $filePath,
-                                'line' => $lineNum
-                            ]);
-
-                        // --- skip help function ---
-                        if (strcmp($tagOpen, '#') === 0) {
-                            $replaceValue = "";
-                        } else {
-                            // --- eval help function ---
-                            try {
-                                $replaceValue = $this->evalHelpFunction($helpFunc, $helpFuncArgs);
-                            } catch (\Throwable $ex) {
-                                throw Error::makeError([
-                                    'tag' => 'help-doc',
-                                    'message' => $ex->getMessage(),
-                                    'class-name' => __CLASS__,
-                                    'class-method' => __FUNCTION__,
-                                    'previous' => $ex,
-                                    'file' => $filePath,
-                                    'line' => $lineNum
-                                ]);
-                            }
-                        }
-                        $rawLine = str_replace($replaceStr, $replaceValue, $rawLine);
-                    }
+                try {
+                    $rawLine = $this->_templateCompiler->compileLine($rawLine, $lineNum);
+                } catch (\Throwable $ex) {
+                    throw Error::makeError([
+                        'tag' => 'help-doc',
+                        'message' => $ex->getMessage(),
+                        'class-name' => __CLASS__,
+                        'class-method' => __FUNCTION__,
+                        'file' => $filePath,
+                        'line' => $lineNum
+                    ]);
                 }
             }
             if (!empty($headingName))
@@ -376,122 +330,6 @@ class HelpDocObject
                 $currentRoot = $currentParent = $this->helpPart($level, $heading, $data);
             }
         }
-    }
-
-    /**
-     * Метод разбора аргументов функции
-     * @param string $str
-     * @param string $delimiter
-     * @return array
-     */
-    private function parseHelpFunctionArgs(string $str, string $delimiter = ","): array
-    {
-        $str = trim($str);
-        if (strlen($str) === 0)
-            return [];
-        $tmpArgs = [];
-        $currentArg = "";
-        $quote = false;
-        $dblQuote = false;
-        $array = false;
-        $hash = false;
-        $prevChar = null;
-        for ($i = 0; $i < strlen($str); $i++) {
-            $char = $str[$i];
-            if ($i > 0)
-                $prevChar = $str[$i - 1];
-
-            // --- check quotes ---
-            if (strcmp($char, "'") === 0 && !$dblQuote
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $quote = !$quote;
-            } else if (strcmp($char, "\"") === 0 && !$quote
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $dblQuote = !$dblQuote;
-            }
-            // --- check array ---
-            else if (strcmp($char, "[") === 0 && !$array
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $array = true;
-            } else if (strcmp($char, "]") === 0 && $array
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $array = false;
-            }
-            // --- check hash ---
-            else if (strcmp($char, "{") === 0 && !$hash
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $hash = true;
-            } else if (strcmp($char, "}") === 0 && $hash
-                && (is_null($prevChar) || strcmp($prevChar, "\\") !== 0)) {
-                $hash = false;
-            }
-
-            // --- check delimiter ---
-            if (strcmp($char, $delimiter) === 0
-                && !$quote
-                && !$dblQuote
-                && !$array
-                && !$hash) {
-                $tmpArgs[] = $this->prepareFunctionArg($currentArg);
-                $currentArg = "";
-                continue;
-            }
-            $currentArg .= $char;
-        }
-        $tmpArgs[] = $this->prepareFunctionArg($currentArg);
-        return $tmpArgs;
-    }
-
-    /**
-     * Метод преобразования значения аргумента функции
-     * @param string $str
-     * @return float|int|mixed|string|null
-     */
-    private function prepareFunctionArg(string $str)
-    {
-        $str = trim($str);
-        if (strlen($str) === 0)
-            return null;
-        if (preg_match('/^[\'\"](.*)[\'\"]$/', $str, $matches))
-            return strval($matches[1]);
-        else if (preg_match('/^([+-]?([0-9]*))$/', $str, $matches))
-            return intval($matches[1]);
-        else if (preg_match('/^([+-]?([0-9]*[.])?[0-9]+)$/', $str, $matches))
-            return floatval($matches[1]);
-        else if (preg_match('/^\{(.*)\}$/', $str, $matches))
-            return json_decode($str, true);
-        else if (preg_match('/^\[(.*)\]$/', $str, $matches))
-            return json_decode($str, true);
-        return null;
-    }
-
-    /**
-     * Проверить наличие требуемой вспомогательной функции
-     * @param string $funcName Название
-     * @return bool
-     */
-    private function hasSupportedHelpFunction(string $funcName): bool
-    {
-        return isset($this->_helpers[$funcName]);
-    }
-
-    /**
-     * Выполнить требуемую вспомогательную функцию
-     * @param string $funcName Название
-     * @param array $args Аргументы
-     * @return string
-     * @throws Error
-     */
-    private function evalHelpFunction(string $funcName, array $args): string
-    {
-        if (!$this->hasSupportedHelpFunction($funcName))
-            throw Error::makeError([
-                'tag' => 'help-doc',
-                'message' => "Eval unsupported help function (name: \'$funcName\')!",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
-        return $this->_helpers[$funcName]->evalFunction($args);
     }
 
     /**
