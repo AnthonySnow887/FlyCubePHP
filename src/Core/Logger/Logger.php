@@ -128,7 +128,7 @@ class Logger
         if (!class_exists('\Monolog\Formatter\LineFormatter', true)
             || !class_exists('\Monolog\Handler\StreamHandler', true)) {
             $this->_isEnabled = false;
-            $this->_errorMessage = "Not found Monolog library!";
+//            $this->_errorMessage = "Not found Monolog library!"; // TODO remove...
             return;
         }
 

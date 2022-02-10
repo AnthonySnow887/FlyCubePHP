@@ -940,6 +940,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/cable.js.tmpl"] = buildPath($path, "app", "assets", "javascripts", "cable.js");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/channel_base.php.tmpl"] = buildPath($path, "app", "channels", "Channel.php");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/ws-server.service.tmpl"] = buildPath($path, "$nameUnderscore.ws_server.service");
+    $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/autoload.json.tmpl"] = buildPath($path, "config", "autoload.json");
 
     // --- copy ---
     foreach ($copyList as $key => $value) {
