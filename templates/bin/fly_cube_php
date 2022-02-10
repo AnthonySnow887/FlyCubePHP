@@ -2365,6 +2365,12 @@ function assetsPrecompile() {
         echo "ERROR: Not found AssetPipeline!\r\n";
         return;
     }
+    // --- reset error handler ---
+    if (class_exists('\FlyCubePHP\Core\Error\ErrorHandlingCore'))
+        \FlyCubePHP\Core\Error\ErrorHandlingCore::instance()->setErrorHandler(new FK_BaseErrorHandler());
+    // --- set controllers output ---
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_ACTION_OUTPUT, true);
+    // --- select routes ---
     \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_ACTION_OUTPUT, true);
     $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
     if (empty($routes)) {
