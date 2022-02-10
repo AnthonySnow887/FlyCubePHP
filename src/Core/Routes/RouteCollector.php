@@ -276,6 +276,19 @@ class RouteCollector
     }
 
     /**
+     * Получить URL приложения (currentHostUri + applicationUrlPrefix)
+     * @return string
+     */
+    static public function applicationUri(): string
+    {
+        $hostUri = RouteCollector::currentHostUri();
+        $appPrefix = RouteCollector::applicationUrlPrefix();
+        if (!empty($appPrefix) && $appPrefix !== "/")
+            return $hostUri . $appPrefix;
+        return $hostUri;
+    }
+
+    /**
      * Получить текущий протокол хоста
      * @return string
      */
@@ -293,10 +306,6 @@ class RouteCollector
      */
     static public function currentHostUri(): string {
         $protocol = self::currentHostProtocol();
-        $appPrefix = RouteCollector::applicationUrlPrefix();
-        if (!empty($appPrefix) && $appPrefix !== "/")
-            return "$protocol://$_SERVER[HTTP_HOST]$appPrefix";
-
         return "$protocol://$_SERVER[HTTP_HOST]";
     }
 
