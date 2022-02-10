@@ -89,7 +89,7 @@ class AutoLoader
             $filename = $dir . str_replace('\\', '/', $classname) .'.php';
             if (file_exists($filename)) {
                 require_once $filename;
-                break;
+                return;
             }
         }
         // --- search in libs ---
