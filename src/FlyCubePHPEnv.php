@@ -151,12 +151,18 @@ if (!RouteCollector::instance()->checkRoutes())
     trigger_error("Invalid routes list!", E_USER_ERROR);
 
 // --- load api-doc ---
-$app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
-ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
+if (ApiDoc::instance()->isEnabled() === true) {
+    $app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
+    ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
+}
 
 // --- load help-doc ---
-$app_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help");
-HelpDoc::instance()->appendHelpDocDir($app_help_doc_dir);
+if (HelpDoc::instance()->isEnabled() === true) {
+    $app_help_doc_img_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help", "images");
+    AssetPipeline::instance()->appendImageDir($app_help_doc_img_dir);
+    $app_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help");
+    HelpDoc::instance()->appendHelpDocDir($app_help_doc_dir);
+}
 
 // --- load initializers ---
 $initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");
