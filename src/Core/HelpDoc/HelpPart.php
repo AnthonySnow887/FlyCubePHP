@@ -10,6 +10,7 @@ class HelpPart
     private $_data;
     private $_subParts = [];
     private $_enableHeadingLinks = false;
+    private $_parentPart = null;
 
     /**
      * @param string $id ИД раздела
@@ -22,13 +23,15 @@ class HelpPart
                          int $level,
                          string $heading,
                          string $data,
-                         bool $enableHeadingLinks = false)
+                         bool $enableHeadingLinks = false,
+                         /*HelpPart|null*/ $parentPart = null)
     {
         $this->_id = $id;
         $this->_level = $level;
         $this->_heading = trim($heading);
         $this->_data = rtrim(ltrim($data, "\n\r"));
         $this->_enableHeadingLinks = $enableHeadingLinks;
+        $this->_parentPart = $parentPart;
     }
 
     /**
@@ -68,6 +71,15 @@ class HelpPart
     }
 
     /**
+     * Получить родительский раздел
+     * @return HelpPart|null
+     */
+    public function parentPart() /*:HelpPart|null*/
+    {
+        return $this->_parentPart;
+    }
+
+    /**
      * Добавить данные в раздел
      * @param string $data
      */
@@ -95,6 +107,17 @@ class HelpPart
     public function subParts(): array
     {
         return $this->_subParts;
+    }
+
+    /**
+     * Получить последний добавленный подраздел
+     * @return HelpPart|null
+     */
+    public function lastSubPart() /*: HelpPart|null*/
+    {
+        if (empty($this->_subParts))
+            return null;
+        return end($this->_subParts);
     }
 
     /**

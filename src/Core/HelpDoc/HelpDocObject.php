@@ -309,9 +309,20 @@ class HelpDocObject
             if ($currentParent->level() < $level) {
                 $tmpPart = $currentParent->findSubPart($level, $heading);
                 if (is_null($tmpPart)) {
-                    $tmpID = sha1($currentParent->id().":$level:$heading");
-                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks);
+                    $tmpID = sha1($currentParent->id() . ":$level:$heading");
+                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks, $currentParent);
                     $currentParent->appendSubPart($tmpPart);
+                } else if ($this->_enableAppendData === true) {
+                    $tmpPart->appendData($data);
+                }
+                $currentParent = $tmpPart;
+            } else if ($currentParent->level() === $level
+                       && !is_null($currentParent->parentPart())) {
+                $tmpPart = $currentParent->parentPart()->findSubPart($level, $heading);
+                if (is_null($tmpPart)) {
+                    $tmpID = sha1($currentParent->id() . ":$level:$heading");
+                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks, $currentParent->parentPart());
+                    $currentParent->parentPart()->appendSubPart($tmpPart);
                 } else if ($this->_enableAppendData === true) {
                     $tmpPart->appendData($data);
                 }
@@ -320,7 +331,7 @@ class HelpDocObject
                 $tmpPart = $currentRoot->findSubPart($level, $heading);
                 if (is_null($tmpPart)) {
                     $tmpID = sha1($currentParent->id().":$level:$heading");
-                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks);
+                    $tmpPart = new HelpPart($tmpID, $level, $heading, $data, $this->_enableHeadingLinks, $currentRoot);
                     $currentRoot->appendSubPart($tmpPart);
                 } else if ($this->_enableAppendData === true) {
                     $tmpPart->appendData($data);
