@@ -52,7 +52,7 @@ class TemplateCompiler
     {
         if (strlen(trim($data)) === 0)
             return $data;
-        preg_match_all("/\{([\{\#])\s{0,}([\w]+)\s{0,}\(\s{0,}([a-zA-Z0-9_\-\.\,\'\"\:\{\}\[\]\s\/]*)\s{0,}\)\s{0,}([\}\#])\}/", $data, $matches);
+        preg_match_all("/\{([\{\#])\s{0,}([\w]+)\s{0,}\(\s{0,}(.*)\s{0,}\)\s{0,}([\}\#])\}/", $data, $matches);
         if (count($matches) < 5)
             return $data;
         $size = count($matches[0]);
