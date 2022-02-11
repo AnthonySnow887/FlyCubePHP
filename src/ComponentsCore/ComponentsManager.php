@@ -472,14 +472,14 @@ class ComponentsManager
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "app", "assets", "javascripts");
-                AssetPipeline::instance()->appendJSDir($pl_js_dir);
+                AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin css|scss files ---
                 $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "app", "assets", "stylesheets");
-                AssetPipeline::instance()->appendCSSDir($pl_css_dir);
+                AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin images ---
                 $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
@@ -505,14 +505,14 @@ class ComponentsManager
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "lib", "assets", "javascripts");
-                AssetPipeline::instance()->appendJSDir($pl_js_dir);
+                AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin lib/css|scss files ---
                 $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "lib", "assets", "stylesheets");
-                AssetPipeline::instance()->appendCSSDir($pl_css_dir);
+                AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin lib/images ---
                 $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),

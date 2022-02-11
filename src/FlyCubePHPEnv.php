@@ -75,27 +75,27 @@ if (!CoreHelper::makeDir($cacheDir, 0777, true))
 
 // --- load app js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load lib js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "lib", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load vendor js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load app css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load lib css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "lib", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load vendor css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load app images ---
 $app_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "images");

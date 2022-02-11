@@ -106,8 +106,8 @@ class AssetPipeline
         $this->_imageBuilder = new ImageBuilder();
 
         // --- append FlyCubePHP assets ---
-        $this->appendJSDir(AssetPipeline::CORE_JS_DIR);
-        $this->appendCSSDir(AssetPipeline::CORE_CSS_DIR);
+        $this->appendJavascriptDir(AssetPipeline::CORE_JS_DIR);
+        $this->appendStylesheetDir(AssetPipeline::CORE_CSS_DIR);
         $this->appendImageDir(AssetPipeline::CORE_IMAGES_DIR);
     }
 
@@ -158,17 +158,28 @@ class AssetPipeline
      * @param bool $fullPath
      * @return array
      */
-    public function jsDirs(bool $fullPath = false): array {
+    public function javascriptDirs(bool $fullPath = false): array {
         if (is_null($this->_jsBuilder))
             return array();
         return $this->_jsBuilder->jsDirs($fullPath);
     }
 
     /**
+     * Список загруженных javascript asset-ов и пути к ним
+     * @param bool $fullPath
+     * @return array
+     */
+    public function javascriptList(bool $fullPath = false): array {
+        if (is_null($this->_jsBuilder))
+            return array();
+        return $this->_jsBuilder->jsList($fullPath);
+    }
+
+    /**
      * Добавить и просканировать каталог javascripts
      * @param string $dir
      */
-    public function appendJSDir(string $dir) {
+    public function appendJavascriptDir(string $dir) {
         if (is_null($this->_jsBuilder))
             return;
         $this->_jsBuilder->loadJS($dir);
@@ -199,17 +210,28 @@ class AssetPipeline
      * @param bool $fullPath
      * @return array
      */
-    public function cssDirs(bool $fullPath = false): array {
+    public function stylesheetDirs(bool $fullPath = false): array {
         if (is_null($this->_cssBuilder))
             return array();
         return $this->_cssBuilder->cssDirs($fullPath);
     }
 
     /**
+     * Список загруженных stylesheet asset-ов и пути к ним
+     * @param bool $fullPath
+     * @return array
+     */
+    public function stylesheetList(bool $fullPath = false): array {
+        if (is_null($this->_cssBuilder))
+            return array();
+        return $this->_cssBuilder->cssList($fullPath);
+    }
+
+    /**
      * Добавить и просканировать каталог stylesheets
      * @param string $dir
      */
-    public function appendCSSDir(string $dir) {
+    public function appendStylesheetDir(string $dir) {
         if (is_null($this->_cssBuilder))
             return;
         $this->_cssBuilder->loadCSS($dir);
@@ -396,16 +418,20 @@ class AssetPipeline
             return "";
         $assetPath = "assets/";
         $tmpName = basename($path);
+        $tmpCompressDir = "";
         preg_match('/\_[A-Fa-f0-9]{64}\..*$/', $tmpName, $matches, PREG_OFFSET_CAPTURE);
         if (!empty($matches)) {
             $tmpName = str_replace($matches[0][0], "", $tmpName);
             $tmpName = trim($tmpName);
+            $tmpCompressDir = $matches[0][0][1].$matches[0][0][2]; // hash first 2 symbols
         }
         $fExt = pathinfo($path, PATHINFO_EXTENSION);
         $lastModified = filemtime($path);
         $tmpName = CoreHelper::fileName($tmpName, true);
         $hash = hash('sha256', $tmpName . $lastModified);
         $tmpName .= "-".$hash.".".$fExt;
+        if (empty($tmpCompressDir))
+            $tmpCompressDir = $hash[0].$hash[1];
 
         if (empty($childDir)) {
             $assetPath .= $tmpName;
@@ -426,7 +452,7 @@ class AssetPipeline
 
             // --- build ---
             $cacheDir = CoreHelper::splicePathFirst(CoreHelper::splicePathLast(AssetPipeline::SETTINGS_DIR));
-            $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), $cacheDir, $hash[0].$hash[1]);
+            $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), $cacheDir, $tmpCompressDir);
             if (strcmp($this->_compressionType, "gzip") === 0
                 && CoreHelper::makeDir($fDir, 0777, true)) {
                 // --- build gzip ---

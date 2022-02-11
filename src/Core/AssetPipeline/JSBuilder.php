@@ -88,6 +88,21 @@ class JSBuilder
     }
 
     /**
+     * Список загруженных javascript asset-ов и пути к ним
+     * @param bool $fullPath
+     * @return array
+     */
+    public function jsList(bool $fullPath = false): array {
+        if ($fullPath === true)
+            return $this->_jsList;
+
+        $tmpLst = array();
+        foreach ($this->_jsList as $key => $value)
+            $tmpLst[$key] = CoreHelper::buildAppPath($value);
+        return $tmpLst;
+    }
+
+    /**
      * Загрузить расширения
      */
     public function loadExtensions() {

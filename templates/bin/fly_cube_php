@@ -340,6 +340,7 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
         }
     }
     \FlyCubePHP\Core\Error\ErrorHandlingCore::instance()->setErrorHandler(new FK_BaseErrorHandler());
+    \FlyCubePHP\Core\Error\ErrorHandlingCore::instance()->freezeErrorHandler();
 }
 
 
@@ -419,6 +420,11 @@ Options include:
     
     --check-project                     Check the project catalogs, base files and create the missing or change their rights to the necessary
     --assets-precompile                 Build assets cache
+    --skip-rendering=[VALUE]            Skip rendering graphics controllers and their page templates (optional; default: false) 
+    --assets-list                       Show list of loaded assets
+    --javascripts=[VALUE]               JavaScript assets display filter (optional; default: true) 
+    --stylesheets=[VALUE]               Stylesheet assets display filter (optional; default: true)
+    --images=[VALUE]                    Image assets display filter (optional; default: true)
     --clear-cache                       Clear all application cache
     --clear-logs                        Clear all application logs
     --clear-php-sessions                Clear all php sessions
@@ -2352,8 +2358,9 @@ function createPluginModel($pluginName, $name) {
 
 /**
  * Выполнить сборку asset-ов
+ * @param bool $skipRendering
  */
-function assetsPrecompile() {
+function assetsPrecompile(bool $skipRendering = false) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
@@ -2365,27 +2372,86 @@ function assetsPrecompile() {
         echo "ERROR: Not found AssetPipeline!\r\n";
         return;
     }
-    // --- reset error handler ---
-    if (class_exists('\FlyCubePHP\Core\Error\ErrorHandlingCore'))
-        \FlyCubePHP\Core\Error\ErrorHandlingCore::instance()->setErrorHandler(new FK_BaseErrorHandler());
+
+    // --- pre-build assets ---
+    echo "Build javascripts:\r\n";
+    $jsAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->javascriptList();
+    foreach ($jsAssets as $key => $value) {
+        echo "[Compilation] $key (path: $value): ";
+        \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->javascriptFilePath($key);
+        echo "OK\r\n";
+    }
+    echo "\r\nBuild stylesheets:\r\n";
+    $cssAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->stylesheetList();
+    foreach ($cssAssets as $key => $value) {
+        echo "[Compilation] $key (path: $value): ";
+        \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->stylesheetFilePath($key);
+        echo "OK\r\n";
+    }
+    echo "\r\nBuild images:\r\n";
+    $imgAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->imageList();
+    foreach ($imgAssets as $key => $value) {
+        echo "[Compilation] $key (path: $value): ";
+        \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->imageFilePath($key);
+        echo "OK\r\n";
+    }
+
+    // --- pre-build Twig templates ---
+    if ($skipRendering === true) {
+        echo "\r\nNOTE: Controller and template rendering is skipped.\r\n";
+        return;
+    }
+
     // --- set controllers output ---
     \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_ACTION_OUTPUT, true);
     // --- select routes ---
-    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_ACTION_OUTPUT, true);
     $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
     if (empty($routes)) {
         echo "ERROR: Routes list Empty!\r\n";
         return;
     }
+    // --- set default settings ---
+    $_SERVER['HTTP_HOST'] = '127.0.0.1';
+    $_SERVER['HTTP_CLIENT_IP'] = '127.0.0.1';
+    $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+    $_SERVER['REMOTE_PORT'] = -1;
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+
     // --- redirect stdout ---
     fclose(STDOUT);
     $stdoutPath = sys_get_temp_dir().'/php'.substr(sha1(rand()), 0, 6);
     $STDOUT = fopen($stdoutPath, 'wb');
     $STDOUT_2 = fopen('/dev/tty', 'wb');
     // --- output controllers assets build states ---
+    fwrite($STDOUT_2, "\r\nBuild Controllers:\r\n");
     foreach ($routes as $route) {
         if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
             continue;
+
+        // --- set default route args ---
+        $requestUri = $route->uri();
+        $routeArgs = $route->uriArgs();
+        if (preg_match('/\:([a-zA-Z0-9_]*)/i', $route->uri())) {
+            $requestUri = "";
+            $tmpArgs = [];
+            $localUriLst = explode('/', $route->uri());
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                $localPath = $localUriLst[$i];
+                if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1) {
+                    $tmpArgs[ltrim($localPath, ":")] = "";
+                    $requestUri .= "/";
+                } else {
+                    $requestUri .= "/$localPath";
+                }
+            }
+            $routeArgs = array_merge($routeArgs, $tmpArgs);
+        }
+        $_SERVER['REQUEST_URI'] = $requestUri;
+        $_GET = $routeArgs;
+        $_POST = [];
+        $_COOKIE = [];
+
+        // --- render ---
         $tmpClassName = $route->controller();
         $tmpClassAct = $route->action();
         $tmpController = new $tmpClassName();
@@ -2418,6 +2484,44 @@ function assetsPrecompile() {
     if (is_file($stdoutPath))
         unlink($stdoutPath);
     fclose($STDOUT_2);
+}
+
+/**
+ * Вывести список загруженых asset-ов
+ * @param bool $javascripts
+ * @param bool $stylesheets
+ * @param bool $images
+ */
+function assetsList(bool $javascripts, bool $stylesheets, bool $images) {
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
+    if (!class_exists("\FlyCubePHP\Core\AssetPipeline\AssetPipeline")) {
+        echo "ERROR: Not found AssetPipeline!\r\n";
+        return;
+    }
+
+    if ($javascripts === true) {
+        echo "Javascript assets:\r\n";
+        $jsAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->javascriptList();
+        foreach ($jsAssets as $key => $value)
+            echo " - $key (path: $value)\r\n";
+        echo "\r\n";
+    }
+    if ($stylesheets === true) {
+        echo "\r\nStylesheet assets:\r\n";
+        $cssAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->stylesheetList();
+        foreach ($cssAssets as $key => $value)
+            echo " - $key (path: $value)\r\n";
+        echo "\r\n";
+    }
+    if ($images === true) {
+        echo "\r\nImage assets:\r\n";
+        $imgAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->imageList();
+        foreach ($imgAssets as $key => $value)
+            echo " - $key (path: $value)\r\n";
+        echo "\r\n";
+    }
 }
 
 /**
@@ -3095,7 +3199,8 @@ if (in_array('--new', $arguments)) {
 } else if (in_array('--assets-precompile', $arguments)) {
     echo "=== FlyCubePHP: Assets precompile ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    assetsPrecompile();
+    $skipRendering = toBool(argumentValue('--skip-rendering', $arguments, false));
+    assetsPrecompile($skipRendering);
     echo "=== FlyCubePHP ======================\r\n";
     exit();
 } else if (in_array('--clear-cache', $arguments)) {
@@ -3147,6 +3252,15 @@ if (in_array('--new', $arguments)) {
     echo "=== FlyCubePHP: Checking project catalogs & base files ===\r\n";
     checkingProjectCatalogsAndFiles($projectPath);
     echo "=== FlyCubePHP ==============================\r\n";
+    exit();
+} else if (in_array('--assets-list', $arguments)) {
+    echo "=== FlyCubePHP: Assets list ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
+    $javascripts = toBool(argumentValue('--javascripts', $arguments, true));
+    $stylesheets = toBool(argumentValue('--stylesheets', $arguments, true));
+    $images = toBool(argumentValue('--images', $arguments, true));
+    assetsList($javascripts, $stylesheets, $images);
+    echo "=== FlyCubePHP ================\r\n";
     exit();
 } else {
     exit("Invalid arguments! Use --help!\r\n");

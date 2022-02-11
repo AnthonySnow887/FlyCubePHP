@@ -23,6 +23,7 @@ class ErrorHandlingCore
     private static $_instance = null;
     private $_errHandler = null;
     private $_isLoaded = false;
+    private $_freezeErrHandler = false;
 
     /**
      * Обработчик ошибок
@@ -214,9 +215,26 @@ class ErrorHandlingCore
      * @param BaseErrorHandler $handler
      */
     public function setErrorHandler(BaseErrorHandler $handler) {
+        if ($this->isErrorHandlerFreeze() === true)
+            return;
         if (!is_null($this->_errHandler))
             unset($this->_errHandler);
         $this->_errHandler = $handler;
+    }
+
+    /**
+     * Заблокировать установку обработчиков ошибок
+     */
+    public function freezeErrorHandler() {
+        $this->_freezeErrHandler = true;
+    }
+
+    /**
+     * Заблокирована ли установка обработчика ошибок
+     * @return bool
+     */
+    public function isErrorHandlerFreeze(): bool {
+        return $this->_freezeErrHandler;
     }
 
     /**
