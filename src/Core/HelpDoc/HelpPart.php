@@ -18,6 +18,7 @@ class HelpPart
      * @param string $heading Название раздела
      * @param string $data Данные раздела
      * @param bool $enableHeadingLinks
+     * @param HelpPart|null $parentPart
      */
     function __construct(string $id,
                          int $level,
