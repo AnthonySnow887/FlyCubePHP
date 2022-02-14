@@ -56,7 +56,9 @@ class AutoLoader
      * @param string $dirPath
      */
     public function appendAutoLoadDir(string $dirPath) {
-        if (empty($dirPath) || !is_dir($dirPath))
+        if (empty($dirPath)
+            || !is_dir($dirPath)
+            || in_array($dirPath, $this->_dirs))
             return;
         $this->_dirs[] = $dirPath;
     }
