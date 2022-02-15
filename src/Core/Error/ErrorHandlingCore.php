@@ -223,7 +223,7 @@ class ErrorHandlingCore
     }
 
     /**
-     * Заблокировать установку обработчиков ошибок
+     * Заблокировать установку обработчика ошибок
      */
     public function freezeErrorHandler() {
         $this->_freezeErrHandler = true;

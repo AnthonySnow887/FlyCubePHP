@@ -12,6 +12,10 @@ class HelpDocAssetHelper
      * @param array $options
      * @return string
      *
+     * ==== Options
+     *
+     * - skip_asset_pipeline - Skip search in Asset Pipeline
+     *
      * ==== Examples in Help-Doc notations
      *
      *   {{ image_path("edit.png") }}
