@@ -12,9 +12,9 @@ class TCHelperFunction
     /**
      * Конструктор класса вспомогательной функции
      * @param string $name Название
-     * @param mixed|null $callable Функция обратного вызова для метода call_user_func_array(...)
+     * @param callable $callable Функция обратного вызова для метода call_user_func_array(...)
      */
-    function __construct(string $name, $callable = null)
+    function __construct(string $name, callable $callable)
     {
         $this->_name = $name;
         $this->_callable = $callable;
@@ -31,9 +31,9 @@ class TCHelperFunction
 
     /**
      * Функция обратного вызова для метода call_user_func_array(...)
-     * @return null
+     * @return callable
      */
-    public function callable()
+    public function callable(): callable
     {
         return $this->_callable;
     }
