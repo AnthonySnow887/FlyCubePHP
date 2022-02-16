@@ -33,7 +33,7 @@ class TemplateCompiler
     public function compile(string $data): string
     {
         $tmpData = "";
-        $lineNum = 0;
+        $lineNum = 1;
         foreach (preg_split("/((\r?\n)|(\r\n?))/", $data) as $line) {
             $tmpData .= $this->compileLine($line, $lineNum) . "\r\n";
             $lineNum += 1;
@@ -48,7 +48,7 @@ class TemplateCompiler
      * @return string
      * @throws Error
      */
-    public function compileLine(string $data, int $lineNum): string
+    public function compileLine(string $data, int $lineNum = -1): string
     {
         if (strlen(trim($data)) === 0)
             return $data;
