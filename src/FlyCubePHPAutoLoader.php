@@ -28,3 +28,4 @@ if (!is_dir($monolog_dir))
 \FlyCubePHP\appendAutoLoadDir("vendor/JShrink/JShrink/");
 \FlyCubePHP\appendAutoLoadDir("vendor/Psr/");
 \FlyCubePHP\appendAutoLoadDir("vendor/Monolog/Monolog/");
+\FlyCubePHP\appendAutoLoadDir("vendor/FlyCubePHP/");
