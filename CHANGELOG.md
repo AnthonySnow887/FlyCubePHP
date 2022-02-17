@@ -17,7 +17,7 @@
      * converting parsed help files into a single Markdown document with automatic result caching.
 
      The main task of the FlyCubePHP Help Doc core is to combine scattered help documents into a single file.
-     This takes into account the hierarchy of Headings (Headings), the union of their subsections,
+     This takes into account the hierarchy of Headings, the union of their subsections,
      as well as data in case of duplication in different documents (NOTE: this functionality can be enabled or disabled
      in the project configuration file with the 'FLY_CUBE_PHP_ENABLE_HELP_DOC_APPEND_DATA' flag). 
      Files are loaded in the order they are located in the search directories.
@@ -31,8 +31,6 @@
    * added helper functions:
      * current_action_url - get current controller action URL
      * action_url - get URL by controller and action
-
-     
 
  * Add TemplateCompiler:
    >
