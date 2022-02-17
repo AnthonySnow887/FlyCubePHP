@@ -8,18 +8,12 @@
 
 namespace FlyCubePHP\ComponentsCore;
 
-include_once __DIR__.'/../HelperClasses/Enum.php';
+include_once 'BaseTypes.php';
 include_once 'ComponentDependency.php';
 
-class BCState extends \FlyCubePHP\HelperClasses\Enum {
-    const NO_STATE      = 0;
-    const INIT_SUCCESS  = 1;
-    const INIT_FAILED   = 2;
-}
 
 /**
  * Class BaseComponent
- * @package WebComponentsCore
  */
 abstract class BaseComponent
 {

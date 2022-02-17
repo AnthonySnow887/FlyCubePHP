@@ -18,11 +18,13 @@ include_once __DIR__.'/Core/Database/DatabaseFactory.php';
 include_once __DIR__.'/Core/Cookie/Cookie.php';
 include_once __DIR__.'/Core/Session/Session.php';
 include_once __DIR__.'/Core/ApiDoc/ApiDoc.php';
+include_once __DIR__.'/Core/HelpDoc/HelpDoc.php';
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 include_once 'FlyCubePHPEnvLoader.php';
 
 use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
+use \FlyCubePHP\Core\HelpDoc\HelpDoc as HelpDoc;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Session\Session as Session;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
@@ -73,27 +75,27 @@ if (!CoreHelper::makeDir($cacheDir, 0777, true))
 
 // --- load app js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load lib js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "lib", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load vendor js files ---
 $app_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "assets", "javascripts");
-AssetPipeline::instance()->appendJSDir($app_js_dir);
+AssetPipeline::instance()->appendJavascriptDir($app_js_dir);
 
 // --- load app css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load lib css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "lib", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load vendor css|scss files ---
 $app_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "assets", "stylesheets");
-AssetPipeline::instance()->appendCSSDir($app_css_dir);
+AssetPipeline::instance()->appendStylesheetDir($app_css_dir);
 
 // --- load app images ---
 $app_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", "assets", "images");
@@ -149,8 +151,18 @@ if (!RouteCollector::instance()->checkRoutes())
     trigger_error("Invalid routes list!", E_USER_ERROR);
 
 // --- load api-doc ---
-$app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
-ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
+if (ApiDoc::instance()->isEnabled() === true) {
+    $app_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "api");
+    ApiDoc::instance()->appendApiDocDir($app_api_doc_dir);
+}
+
+// --- load help-doc ---
+if (HelpDoc::instance()->isEnabled() === true) {
+    $app_help_doc_img_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help", "images");
+    AssetPipeline::instance()->appendImageDir($app_help_doc_img_dir);
+    $app_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "doc", "help");
+    HelpDoc::instance()->appendHelpDocDir($app_help_doc_dir);
+}
 
 // --- load initializers ---
 $initializers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "initializers");

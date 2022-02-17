@@ -8,26 +8,21 @@
 
 namespace FlyCubePHP\ComponentsCore;
 
-include_once __DIR__.'/../HelperClasses/Enum.php';
 include_once __DIR__.'/../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Core/Error/Error.php';
 include_once __DIR__.'/../Core/Logger/Logger.php';
+include_once 'BaseTypes.php';
 include_once 'BaseComponent.php';
 include_once 'DependencyTreeElement.php';
 
 use Exception;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Error\Error as Error;
+use FlyCubePHP\Core\HelpDoc\HelpDoc;
 use \FlyCubePHP\Core\Logger\Logger as Logger;
 use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
 use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
 use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
-
-class CMState extends \FlyCubePHP\HelperClasses\Enum {
-    const NOT_LOADED    = 0; # не загружен
-    const LOADED        = 1; # загружен
-    const INITIALIZED   = 2; # проинициализирован
-}
 
 class ComponentsManager
 {
@@ -477,14 +472,14 @@ class ComponentsManager
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "app", "assets", "javascripts");
-                AssetPipeline::instance()->appendJSDir($pl_js_dir);
+                AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin css|scss files ---
                 $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "app", "assets", "stylesheets");
-                AssetPipeline::instance()->appendCSSDir($pl_css_dir);
+                AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin images ---
                 $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
@@ -510,14 +505,14 @@ class ComponentsManager
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "lib", "assets", "javascripts");
-                AssetPipeline::instance()->appendJSDir($pl_js_dir);
+                AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin lib/css|scss files ---
                 $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
                                                     ComponentsManager::PLUGINS_DIR,
                                                     $plugin->directory(),
                                                     "lib", "assets", "stylesheets");
-                AssetPipeline::instance()->appendCSSDir($pl_css_dir);
+                AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin lib/images ---
                 $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
@@ -527,13 +522,28 @@ class ComponentsManager
                 AssetPipeline::instance()->appendImageDir($pl_image_dir);
 
                 // --- load plugin api-doc files ---
-                $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                        ComponentsManager::PLUGINS_DIR,
-                                                        $plugin->directory(),
-                                                        "doc", "api");
-                ApiDoc::instance()->appendApiDocDir($pl_api_doc_dir);
+                if (ApiDoc::instance()->isEnabled() === true) {
+                    $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                                                            ComponentsManager::PLUGINS_DIR,
+                                                            $plugin->directory(),
+                                                            "doc", "api");
+                    ApiDoc::instance()->appendApiDocDir($pl_api_doc_dir);
+                }
 
-                // TODO load plugin help files...
+                // --- load plugin help-doc files ---
+                if (HelpDoc::instance()->isEnabled() === true) {
+                    $pl_help_doc_img_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                                                                 ComponentsManager::PLUGINS_DIR,
+                                                                 $plugin->directory(),
+                                                                 "doc", "help", "images");
+                    AssetPipeline::instance()->appendImageDir($pl_help_doc_img_dir);
+
+                    $pl_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                                                             ComponentsManager::PLUGINS_DIR,
+                                                             $plugin->directory(),
+                                                             "doc", "help");
+                    HelpDoc::instance()->appendHelpDocDir($pl_help_doc_dir);
+                }
             }
         } catch (\Exception $e) {
             $err_str = $e->getMessage();

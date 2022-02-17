@@ -2,6 +2,7 @@
 
 namespace FlyCubePHP\Core\ApiDoc;
 
+use FlyCubePHP\Core\Routes\Route;
 use FlyCubePHP\Core\Routes\RouteType;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\Error;
@@ -275,19 +276,17 @@ class ApiDocAction
 
     /**
      * Метод разбора данных секции
-     * @param int $httpMethod
-     * @param string $url
-     * @param string $urlFull
+     * @param Route $route
      * @param string $name
      * @param array $data
      * @return ApiDocAction
      * @throws Error
      */
-    static public function parse(int $httpMethod, string $url, string $urlFull, string $name, array $data): ApiDocAction {
+    static public function parse(Route &$route, string $name, array $data): ApiDocAction {
         $obj = new ApiDocAction();
-        $obj->_httpMethod = $httpMethod;
-        $obj->_url = $url;
-        $obj->_urlFull = $urlFull;
+        $obj->_httpMethod = $route->type();
+        $obj->_url = $route->uri();
+        $obj->_urlFull = $route->uriFull();
         $obj->_name = trim($name);
         foreach ($data as $key => $val) {
             if (strcmp($key, 'description') === 0)
@@ -309,7 +308,7 @@ class ApiDocAction
             else if (preg_match('/^error-(.*)$/', $key, $matches))
                 $obj->_errors[] = ApiDocError::parse($matches[1], $val);
             else if (preg_match('/^example-(.*)$/', $key, $matches))
-                $obj->_examples[] = ApiDocExample::parse($matches[1], $val);
+                $obj->_examples[] = ApiDocExample::parse($route, $matches[1], $val);
         }
         // --- check ---
         if (empty($obj->_outputFormats))

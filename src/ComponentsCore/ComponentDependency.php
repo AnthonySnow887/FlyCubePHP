@@ -8,16 +8,7 @@
 
 namespace FlyCubePHP\ComponentsCore;
 
-include_once __DIR__.'/../HelperClasses/Enum.php';
-
-/**
- * Class CDType - тип зависимости
- * @package WebComponentsCore
- */
-class CDType extends \FlyCubePHP\HelperClasses\Enum {
-    const REQUIRED  = 0;
-    const OPTIONAL  = 1;
-}
+include_once 'BaseTypes.php';
 
 class ComponentDependency
 {

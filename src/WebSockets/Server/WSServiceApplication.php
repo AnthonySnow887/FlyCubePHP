@@ -100,6 +100,7 @@ class WSServiceApplication
             file_put_contents($pidFile, posix_getpid());
             // --- set error handler ---
             ErrorHandlingCore::instance()->setErrorHandler(new WSServerErrorHandler());
+            ErrorHandlingCore::instance()->freezeErrorHandler();
             // --- start ws server loop ---
             $server = new WSServer();
             $server->start();

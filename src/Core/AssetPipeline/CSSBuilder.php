@@ -89,6 +89,21 @@ class CSSBuilder
     }
 
     /**
+     * Список загруженных stylesheet asset-ов и пути к ним
+     * @param bool $fullPath
+     * @return array
+     */
+    public function cssList(bool $fullPath = false): array {
+        if ($fullPath === true)
+            return $this->_cssList;
+
+        $tmpLst = array();
+        foreach ($this->_cssList as $key => $value)
+            $tmpLst[$key] = CoreHelper::buildAppPath($value);
+        return $tmpLst;
+    }
+
+    /**
      * Загрузить расширения
      */
     public function loadExtensions() {

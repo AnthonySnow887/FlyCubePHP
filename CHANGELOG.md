@@ -1,3 +1,97 @@
+# 1.6.0 (17.02.2022)
+
+ * Update Development Guide RUS
+ * Add HelpDoc support:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
+   * Starting with FlyCubePHP 1.6.0, creation of help files based on the Markdown format is supported. 
+     FlyCubePHP Help Doc core supports the following functionality:
+     * automatic search, loading and parsing of help files in directories:
+       * 'doc/help/'
+       * 'plugins/*/doc/help/'
+     * automatic search and download of images for help files in directories:
+       * 'doc/help/images/'
+       * 'plugins/*/doc/help/images/'
+     * converting parsed help files into a single Markdown document with automatic result caching.
+
+     The main task of the FlyCubePHP Help Doc core is to combine scattered help documents into a single file.
+     This takes into account the hierarchy of Headings, the union of their subsections,
+     as well as data in case of duplication in different documents (NOTE: this functionality can be enabled or disabled
+     in the project configuration file with the 'FLY_CUBE_PHP_ENABLE_HELP_DOC_APPEND_DATA' flag). 
+     Files are loaded in the order they are located in the search directories.
+     Support for built-in helper functions greatly simplifies the creation of help files.
+
+ * Update ApiDoc:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
+   * added helper functions:
+     * current_action_url - get current controller action URL
+     * action_url - get URL by controller and action
+
+ * Add TemplateCompiler:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
+   * Starting from version FlyCubePHP 1.6.0, a simple templates compiler has been added to the core of the framework. 
+     This tool allows you to parse various text files that have helper function inserts in their content, 
+     similar to those used in the Twig template engine, and replace them with the result of executing the specified functions.
+   
+     Using these functions is similar to using Twig template functions:
+     * {{ FUNCTION (ARGS) }} - this expression will be replaced with the result of executing the function specified in the expression line;
+     * {# FUNCTION (ARGS) #} - this expression will be replaced with an empty string; the function call will be skipped.
+
+ * Update fly_cube_php bin:
+   * update '--assets-precompile' command:
+     * add compile JavaScripts, Stylesheets, Images
+     * add rendering (or skip rendering) for graphics controllers and their page templates (command: '--skip-rendering=[VALUE]')
+   * add '--assets-list' command
+   * add filter commands for '--assets-list':
+     * '--javascripts=[VALUE]' - JavaScript assets display filter (optional; default: true)
+     * '--stylesheets=[VALUE]' - Stylesheet assets display filter (optional; default: true)
+     * '--images=[VALUE]' - Image assets display filter (optional; default: true)
+
+ * Fix fly_cube_php bin (fixed reset of base error handler)
+ * Update AutoLoader:
+   * add load settings from file (config/autoload.json); 
+   * add method 'appendAutoLoadLib(string $libRootNamespace, string $libRootDir) {...}'
+
+ * Update AssetPipeline:
+   * change methods (see UPGRADE-1.6.0 how to upgrade to the latest version):
+     * 'jsDirs' to 'javascriptDirs'
+     * 'appendJSDir' to 'appendJavascriptDir'
+     * 'cssDirs' to 'stylesheetDirs'
+     * 'appendCSSDir' to 'appendStylesheetDir'
+   * added methods :
+     * javascriptList - get list of loaded javascript assets and their paths
+     * stylesheetList - get list of loaded stylesheet assets and their paths
+
+ * Fix AssetPipeline (fixed directory name generation based on hashes for cached files)
+ * Update ErrorHandlingCore:
+   * added methods:
+     * freezeErrorHandler - block error handler installation
+     * isErrorHandlerFreeze - checking is the error handler setup blocked?
+   * small refactoring
+
+ * Update RouteCollector (added method 'applicationUri')
+ * Update ComponentsCore:
+   * added help-doc loading for plugins
+   * small refactoring 
+
+ * Update WSServiceApplication (added by calling the 'freezeErrorHandler' method for the service handler)
+ * Update templates:
+   * application_env.conf.tmpl (add Help Doc settings)
+   * cable.json.tmpl (small refactoring)
+   
+ * Add templates:
+   * autoload.json.tmpl (AutoLoader settings template)
+   
+ * Fix comments
+
 # 1.5.1 (04.02.2022)
 
  * Update Development Guide RUS

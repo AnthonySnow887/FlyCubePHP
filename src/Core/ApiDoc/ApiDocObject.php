@@ -133,7 +133,7 @@ class ApiDocObject
             if (is_null($route))
                 continue;
             try {
-                $obj->_actions[] = ApiDocAction::parse($route->type(), $route->uri(), $route->uriFull(), $key, $val);
+                $obj->_actions[] = ApiDocAction::parse($route, $key, $val);
             } catch (Error $ex) {
                 throw Error::makeError([
                     'tag' => 'api-doc',
@@ -141,7 +141,13 @@ class ApiDocObject
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'file' => $path,
-                    'line' => self::searchErrorLine($path, $key, $ex->additionalDataValue('section'), $ex->additionalDataValue('name'))
+                    'line' => self::searchErrorLine(
+                        $path,
+                        $key,
+                        $ex->additionalDataValue('section'),
+                        $ex->additionalDataValue('name'),
+                        $ex->additionalDataValue('error-line-data')
+                    )
                 ]);
             }
         }
@@ -154,32 +160,42 @@ class ApiDocObject
      * @param string $action - название метода блока API
      * @param array $section - последовательность прочитанных секций
      * @param array $sectionName - последовательность имен прочитанных секций
+     * @param string|null $errorLineData - содержимое строки с ошибкой
      * @return int
      */
     static private function searchErrorLine(string $filePath,
                                             string $action,
                                             array $section,
-                                            array $sectionName): int {
+                                            array $sectionName,
+                                            /*string|null*/ $errorLineData): int {
         if (!is_file($filePath)
             || !is_readable($filePath)
             || count($section) != count($sectionName))
             return 0;
         $regExp = ".*\"$action\".*";
         $found = false;
-        $lineCount = 1;
+        $lineCount = 0;
+        $firstFoundLine = 0;
         if ($file = fopen($filePath, "r")) {
             while (!feof($file)) {
+                $lineCount += 1;
                 $lineStr = fgets($file);
                 // --- search needed action section ---
                 if (preg_match("/$regExp/", $lineStr) && $found === false) {
                     $found = true;
+                    $firstFoundLine = $lineCount;
                 } else if ($found === false) {
-                    $lineCount += 1;
                     continue;
                 }
                 // --- make regexp ---
-                if (empty($section))
+                if (empty($section)) {
+                    if (!empty($errorLineData)) {
+                        if (strpos(stripcslashes($lineStr), $errorLineData) !== false)
+                            break;
+                        continue;
+                    }
                     break;
+                }
                 $tmpSection = $section[0];
                 $tmpSectionName = $sectionName[0];
                 $regExpSection = ".*\"$tmpSection\".*";
@@ -189,11 +205,16 @@ class ApiDocObject
                 if (preg_match("/$regExpSection/", $lineStr)) {
                     array_shift($section);
                     array_shift($sectionName);
-                    if (empty($section))
+                    if (empty($section)) {
+                        $firstFoundLine = $lineCount;
+                        if (!empty($errorLineData))
+                            continue;
                         break;
+                    }
                 }
-                $lineCount += 1;
             }
+            if (feof($file))
+                $lineCount = $firstFoundLine;
             fclose($file);
         }
         return $lineCount;
