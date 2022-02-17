@@ -2,6 +2,10 @@
 
  * Update Development Guide RUS
  * Add HelpDoc support:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
    * Starting with FlyCubePHP 1.6.0, creation of help files based on the Markdown format is supported. 
      FlyCubePHP Help Doc core supports the following functionality:
      * automatic search, loading and parsing of help files in directories:
@@ -18,21 +22,23 @@
      in the project configuration file with the 'FLY_CUBE_PHP_ENABLE_HELP_DOC_APPEND_DATA' flag). 
      Files are loaded in the order they are located in the search directories.
      Support for built-in helper functions greatly simplifies the creation of help files.
-   
-     >
-     > NOTE: For more information see the Development Guide.
-     > 
 
  * Update ApiDoc:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
    * added helper functions:
      * current_action_url - get current controller action URL
      * action_url - get URL by controller and action
 
-     >
-     > NOTE: For more information see the Development Guide.
-     >
+     
 
  * Add TemplateCompiler:
+   >
+   > NOTE: For more information see the Development Guide.
+   >
+
    * Starting from version FlyCubePHP 1.6.0, a simple templates compiler has been added to the core of the framework. 
      This tool allows you to parse various text files that have helper function inserts in their content, 
      similar to those used in the Twig template engine, and replace them with the result of executing the specified functions.
@@ -40,10 +46,6 @@
      Using these functions is similar to using Twig template functions:
      * {{ FUNCTION (ARGS) }} - this expression will be replaced with the result of executing the function specified in the expression line;
      * {# FUNCTION (ARGS) #} - this expression will be replaced with an empty string; the function call will be skipped.
-
-     >
-     > NOTE: For more information see the Development Guide.
-     >
 
  * Update fly_cube_php bin:
    * update '--assets-precompile' command:
