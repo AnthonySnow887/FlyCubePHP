@@ -2560,7 +2560,7 @@ function appRoutes() {
         echo "ERROR: Not found RouteCollector!\r\n";
         return;
     }
-    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
+    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes(true);
     if (empty($routes)) {
         echo "\r\nERROR: Not found routes!\r\n\r\n";
         return;

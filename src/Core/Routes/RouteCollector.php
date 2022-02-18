@@ -171,10 +171,15 @@ class RouteCollector
 
     /**
      * Получить все маршруты
+     * @param bool $sort - Выполнить ли сортировку по URL
      * @return array
      */
-    public function allRoutes(): array {
-        return $this->_routes;
+    public function allRoutes(bool $sort = false): array {
+        if (!$sort)
+            return $this->_routes;
+        $tmpArray = $this->_routes;
+        usort($tmpArray, [ $this, 'compareRoutes' ]);
+        return $tmpArray;
     }
 
     /**
@@ -815,5 +820,15 @@ class RouteCollector
             $tmpArgs = array_merge($tmpArgs, $route->routeArgsFromUri(self::currentRouteUri()));
         }
         return $tmpArgs;
+    }
+
+    /**
+     * Функция сравнения маршрутов по их URL
+     * @param Route $left
+     * @param Route $right
+     * @return int
+     */
+    static private function compareRoutes(Route $left, Route $right): int {
+        return strcasecmp($left->uri(), $right->uri());
     }
 }
