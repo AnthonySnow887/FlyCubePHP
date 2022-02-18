@@ -81,11 +81,10 @@ class Route
         $this->_controller = $controller;
         $this->_action = $action;
         if (empty($as)) {
-            $tmpControllerName = $controller;
-            if (preg_match("/.*Controller$/", $tmpControllerName))
-                $tmpControllerName = substr($tmpControllerName, 0, strlen($tmpControllerName) - 10);
-
-            $as = CoreHelper::underscore($tmpControllerName) . "_" . CoreHelper::underscore($action);
+            $tmpUrl = str_replace('/', ' ', $this->uri());
+            $tmpUrl = str_replace(':', ' ', $tmpUrl);
+            $tmpUrl = strtolower(RouteType::intToString($type)) . " $tmpUrl";
+            $as = CoreHelper::underscore(CoreHelper::camelcase($tmpUrl));
         }
         $this->_as = $as;
     }
