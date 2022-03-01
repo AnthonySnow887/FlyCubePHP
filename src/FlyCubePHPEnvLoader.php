@@ -19,6 +19,7 @@ use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
 $env_file = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::CONFIG_DIR, Config::ENV_FILE_NAME);
 $key_file = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::CONFIG_DIR, "secret.key");
 Config::instance()->loadEnv($env_file);
-if (Config::instance()->isProduction() === true
-    && Config::instance()->loadSecretKey($key_file) !== true)
-    Config::instance()->setArg(Config::TAG_ENV_TYPE, 'development');
+if (Config::instance()->isProduction() === true) {
+    if (Config::instance()->loadSecretKey($key_file) !== true)
+        Config::instance()->setArg(Config::TAG_ENV_TYPE, 'development');
+}
