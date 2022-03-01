@@ -2373,6 +2373,13 @@ function assetsPrecompile(bool $skipRendering = false) {
         return;
     }
 
+    if (\FlyCubePHP\Core\Config\Config::instance()->hasErrors() === true) {
+        foreach (\FlyCubePHP\Core\Config\Config::instance()->errors() as $error)
+            echo "ERROR: $error\r\n";
+
+        echo "\r\n";
+    }
+
     // --- pre-build assets ---
     echo "Build javascripts:\r\n";
     $jsAssets = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->javascriptList();

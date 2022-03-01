@@ -53,6 +53,7 @@ class Config
 
     private $_args = array();
     private $_secretKey = "";
+    private $_errors = array();
 
     /**
      * gets the instance via lazy initialization (created on first usage)
@@ -85,31 +86,57 @@ class Config
     }
 
     /**
+     * Есть ли ошибки загрузчика конфигурационного файла?
+     * @return bool
+     */
+    public function hasErrors(): bool {
+        return !empty($this->_errors);
+    }
+
+    /**
+     * Список сообщений об ошибках
+     * @return array
+     */
+    public function errors(): array {
+        return $this->_errors;
+    }
+
+    /**
      * Загрузить файл с переменными окружения
      * @param string $filePath
+     * @return bool
      */
-    public function loadEnv(string $filePath) {
-        if (!file_exists($filePath))
-            return;
+    public function loadEnv(string $filePath): bool {
+        if (!file_exists($filePath)) {
+            $this->_errors[] = 'Not found application env config file!';
+            return false;
+        }
         $tmp_env = $this->parseEnv($filePath);
         foreach ($tmp_env as $key => $value) {
             putenv("$key=$value");
             $this->setArg($key, $value);
         }
+        return true;
     }
 
     /**
      * Загрузить секретный ключ приложения
      * @param string $filePath
+     * @return bool
      */
-    public function loadSecretKey(string $filePath) {
-        if (!is_file($filePath) || !is_readable($filePath))
-            throw new \RuntimeException('[Config] Not found server secret key!');
+    public function loadSecretKey(string $filePath): bool {
+        if (!is_file($filePath) || !is_readable($filePath)) {
+            $this->_errors[] = 'Not found server secret key!';
+            return false;
+        }
 
         $keyData = file_get_contents($filePath);
         $this->_secretKey = trim($keyData);
-        if (empty($this->_secretKey))
-            throw new \RuntimeException('[Config] Invalid server secret key!');
+        if (empty($this->_secretKey)) {
+            $this->_errors[] = 'Invalid server secret key!';
+            return false;
+        }
+        return true;
     }
 
     /**
