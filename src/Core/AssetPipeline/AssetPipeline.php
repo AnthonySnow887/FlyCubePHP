@@ -33,6 +33,7 @@ class AssetPipeline
 
     private $_useCompression = false;
     private $_compressionType = "";
+    private $_cacheMaxAge = 0;
 
     const CORE_JS_DIR       = __DIR__."/../../assets/javascripts/";
     const CORE_CSS_DIR      = __DIR__."/../../assets/stylesheets/";
@@ -63,11 +64,19 @@ class AssetPipeline
         $defVal = Config::instance()->isProduction();
         $this->_useCompression = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSETS_COMPRESSION, $defVal));
         $this->_compressionType = \FlyCubePHP\configValue(Config::TAG_ASSETS_COMPRESSION_TYPE, "gzip");
+        $this->_cacheMaxAge = intval(\FlyCubePHP\configValue(Config::TAG_ASSETS_CACHE_MAX_AGE, 31536000));
         if (strcmp($this->_compressionType, "gzip") !== 0
             && strcmp($this->_compressionType, "deflate") !== 0)
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
                 'message' => "Invalid assets compression type (value: \"".$this->_compressionType."\")!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        if ($this->_cacheMaxAge <= 0)
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Invalid assets cache control mag age value (value: \"".$this->_cacheMaxAge."\")!",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
@@ -491,10 +500,16 @@ class AssetPipeline
     private function sendAsset(string $realPath, string $compressedRealPath, string $eTag) {
         $fExt = pathinfo($realPath, PATHINFO_EXTENSION);
         $fType = $fExt;
-        if (strcmp($fType, "js") === 0)
-            $fType = "javascript";
-
         $cType = "text/$fType";
+        $supportCompression = false;
+        if (strcmp($fType, "js") === 0) {
+            $cType = "application/javascript";
+            $supportCompression = true;
+        }
+        if (strcmp($fType, "css") === 0) {
+            $cType = "text/css";
+            $supportCompression = true;
+        }
         if (strcmp($fType, "png") === 0
             || strcmp($fType, "jpg") === 0
             || strcmp($fType, "jpeg") === 0
@@ -526,7 +541,7 @@ class AssetPipeline
 
             // --- check Accept-Encoding ---
             $contentEncodingHeader = "";
-            if ($this->_useCompression === true && strpos($cType, "text/") !== false) {
+            if ($this->_useCompression === true && $supportCompression === true) {
                 $acceptEncoding = trim(RouteCollector::currentRouteHeader('Accept-Encoding'));
                 if (!empty($acceptEncoding)
                     && strpos($acceptEncoding, $this->_compressionType) !== false
@@ -540,12 +555,12 @@ class AssetPipeline
             // --- send data ---
             header($_SERVER["SERVER_PROTOCOL"] . " 200 OK");
             header("Accept-Ranges: bytes");
+            header("Cache-Control: public, max-age=" . $this->_cacheMaxAge);
             header("Content-Length: ".filesize($realPath));
             header("Content-Type: $cType");
             header("Date: ".gmdate('D, d M Y H:i:s', time())." GMT");
             header("ETag: \"$eTag\"");
             header("Last-Modified: ".gmdate('D, d M Y H:i:s', $lastModified)." GMT");
-            header("Connection: close");
             if (!empty($contentEncodingHeader))
                 header("Content-Encoding: $contentEncodingHeader");
 

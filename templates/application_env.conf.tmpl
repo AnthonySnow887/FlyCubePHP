@@ -175,20 +175,23 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #
 # --- asset pipeline settings ---
 #
-# In production mode:
-#  - enable compression             - default true (enable/disable assets compression)
-#  - compression type               - default gzip (set assets compression type)
-#
-# In development mode:
-#  - enable compression             - default false (enable/disable assets compression)
-#  - compression type               - default gzip (set assets compression type)
-#
 # Supported compression types:
 #  - gzip
 #  - deflate
 #
+# In production mode:
+#  - enable compression             - default true (enable/disable assets compression)
+#  - compression type               - default gzip (set assets compression type)
+#  - cache max age sec              - default 31536000 (set HTTP header Cache-Control max-age value)
+#
+# In development mode:
+#  - enable compression             - default false (enable/disable assets compression)
+#  - compression type               - default gzip (set assets compression type)
+#  - cache max age sec              - default 31536000 (set HTTP header Cache-Control max-age value)
+#
 #FLY_CUBE_PHP_ENABLE_ASSETS_COMPRESSION: true
 #FLY_CUBE_PHP_ASSETS_COMPRESSION_TYPE: gzip
+#FLY_CUBE_PHP_ASSETS_CACHE_MAX_AGE_SEC: 31536000
 
 #
 # --- action cable settings ---
