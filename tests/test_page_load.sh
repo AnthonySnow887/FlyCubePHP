@@ -140,5 +140,5 @@ echo "TOTAL: $summ sec (for $check_iterations iterations)"
 #
 # calculate result
 #
-mean=`awk "BEGIN{ print $summ / $check_iterations }"`
-echo " MEAN: $mean sec"
+avg=`awk "BEGIN{ print $summ / $check_iterations }"`
+echo "  AVG: $avg sec"
