@@ -41,15 +41,15 @@ class RouteType extends \FlyCubePHP\HelperClasses\Enum {
         if (empty($val))
             return -1;
         $tmpVal = strtolower($val);
-        if ($tmpVal == "get")
+        if (strcmp($tmpVal, "get") === 0 || strcmp($tmpVal, "head") === 0)
             return RouteType::GET;
-        elseif ($tmpVal == "post")
+        elseif (strcmp($tmpVal, "post") === 0)
             return RouteType::POST;
-        elseif ($tmpVal == "put")
+        elseif (strcmp($tmpVal, "put") === 0)
             return RouteType::PUT;
-        elseif ($tmpVal == "patch")
+        elseif (strcmp($tmpVal, "patch") === 0)
             return RouteType::PATCH;
-        elseif ($tmpVal == "delete")
+        elseif (strcmp($tmpVal, "delete") === 0)
             return RouteType::DELETE;
         return -1;
     }

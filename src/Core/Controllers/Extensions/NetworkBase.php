@@ -234,7 +234,10 @@ trait NetworkBase
         while (ob_get_level() !== 0)
             ob_end_clean();
 
-        echo $body;
+        // --- check HTTP request (if HEAD - skip body) ---
+        $httpM = strtolower(RouteCollector::currentRouteMethod());
+        if (strcmp($httpM, 'head') !== 0)
+            echo $body;
     }
 
     /**
@@ -310,7 +313,10 @@ trait NetworkBase
         while (ob_get_level() !== 0)
             ob_end_clean();
 
-        echo $data;
+        // --- check HTTP request (if HEAD - skip body) ---
+        $httpM = strtolower(RouteCollector::currentRouteMethod());
+        if (strcmp($httpM, 'head') !== 0)
+            echo $data;
     }
 
     /**
@@ -369,7 +375,10 @@ trait NetworkBase
         while (ob_get_level() !== 0)
             ob_end_clean();
 
-        echo readfile($path);
+        // --- check HTTP request (if HEAD - skip body) ---
+        $httpM = strtolower(RouteCollector::currentRouteMethod());
+        if (strcmp($httpM, 'head') !== 0)
+            echo readfile($path);
     }
 
     /**

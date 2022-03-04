@@ -133,8 +133,7 @@ class RouteCollector
             return null;
         foreach ($this->_routes as $route) {
             if ($route->type() == RouteType::stringToInt($method)
-                && $route->isRouteMatch($uri) === true
-                /*&& $route->uri() == $uri*/)
+                && $route->isRouteMatch($uri) === true)
                 return $route;
         }
         return null;

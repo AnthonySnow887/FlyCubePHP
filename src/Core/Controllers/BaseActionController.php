@@ -297,7 +297,12 @@ abstract class BaseActionController extends BaseController
 
             $this->_obLevel = 0;
         }
-        echo $pageData;
+
+        // --- check HTTP request (if HEAD - skip body) ---
+        $httpM = strtolower(RouteCollector::currentRouteMethod());
+        if (strcmp($httpM, 'head') !== 0)
+            echo $pageData;
+
         // --- clear ---
         unset($twig);
         unset($loader);
