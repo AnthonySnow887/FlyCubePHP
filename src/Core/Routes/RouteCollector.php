@@ -286,9 +286,9 @@ class RouteCollector
      * Рендеринг контроллера и его метода
      * @param $route
      * @param $controller
-     * @return int
+     * @return float
      */
-    private function processingRender(/*Route|null*/ $route, /*BaseController|null*/ $controller): int {
+    private function processingRender(/*Route|null*/ $route, /*BaseController|null*/ $controller): float {
         if (is_null($route))
             trigger_error("Route object is NULL!", E_USER_ERROR);
 
