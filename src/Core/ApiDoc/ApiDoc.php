@@ -160,13 +160,6 @@ class ApiDoc
             $tmpName = substr($tmpName, 0, strlen($tmpName) - 5);
             if ($tmpName[0] == DIRECTORY_SEPARATOR)
                 $tmpName = ltrim($tmpName, $tmpName[0]);
-            if (!class_exists($tmpName))
-                throw Error::makeError([
-                    'tag' => 'api-doc',
-                    'message' => "Not found php class for api-doc file (needed class: $tmpName)! Path: $doc",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
             if (!array_key_exists($tmpName, $this->_apiDocList))
                 $this->_apiDocList[$tmpName] = $doc;
         }

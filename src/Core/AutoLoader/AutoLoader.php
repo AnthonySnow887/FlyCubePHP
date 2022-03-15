@@ -60,6 +60,8 @@ class AutoLoader
             || !is_dir($dirPath)
             || in_array($dirPath, $this->_dirs))
             return;
+        if (strcmp($dirPath[strlen($dirPath) - 1], DIRECTORY_SEPARATOR) !== 0)
+            $dirPath = $dirPath . DIRECTORY_SEPARATOR;
         $this->_dirs[] = $dirPath;
     }
 

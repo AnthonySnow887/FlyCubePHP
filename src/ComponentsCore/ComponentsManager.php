@@ -16,6 +16,7 @@ include_once 'BaseComponent.php';
 include_once 'DependencyTreeElement.php';
 
 use Exception;
+use FlyCubePHP\Core\AutoLoader\AutoLoader;
 use \FlyCubePHP\Core\Config\Config as Config;
 use \FlyCubePHP\Core\Error\Error as Error;
 use FlyCubePHP\Core\HelpDoc\HelpDoc;
@@ -165,23 +166,12 @@ class ComponentsManager
         $plDirControllers = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::CONTROLLERS_DIR);
 
         // --- load models ---
-        $plModelFiles = CoreHelper::scanDir($plDirModels);
-        foreach ($plModelFiles as $model) {
-            $fExt = pathinfo($model, PATHINFO_EXTENSION);
-            if (strcmp(strtolower($fExt), "php") !== 0)
-                continue;
-            try {
-                include_once $model;
-            } catch (\Exception $e) {
-                throw Error::makeError([
-                    'tag' => 'components-manager',
-                    'message' => $e->getMessage(),
-                    'previous' => $e
-                ]);
-            }
-        }
+        AutoLoader::instance()->appendAutoLoadDir($plDirModels);
 
         // --- load controllers ---
+        AutoLoader::instance()->appendAutoLoadDir($plDirControllers);
+
+        // --- load controllers info ---
         $plControllers = array();
         $plControllerFiles = CoreHelper::scanDir($plDirControllers);
         foreach ($plControllerFiles as $controller) {
@@ -191,7 +181,6 @@ class ComponentsManager
             $ctrlName = substr($ctrlCName, 0, strlen($ctrlCName) - 10);
             $ctrlPath = $controller;
             $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
-            include_once $controller;
         }
         $plugin->setDirectory($plDir);
         $plugin->setControllers($plControllers);
