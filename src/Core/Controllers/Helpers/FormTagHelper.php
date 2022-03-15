@@ -11,7 +11,7 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 include_once __DIR__.'/../../Protection/RequestForgeryProtection.php';
 include_once 'BaseControllerHelper.php';
 
-use \FlyCubePHP\Core\Protection\RequestForgeryProtection as RequestForgeryProtection;
+use FlyCubePHP\Core\Protection\RequestForgeryProtection;
 
 class FormTagHelper extends BaseControllerHelper
 {

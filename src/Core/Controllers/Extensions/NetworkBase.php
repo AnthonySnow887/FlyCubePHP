@@ -11,9 +11,9 @@ namespace FlyCubePHP\Core\Controllers\Extensions;
 include_once __DIR__.'/../../Error/ErrorController.php';
 include_once __DIR__.'/../../Routes/RouteCollector.php';
 
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Error\ErrorController;
 
 trait NetworkBase
 {

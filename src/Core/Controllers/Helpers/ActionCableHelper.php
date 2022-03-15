@@ -3,7 +3,7 @@
 namespace FlyCubePHP\Core\Controllers\Helpers;
 
 use FlyCubePHP\Core\Config\Config;
-use FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 include_once 'BaseControllerHelper.php';
 include_once __DIR__.'/../../Config/Config.php';

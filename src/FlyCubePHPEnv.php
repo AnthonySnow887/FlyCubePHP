@@ -23,17 +23,16 @@ include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 include_once 'FlyCubePHPEnvLoader.php';
 
-use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
-use \FlyCubePHP\Core\HelpDoc\HelpDoc as HelpDoc;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Session\Session as Session;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\AutoLoader\AutoLoader as AutoLoader;
-//use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector; // TODO Remove!
-use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
-use \FlyCubePHP\Core\Controllers\FlashMessages as FlashMessages;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
-use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
+use FlyCubePHP\Core\ApiDoc\ApiDoc;
+use FlyCubePHP\Core\HelpDoc\HelpDoc;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Session\Session;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\AutoLoader\AutoLoader;
+use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\Core\Controllers\FlashMessages;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
+use FlyCubePHP\ComponentsCore\ComponentsManager;
 
 
 // --- include base controllers classes ---

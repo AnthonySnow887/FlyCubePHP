@@ -14,9 +14,9 @@ include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Logger/Logger.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Logger\Logger;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class ErrorHandlingCore
 {

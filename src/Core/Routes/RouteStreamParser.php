@@ -7,8 +7,6 @@ namespace FlyCubePHP\Core\Routes;
 // "------WebKitFormBoundarycpuJ7AJCw5FmD2Aj\r\nContent-Disposition: form-data; name":"\"output\"\r\n\r\njson\r\n\"name\"\r\n\r\nтестовое имя\r\n------WebKitFormBoundarycpuJ7AJCw5FmD2Aj--\r\n"
 //
 
-use FlyCubePHP\Core\Logger\Logger;
-
 class RouteStreamParser
 {
     private $_input;    //!< php raw input stream

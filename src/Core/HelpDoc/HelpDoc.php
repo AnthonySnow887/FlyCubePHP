@@ -5,7 +5,7 @@ namespace FlyCubePHP\Core\HelpDoc;
 include_once 'HelpDocObject.php';
 
 use \Exception;
-use FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\HelperClasses\CoreHelper;
 

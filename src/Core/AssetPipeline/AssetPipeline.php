@@ -16,10 +16,10 @@ include_once 'CSSBuilder.php';
 include_once 'ImageBuilder.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 
 class AssetPipeline
 {

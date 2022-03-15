@@ -3,7 +3,6 @@
 namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Error\BaseErrorHandler;
-use FlyCubePHP\Core\Logger\Logger;
 
 include_once __DIR__.'/../../Core/Error/BaseErrorHandler.php';
 

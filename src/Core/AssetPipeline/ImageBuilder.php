@@ -10,9 +10,8 @@ namespace FlyCubePHP\Core\AssetPipeline;
 
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
-//use Exception;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 
 class ImageBuilder
 {

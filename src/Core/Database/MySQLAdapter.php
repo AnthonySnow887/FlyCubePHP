@@ -2,7 +2,7 @@
 
 namespace FlyCubePHP\Core\Database;
 
-use FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
+use FlyCubePHP\Core\Error\ErrorDatabase;
 
 include_once 'BaseDatabaseAdapter.php';
 

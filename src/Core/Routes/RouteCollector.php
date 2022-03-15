@@ -16,12 +16,10 @@ include_once __DIR__ . '/../Controllers/BaseActionControllerAPI.php';
 include_once __DIR__.'/../Error/ErrorRoutes.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\Core\Error\ErrorController as ErrorController;
-use \FlyCubePHP\Core\Error\ErrorRoutes as ErrorRoutes;
-use \FlyCubePHP\Core\Controllers\BaseController as BaseController;
-use \FlyCubePHP\Core\Controllers\BaseActionController as BaseActionController;
-use \FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Controllers\BaseController;
+use FlyCubePHP\Core\Controllers\BaseActionController;
+use FlyCubePHP\Core\Logger\Logger;
 
 class RouteCollector
 {

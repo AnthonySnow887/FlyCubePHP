@@ -10,7 +10,7 @@ namespace FlyCubePHP\HelperClasses;
 
 include_once __DIR__."/../Core/Routes/RouteCollector.php";
 
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
+use FlyCubePHP\Core\Routes\RouteCollector;
 
 class CoreHelper
 {

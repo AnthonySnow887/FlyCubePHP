@@ -11,8 +11,8 @@ namespace FlyCubePHP\Core\Database;
 include_once __DIR__.'/../Error/ErrorDatabase.php';
 include_once __DIR__.'/../Logger/Logger.php';
 
-use \FlyCubePHP\Core\Logger\Logger as Logger;
-use \FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
+use FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\Core\Error\ErrorDatabase;
 
 abstract class BaseDatabaseAdapter
 {

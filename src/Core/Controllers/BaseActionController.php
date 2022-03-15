@@ -11,12 +11,12 @@ namespace FlyCubePHP\Core\Controllers;
 include_once 'BaseController.php';
 include_once 'ControllerHelperTwigExt.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Protection\CSPProtection as CSPProtection;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\ErrorController;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Protection\CSPProtection;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 
 abstract class BaseActionController extends BaseController
 {

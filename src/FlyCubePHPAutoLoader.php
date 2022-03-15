@@ -3,7 +3,7 @@
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/Core/AutoLoader/AutoLoaderHelper.php';
 
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use \FlyCubePHP\HelperClasses\CoreHelper;
 
 // --- check needed library ---
 $twig_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "Twig-2.x", "Twig");

@@ -11,8 +11,8 @@ namespace FlyCubePHP\Core\Protection;
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class CSPProtection
 {

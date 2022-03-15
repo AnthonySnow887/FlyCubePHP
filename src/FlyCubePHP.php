@@ -15,10 +15,8 @@ include_once 'FlyCubePHPEnvLoader.php';
 include_once __DIR__.'/Core/Logger/Logger.php';
 include_once __DIR__.'/Core/AssetPipeline/AssetPipeline.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\Core\Logger\Logger;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 
 function requestProcessing() {
     // --- check if load assets ---

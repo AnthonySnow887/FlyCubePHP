@@ -14,9 +14,9 @@ include_once __DIR__.'/../Error/ErrorActiveRecord.php';
 
 use FlyCubePHP\Core\Database\BaseDatabaseAdapter;
 use FlyCubePHP\Core\Error\ErrorActiveRecord;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
-use \FlyCubePHP\Core\Error\ErrorDatabase as ErrorDatabase;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\Core\Error\ErrorDatabase;
 
 abstract class ActiveRecord
 {

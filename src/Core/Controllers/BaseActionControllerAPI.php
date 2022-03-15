@@ -11,10 +11,10 @@ namespace FlyCubePHP\Core\Controllers;
 include_once 'BaseController.php';
 include_once __DIR__.'/../Error/ErrorController.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Error\ErrorController;
 
 class BaseActionControllerAPI extends BaseController
 {

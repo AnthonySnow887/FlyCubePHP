@@ -17,13 +17,13 @@ include_once 'DependencyTreeElement.php';
 
 use Exception;
 use FlyCubePHP\Core\AutoLoader\AutoLoader;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Error\Error as Error;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\Core\HelpDoc\HelpDoc;
-use \FlyCubePHP\Core\Logger\Logger as Logger;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
-use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
+use FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
+use FlyCubePHP\Core\ApiDoc\ApiDoc;
 
 class ComponentsManager
 {

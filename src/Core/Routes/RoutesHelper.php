@@ -10,9 +10,9 @@ namespace FlyCubePHP;
 
 include_once 'RouteCollector.php';
 
-use \FlyCubePHP\Core\Routes\Route as Route;
-use \FlyCubePHP\Core\Routes\RouteType as RouteType;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
+use FlyCubePHP\Core\Routes\Route;
+use FlyCubePHP\Core\Routes\RouteType;
+use FlyCubePHP\Core\Routes\RouteCollector;
 
 /**
  * Задать root url

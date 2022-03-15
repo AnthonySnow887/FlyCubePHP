@@ -2,8 +2,6 @@
 
 namespace FlyCubePHP\Network;
 
-use FlyCubePHP\Core\Routes\RouteCollector;
-
 class HttpResponse
 {
     private $_url = "";

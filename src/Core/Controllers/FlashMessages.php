@@ -11,7 +11,7 @@ namespace FlyCubePHP\Core\Controllers;
 include_once __DIR__.'/../Session/Session.php';
 
 use Exception;
-use \FlyCubePHP\Core\Session\Session as Session;
+use FlyCubePHP\Core\Session\Session;
 
 class FlashMessages
 {

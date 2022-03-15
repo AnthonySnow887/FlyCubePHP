@@ -14,10 +14,10 @@ include_once __DIR__.'/../Session/Session.php';
 include_once __DIR__.'/../Error/Error.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Session\Session as Session;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Session\Session;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
 
 
 class RequestForgeryProtection

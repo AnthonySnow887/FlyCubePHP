@@ -21,10 +21,10 @@ include_once 'Helpers/StylesheetTagHelper.php';
 include_once 'Helpers/ProtectionTagHelper.php';
 include_once 'Helpers/FormTagHelper.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
-use \FlyCubePHP\Core\Controllers\Helpers\BaseControllerHelper as BaseControllerHelper;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\ErrorController;
+use FlyCubePHP\Core\Controllers\Helpers\BaseControllerHelper;
 
 class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
 {

@@ -11,7 +11,7 @@ namespace FlyCubePHP\Core\Migration;
 include_once __DIR__.'/../Database/DatabaseFactory.php';
 include_once 'BaseMigrator.php';
 
-use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
+use FlyCubePHP\Core\Database\DatabaseFactory;
 
 class SchemaDumper
 {

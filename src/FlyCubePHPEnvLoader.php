@@ -10,16 +10,15 @@ include_once __DIR__.'/Core/Config/ConfigHelper.php';
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
+use \FlyCubePHP\Core\Config\Config;
+use \FlyCubePHP\HelperClasses\CoreHelper;
+use \FlyCubePHP\ComponentsCore\ComponentsManager;
 
 
 // --- load env values ---
 $env_file = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::CONFIG_DIR, Config::ENV_FILE_NAME);
 $key_file = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::CONFIG_DIR, "secret.key");
 Config::instance()->loadEnv($env_file);
-if (Config::instance()->isProduction() === true) {
-    if (Config::instance()->loadSecretKey($key_file) !== true)
-        Config::instance()->setArg(Config::TAG_ENV_TYPE, 'development');
-}
+if (Config::instance()->isProduction() === true
+    && Config::instance()->loadSecretKey($key_file) !== true)
+    Config::instance()->setArg(Config::TAG_ENV_TYPE, 'development');

@@ -11,7 +11,7 @@ namespace FlyCubePHP\Core\Migration;
 include_once 'BaseMigrator.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class SQLiteMigrator extends BaseMigrator
 {

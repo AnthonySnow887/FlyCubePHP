@@ -16,9 +16,9 @@ include_once __DIR__.'/../Error/ErrorController.php';
 include_once __DIR__.'/../../HelperClasses/MimeTypes.php';
 
 use FlyCubePHP\Core\Routes\RouteCollector;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
-use \FlyCubePHP\Core\Protection\RequestForgeryProtection as RequestForgeryProtection;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\ErrorController;
+use FlyCubePHP\Core\Protection\RequestForgeryProtection;
 
 abstract class BaseController
 {

@@ -10,7 +10,6 @@ namespace FlyCubePHP\WebSockets\Server;
 
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Session\Session;
-use FlyCubePHP\HelperClasses\CoreHelper;
 
 class WSWorker
 {

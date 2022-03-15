@@ -9,7 +9,7 @@
 namespace FlyCubePHP\Core\AutoLoader;
 
 use Exception;
-use FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class AutoLoader
 {

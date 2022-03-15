@@ -11,8 +11,8 @@ namespace FlyCubePHP\Core\Migration;
 include_once __DIR__.'/../Database/DatabaseFactory.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Database\BaseDatabaseAdapter as BaseDatabaseAdapter;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Database\BaseDatabaseAdapter;
 
 abstract class BaseMigrator
 {
