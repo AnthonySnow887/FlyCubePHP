@@ -375,7 +375,6 @@ class ComponentsManager
                 $tree_str = $this->dependencyTreeToString($tree);
                 $this->logMessage(Logger::ERROR, "[ComponentsManager] Cyclic tree:\n$tree_str");
             }
-            $this->_cachePluginsDepTree[$plugin->name()] = serialize($tree);
             unset($tree);
             return false;
         }
