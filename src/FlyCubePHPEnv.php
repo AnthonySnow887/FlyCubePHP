@@ -133,6 +133,8 @@ if ($enablePluginsCore === true) {
 
     if (!ComponentsManager::instance()->initPlugins())
         trigger_error("Init plugins failed!", E_USER_ERROR);
+
+    ComponentsManager::instance()->saveCache();
 }
 
 // --- load api-doc ---

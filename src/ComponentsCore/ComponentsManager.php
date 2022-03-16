@@ -19,6 +19,7 @@ use Exception;
 use FlyCubePHP\Core\AutoLoader\AutoLoader;
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Error\Error;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use FlyCubePHP\Core\HelpDoc\HelpDoc;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
@@ -29,10 +30,18 @@ class ComponentsManager
 {
     private static $_instance = null;
 
+    const SETTINGS_DIR = "tmp/cache/FlyCubePHP/components_manager/";
+    const CACHE_LIST_FILE = "cache_list.json";
+
     private $_state = CMState::NOT_LOADED;
     private $_plugins_dir = "";
     private $_plugins = array();
     private $_ignore_list = array();
+
+    private $_cachePluginsInit = array();
+    private $_cachePluginsControllers = array();
+    private $_cachePluginsDepTree = array();
+    private $_rebuildCache = false;
 
     const IGNORE_LIST_NAME = "ignore-list.conf";
     const PLUGINS_DIR = "plugins";
@@ -58,6 +67,9 @@ class ComponentsManager
      * to use the singleton, you have to obtain the instance from Singleton::instance() instead
      */
     private function __construct() {
+        $defVal = !Config::instance()->isProduction();
+        $this->_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
+        $this->loadCacheList();
     }
 
     /**
@@ -173,14 +185,19 @@ class ComponentsManager
 
         // --- load controllers info ---
         $plControllers = array();
-        $plControllerFiles = CoreHelper::scanDir($plDirControllers);
-        foreach ($plControllerFiles as $controller) {
-            if (!preg_match("/^.*Controller\.php$/", $controller))
-                continue;
-            $ctrlCName = CoreHelper::fileName($controller, true);
-            $ctrlName = substr($ctrlCName, 0, strlen($ctrlCName) - 10);
-            $ctrlPath = $controller;
-            $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
+        if (Config::instance()->isProduction() && !$this->_rebuildCache) {
+            $plControllers = $this->_cachePluginsControllers[$plugin->name()] ?? [];
+        } else {
+            $plControllerFiles = CoreHelper::scanDir($plDirControllers);
+            foreach ($plControllerFiles as $controller) {
+                if (!preg_match("/^.*Controller\.php$/", $controller))
+                    continue;
+                $ctrlCName = CoreHelper::fileName($controller, true);
+                $ctrlName = substr($ctrlCName, 0, strlen($ctrlCName) - 10);
+                $ctrlPath = $controller;
+                $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
+            }
+            $this->_cachePluginsControllers[$plugin->name()] = $plControllers;
         }
         $plugin->setDirectory($plDir);
         $plugin->setControllers($plControllers);
@@ -221,25 +238,41 @@ class ComponentsManager
         if ($this->_state != CMState::NOT_LOADED)
             return false;
 
+        $this->_plugins_dir = $dir;
         $this->loadIgnoreList(CoreHelper::buildPath(CoreHelper::rootDir(), "config"));
 
-        $this->_plugins_dir = $dir;
-        $dirLst = scandir($dir);
-        foreach ($dirLst as $chDir) {
-            if (in_array($chDir,array(".","..")))
-                continue;
-            if (in_array($chDir, $this->_ignore_list))
-                continue;
-            if (is_dir(CoreHelper::buildPath($dir, $chDir))
-                && file_exists(CoreHelper::buildPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE))) {
+        if (Config::instance()->isProduction() && !$this->_rebuildCache) {
+            foreach ($this->_cachePluginsInit as $initFile) {
                 try {
-                    include_once CoreHelper::buildPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
+                    include_once $initFile;
                 } catch (\Exception $e) {
                     throw Error::makeError([
                         'tag' => 'components-manager',
                         'message' => $e->getMessage(),
                         'previous' => $e
                     ]);
+                }
+            }
+        } else {
+            $dirLst = scandir($dir);
+            foreach ($dirLst as $chDir) {
+                if (in_array($chDir, array(".", "..")))
+                    continue;
+                if (in_array($chDir, $this->_ignore_list))
+                    continue;
+                $tmpDir = CoreHelper::buildPath($dir, $chDir);
+                $tmpInitFile = CoreHelper::buildPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
+                if (is_dir($tmpDir) && file_exists($tmpInitFile)) {
+                    try {
+                        include_once $tmpInitFile;
+                        $this->_cachePluginsInit[] = $tmpInitFile;
+                    } catch (\Exception $e) {
+                        throw Error::makeError([
+                            'tag' => 'components-manager',
+                            'message' => $e->getMessage(),
+                            'previous' => $e
+                        ]);
+                    }
                 }
             }
         }
@@ -276,7 +309,18 @@ class ComponentsManager
         return ($init_success > 0);
     }
 
-
+    /**
+     * Метод сохранения кэшированных данных
+     *
+     * ПРИМЕЧАНИЕ: используется системой! Использование запрещено!
+     */
+    public function saveCache() {
+        if ($this->_state != CMState::INITIALIZED)
+            return;
+        if (!$this->_rebuildCache)
+            return;
+        $this->updateCacheList();
+    }
 
     //--- private ---
 
@@ -332,6 +376,7 @@ class ComponentsManager
                 $tree_str = $this->dependencyTreeToString($tree);
                 $this->logMessage(Logger::ERROR, "[ComponentsManager] Cyclic tree:\n$tree_str");
             }
+            $this->_cachePluginsDepTree[$plugin->name()] = serialize($tree);
             unset($tree);
             return false;
         }
@@ -777,5 +822,48 @@ class ComponentsManager
     private function logMessage(int $logLevel, string $message) {
         foreach (preg_split("/((\r?\n)|(\r\n?))/", $message) as $line)
             Logger::log($logLevel, $line);
+    }
+
+    /**
+     * Загрузить список кэш файлов
+     * @throws
+     */
+    private function loadCacheList() {
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
+
+        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
+        if (!file_exists($fPath)) {
+            $this->updateCacheList();
+            return;
+        }
+        $fData = file_get_contents($fPath);
+        $cacheList = json_decode($fData, true);
+        $this->_cachePluginsInit = $cacheList['plugins-init'];
+        $this->_cachePluginsControllers = $cacheList['plugins-controllers'];
+        $this->_cachePluginsDepTree = $cacheList['plugins-dep-tree'];
+    }
+
+    /**
+     * Обновить и сохранить список кэш файлов
+     * @throws
+     */
+    private function updateCacheList() {
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
+
+        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
+        $fData = json_encode([
+            'plugins-init' => $this->_cachePluginsInit,
+            'plugins-controllers' => $this->_cachePluginsControllers,
+            'plugins-dep-tree' => $this->_cachePluginsDepTree
+        ]);
+        $tmpFile = tempnam($dirPath, basename($fPath));
+        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))
+            @chmod($fPath, 0666 & ~umask());
+        else
+            trigger_error("[ComponentsManager] Write file for cache settings failed! Path: $fPath", E_USER_ERROR);
     }
 }
