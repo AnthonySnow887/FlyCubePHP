@@ -158,7 +158,7 @@ class RouteStreamParser
         preg_match('/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s', $string, $match);
         if (!empty($match))
             return [
-                $match[1] => (isset($match[2]) && !empty($match[2]) ? $match[2] : '')
+                $match[1] => $match[2] ?? ''
             ];
 
         return [];
@@ -205,20 +205,14 @@ class RouteStreamParser
             return [];
         if (preg_match('/(.*?)\[(.*?)\]/i', $match[1], $tmp)) {
             if (empty($tmp)) {
-                $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+                $data[$match[1]] = $match[2] ?? '';
             } else {
                 $data[$tmp[1]] = [];
-                $data[$tmp[1]][$tmp[2]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+                $data[$tmp[1]][$tmp[2]] = $match[2] ?? '';
             }
         } else {
-            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+            $data[$match[1]] = $match[2] ?? '';
         }
-
-//        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp))
-//            $data[$tmp[1]][] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
-//        else
-//            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
-
         return $data;
     }
 
