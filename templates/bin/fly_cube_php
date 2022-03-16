@@ -2362,6 +2362,12 @@ function createPluginModel($pluginName, $name) {
  */
 function assetsPrecompile(bool $skipRendering = false) {
     chdir(__DIR__."/../"); // go to app root
+    
+    // --- reset settings ---
+    $defVal = !\FlyCubePHP\Core\Config\Config::instance()->isProduction();
+    $useRebuildCache = \FlyCubePHP\HelperClasses\CoreHelper::toBool(\FlyCubePHP\configValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $defVal));
+    \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, true);
+    
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
     if (!class_exists("\FlyCubePHP\Core\Routes\RouteCollector")) {
@@ -2403,6 +2409,10 @@ function assetsPrecompile(bool $skipRendering = false) {
         echo "OK\r\n";
     }
 
+    // --- restore settings ---
+    \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $useRebuildCache);
+    \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->resetCacheSettings();
+    
     // --- pre-build Twig templates ---
     if ($skipRendering === true) {
         echo "\r\nNOTE: Controller and template rendering is skipped.\r\n";

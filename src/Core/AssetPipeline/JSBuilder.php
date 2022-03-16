@@ -141,6 +141,8 @@ class JSBuilder
             || in_array($dir, $this->_jsDirs))
             return;
         $this->_jsDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpJS = CoreHelper::scanDir($dir, true);
         foreach ($tmpJS as $js) {
             $tmpName = CoreHelper::buildAppPath($js);
@@ -679,7 +681,9 @@ class JSBuilder
             return;
         }
         $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_jsList = $cacheList['js-files'];
     }
 
     /**
@@ -697,7 +701,7 @@ class JSBuilder
             ]);
 
         $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', JSBuilder::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
+        $fData = json_encode([ 'cache-files' => $this->_cacheList, 'js-files' => $this->_jsList ]);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
             @chmod($fPath, 0666 & ~umask());

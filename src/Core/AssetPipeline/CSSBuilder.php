@@ -143,6 +143,8 @@ class CSSBuilder
             || in_array($dir, $this->_cssDirs))
             return;
         $this->_cssDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpCss = CoreHelper::scanDir($dir, true);
         foreach ($tmpCss as $css) {
             $tmpName = CoreHelper::buildAppPath($css);
@@ -672,7 +674,9 @@ class CSSBuilder
             return;
         }
         $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_cssList = $cacheList['css-files'];
     }
 
     /**
@@ -690,7 +694,7 @@ class CSSBuilder
             ]);
 
         $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
+        $fData = json_encode([ 'cache-files' => $this->_cacheList, 'css-files' => $this->_cssList ]);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
             @chmod($fPath, 0666 & ~umask());

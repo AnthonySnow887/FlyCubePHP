@@ -113,6 +113,7 @@ class AssetPipeline
 
         // --- create image-builder ---
         $this->_imageBuilder = new ImageBuilder();
+        $this->_imageBuilder->setRebuildCache($use_rebuildCache);
 
         // --- append FlyCubePHP assets ---
         $this->appendJavascriptDir(AssetPipeline::CORE_JS_DIR);
@@ -132,6 +133,21 @@ class AssetPipeline
      */
     public function __wakeup() {
         throw new \Exception("Cannot unserialize singleton");
+    }
+
+    /**
+     * Перезапросить и переустановить настройки кэширования
+     */
+    public function resetCacheSettings() {
+        $defVal = !Config::instance()->isProduction();
+        $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
+
+        if ($this->_jsBuilder)
+            $this->_jsBuilder->setRebuildCache($use_rebuildCache);
+        if ($this->_cssBuilder)
+            $this->_cssBuilder->setRebuildCache($use_rebuildCache);
+        if ($this->_imageBuilder)
+            $this->_imageBuilder->setRebuildCache($use_rebuildCache);
     }
 
     /**

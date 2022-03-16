@@ -32,7 +32,7 @@ function test_page_load() {
     #
     #`time -p wget -q -E -p -np --no-cache --no-cookies -e robots=off --user-agent="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0" http://$host/$url_prefix &> time_wget_output_test.txt`
     
-    `time -p wget -q -p -np --no-cache -e robots=off --user-agent="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0" http://$host/$url_prefix &> time_wget_output_test.txt`
+    `time -p wget -p -np --no-cache -e robots=off --user-agent="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0" http://$host/$url_prefix &> time_wget_output_test.txt`
 
     local real=`cat time_wget_output_test.txt | grep real | sed -e 's/real//g' | sed -e "s/[[:space:]]\+//g"`
     #user=`cat time_wget_output_test.txt | grep user | sed -e 's/user//g' | sed -e "s/[[:space:]]\+//g"`
