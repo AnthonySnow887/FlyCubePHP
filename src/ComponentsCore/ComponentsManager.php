@@ -19,7 +19,6 @@ use Exception;
 use FlyCubePHP\Core\AutoLoader\AutoLoader;
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Error\Error;
-use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use FlyCubePHP\Core\HelpDoc\HelpDoc;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
