@@ -150,6 +150,8 @@ class ApiDoc
             || in_array($dir, $this->_apiDocDirs))
             return;
         $this->_apiDocDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpApiDocLst = CoreHelper::scanDir($dir, true);
         foreach ($tmpApiDocLst as $doc) {
             $tmpName = CoreHelper::buildAppPath($doc);
@@ -162,6 +164,7 @@ class ApiDoc
             if (!array_key_exists($tmpName, $this->_apiDocList))
                 $this->_apiDocList[$tmpName] = $doc;
         }
+        $this->updateCacheList();
     }
 
     /**
@@ -184,7 +187,9 @@ class ApiDoc
             return;
         }
         $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_apiDocList = $cacheList['api-files'];
     }
 
     /**
@@ -202,7 +207,7 @@ class ApiDoc
             ]);
 
         $fPath = CoreHelper::buildPath($dirPath, hash('sha256', ApiDoc::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
+        $fData = json_encode([ 'cache-files' => $this->_cacheList, 'api-files' => $this->_apiDocList ]);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
             @chmod($fPath, 0666 & ~umask());

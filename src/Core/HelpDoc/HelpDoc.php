@@ -149,6 +149,8 @@ class HelpDoc
             || in_array($dir, $this->_helpDocDirs))
             return;
         $this->_helpDocDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpHelpDocLst = CoreHelper::scanDir($dir, true);
         foreach ($tmpHelpDocLst as $doc) {
             $tmpName = CoreHelper::buildAppPath($doc);
@@ -161,6 +163,7 @@ class HelpDoc
             if (!array_key_exists($tmpName, $this->_helpDocList))
                 $this->_helpDocList[$tmpName] = $doc;
         }
+        $this->updateCacheList();
     }
 
     /**
@@ -183,7 +186,9 @@ class HelpDoc
             return;
         }
         $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_helpDocList = $cacheList['hlp-files'];
     }
 
     /**
@@ -201,7 +206,7 @@ class HelpDoc
             ]);
 
         $fPath = CoreHelper::buildPath($dirPath, hash('sha256', HelpDoc::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
+        $fData = json_encode([ 'cache-files' => $this->_cacheList, 'hlp-files' => $this->_helpDocList ]);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
             @chmod($fPath, 0666 & ~umask());
