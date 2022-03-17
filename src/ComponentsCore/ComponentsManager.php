@@ -37,9 +37,9 @@ class ComponentsManager
     private $_plugins = array();
     private $_ignore_list = array();
 
-    private $_cachePluginsInit = array();
-    private $_cachePluginsControllers = array();
-    private $_cachePluginsDepTree = array();
+    private $_pluginsRootFiles = array();
+    private $_pluginsSettings = array();
+    private $_pluginsInitQueue = array();
     private $_rebuildCache = false;
 
     const IGNORE_LIST_NAME = "ignore-list.conf";
@@ -160,33 +160,33 @@ class ComponentsManager
             trigger_error("[ComponentsManager] Append plugin failed! Plugin with name \"$plName\" already added!", E_USER_ERROR);
         }
 
-        $tmpRef = new \ReflectionClass($plugin);
-        $tmpPathStr = $tmpRef->getFilename();
-        unset($tmpRef);
-        $tmpPathStr = str_replace($this->_plugins_dir, "", $tmpPathStr);
-        if ($tmpPathStr[0] == DIRECTORY_SEPARATOR)
-            $tmpPathStr = ltrim($tmpPathStr, $tmpPathStr[0]);
-        $tmpPathLst = explode(DIRECTORY_SEPARATOR, $tmpPathStr);
-        if (count($tmpPathLst) > 0)
-            array_pop($tmpPathLst);
-
-        // --- get plugin dir and load plugin models and controllers ---
-        $plDir = CoreHelper::buildPath($tmpPathLst);
-        $plDirFull = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::PLUGINS_DIR, $plDir);
-        $plDirModels = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::MODELS_DIR);
-        $plDirControllers = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::CONTROLLERS_DIR);
-
-        // --- load models ---
-        AutoLoader::instance()->appendAutoLoadDir($plDirModels);
-
-        // --- load controllers ---
-        AutoLoader::instance()->appendAutoLoadDir($plDirControllers);
-
-        // --- load controllers info ---
-        $plControllers = array();
+        $tmpPluginCacheId = $this->pluginCacheId($plugin);
         if (Config::instance()->isProduction() && !$this->_rebuildCache) {
-            $plControllers = $this->_cachePluginsControllers[$plugin->name()] ?? [];
+            $plDir = $this->_pluginsSettings[$tmpPluginCacheId]['dir'] ?? "";
+            $plDirModels = $this->_pluginsSettings[$tmpPluginCacheId]['dir-models'] ?? "";
+            $plDirControllers = $this->_pluginsSettings[$tmpPluginCacheId]['dir-controllers'] ?? "";
+            $plControllers = $this->_pluginsSettings[$tmpPluginCacheId]['controllers'] ?? [];
+            if (array_key_exists($tmpPluginCacheId, $this->_pluginsInitQueue))
+                $this->_pluginsInitQueue[$tmpPluginCacheId] = $plugin;
         } else {
+            $tmpRef = new \ReflectionClass($plugin);
+            $tmpPathStr = $tmpRef->getFilename();
+            unset($tmpRef);
+            $tmpPathStr = str_replace($this->_plugins_dir, "", $tmpPathStr);
+            if ($tmpPathStr[0] == DIRECTORY_SEPARATOR)
+                $tmpPathStr = ltrim($tmpPathStr, $tmpPathStr[0]);
+            $tmpPathLst = explode(DIRECTORY_SEPARATOR, $tmpPathStr);
+            if (count($tmpPathLst) > 0)
+                array_pop($tmpPathLst);
+
+            // --- get plugin dir and load plugin models and controllers ---
+            $plDir = CoreHelper::buildPath($tmpPathLst);
+            $plDirFull = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::PLUGINS_DIR, $plDir);
+            $plDirModels = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::MODELS_DIR);
+            $plDirControllers = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::CONTROLLERS_DIR);
+
+            // --- load controllers info & make production init queue ---
+            $plControllers = [];
             $plControllerFiles = CoreHelper::scanDir($plDirControllers);
             foreach ($plControllerFiles as $controller) {
                 if (!preg_match("/^.*Controller\.php$/", $controller))
@@ -196,8 +196,102 @@ class ComponentsManager
                 $ctrlPath = $controller;
                 $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
             }
-            $this->_cachePluginsControllers[$plugin->name()] = $plControllers;
+
+            // --- plugin routes ---
+            $pl_routes = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                ComponentsManager::CONFIG_DIR,
+                ComponentsManager::PLUGIN_ROUTES_FILE);
+
+            // --- plugin js files ---
+            $pl_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "app", "assets", "javascripts");
+
+            // --- plugin css|scss files ---
+            $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "app", "assets", "stylesheets");
+
+            // --- plugin images ---
+            $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "app", "assets", "images");
+
+            // --- plugin views ---
+            $pl_views_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "app", "views");
+            $pl_views_dirs = [];
+            $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, false, true);
+            foreach ($pl_views_dir_lst as $vDir) {
+                if (!is_dir($vDir))
+                    continue;
+                $pl_views_dirs[] = $vDir;
+            }
+
+            // --- plugin lib/js files ---
+            $pl_lib_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "lib", "assets", "javascripts");
+
+            // --- plugin lib/css|scss files ---
+            $pl_lib_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "lib", "assets", "stylesheets");
+
+            // --- plugin lib/images ---
+            $pl_lib_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "lib", "assets", "images");
+
+            // --- plugin api-doc files ---
+            $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "doc", "api");
+
+            // --- plugin help-doc files ---
+            $pl_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+                ComponentsManager::PLUGINS_DIR,
+                $plDir,
+                "doc", "help");
+
+            $pl_help_doc_img_dir = CoreHelper::buildPath($pl_help_doc_dir, "images");
+
+            // --- save plugins settings ---
+            $this->_pluginsSettings[$tmpPluginCacheId] = [
+                'dir' => $plDir,
+                'dir-full' => $plDirFull,
+                'dir-models' => $plDirModels,
+                'dir-controllers' => $plDirControllers,
+                'controllers' => $plControllers,
+                'routes' => $pl_routes,
+                'js-dir' => $pl_js_dir,
+                'css-dir' => $pl_css_dir,
+                'image-dir' => $pl_image_dir,
+                'views-dirs' => $pl_views_dirs,
+                'lib-js-dir' => $pl_lib_js_dir,
+                'lib-css-dir' => $pl_lib_css_dir,
+                'lib-image-dir' => $pl_lib_image_dir,
+                'api-doc-dir' => $pl_api_doc_dir,
+                'help-doc-dir' => $pl_help_doc_dir,
+                'help-doc-image-dir' => $pl_help_doc_img_dir
+            ];
         }
+        // --- load models ---
+        AutoLoader::instance()->appendAutoLoadDir($plDirModels);
+        // --- load controllers ---
+        AutoLoader::instance()->appendAutoLoadDir($plDirControllers);
+        // --- set settings in plugin ---
         $plugin->setDirectory($plDir);
         $plugin->setControllers($plControllers);
         $this->_plugins[$plugin->name()] = $plugin;
@@ -241,17 +335,8 @@ class ComponentsManager
         $this->loadIgnoreList(CoreHelper::buildPath(CoreHelper::rootDir(), "config"));
 
         if (Config::instance()->isProduction() && !$this->_rebuildCache) {
-            foreach ($this->_cachePluginsInit as $initFile) {
-                try {
-                    include_once $initFile;
-                } catch (\Exception $e) {
-                    throw Error::makeError([
-                        'tag' => 'components-manager',
-                        'message' => $e->getMessage(),
-                        'previous' => $e
-                    ]);
-                }
-            }
+            foreach ($this->_pluginsRootFiles as $initFile)
+                $this->loadPluginInitFile($initFile);
         } else {
             $dirLst = scandir($dir);
             foreach ($dirLst as $chDir) {
@@ -259,20 +344,8 @@ class ComponentsManager
                     continue;
                 if (in_array($chDir, $this->_ignore_list))
                     continue;
-                $tmpDir = CoreHelper::buildPath($dir, $chDir);
                 $tmpInitFile = CoreHelper::buildPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
-                if (is_dir($tmpDir) && file_exists($tmpInitFile)) {
-                    try {
-                        include_once $tmpInitFile;
-                        $this->_cachePluginsInit[] = $tmpInitFile;
-                    } catch (\Exception $e) {
-                        throw Error::makeError([
-                            'tag' => 'components-manager',
-                            'message' => $e->getMessage(),
-                            'previous' => $e
-                        ]);
-                    }
-                }
+                $this->loadPluginInitFile($tmpInitFile);
             }
         }
         $this->_state = CMState::LOADED;
@@ -295,13 +368,24 @@ class ComponentsManager
         if (count($this->_plugins) == 0)
             return !$checkPlCount;
         $init_success = 0;
-        foreach ($this->_plugins as &$pl) {
-            if ($pl->state() == BCState::INIT_SUCCESS) {
-                $init_success += 1;
-                continue;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache) {
+            foreach ($this->_pluginsInitQueue as $pl) {
+                if ($pl->state() == BCState::INIT_SUCCESS) {
+                    $init_success += 1;
+                    continue;
+                }
+                if ($this->initPlugin($pl))
+                    $init_success += 1;
             }
-            if ($this->initPlugin($pl)) {
-                $init_success += 1;
+        } else {
+            $this->_pluginsInitQueue = []; // clear init queue
+            foreach ($this->_plugins as &$pl) {
+                if ($pl->state() == BCState::INIT_SUCCESS) {
+                    $init_success += 1;
+                    continue;
+                }
+                if ($this->initPluginWithRecursiveCheck($pl))
+                    $init_success += 1;
             }
         }
         $this->_state = CMState::INITIALIZED;
@@ -346,12 +430,28 @@ class ComponentsManager
     }
 
     /**
-     * Метод инициализации плагина
+     * Загрузить файл инициализации плагина
+     * @param string $initFilePath
+     */
+    private function loadPluginInitFile(string $initFilePath) {
+        if (!file_exists($initFilePath))
+            trigger_error("[ComponentsManager] Plugin init file not found! Load plugin init file failed! Path: $initFilePath", E_USER_ERROR);
+        try {
+            include_once $initFilePath;
+            if ($this->_rebuildCache && !in_array($initFilePath, $this->_pluginsRootFiles))
+                $this->_pluginsRootFiles[] = $initFilePath;
+        } catch (\Exception $e) {
+            trigger_error("[ComponentsManager] Load plugin init file failed! Error: " . $e->getMessage(), E_USER_ERROR);
+        }
+    }
+
+    /**
+     * Метод инициализации плагина с выполнением рекурсивной проверки зависимостей
      * @param BaseComponent $plugin - объект плагина
      * @return bool
      * @throws
      */
-    private function initPlugin(BaseComponent &$plugin): bool {
+    private function initPluginWithRecursiveCheck(BaseComponent &$plugin): bool {
         if (empty($plugin->name()))
             return false;
         if ($plugin->state() == BCState::INIT_FAILED)
@@ -416,7 +516,7 @@ class ComponentsManager
                 return false;
             }
 
-            if (!$this->initPlugin($dep_plugin)) {
+            if (!$this->initPluginWithRecursiveCheck($dep_plugin)) {
                 $d_name = $spec->name();
                 $d_vers = $spec->version();
                 $plugin->setState(BCState::INIT_FAILED);
@@ -465,7 +565,7 @@ class ComponentsManager
                 continue;
             }
 
-            if (!$this->initPlugin($dep_plugin)) {
+            if (!$this->initPluginWithRecursiveCheck($dep_plugin)) {
                 $d_name = $spec->name();
                 $d_vers = $spec->version();
                 $plugin->setLastWarning("Init optional dependence plugin failed! Dependence plugin: $d_name (ver. $d_vers)");
@@ -477,7 +577,16 @@ class ComponentsManager
                 continue;
             }
         }
+        return $this->initPlugin($plugin);
+    }
 
+    /**
+     * Метод инициализации плагина
+     * @param BaseComponent $plugin - объект плагина
+     * @return bool
+     * @throws
+     */
+    private function initPlugin(BaseComponent &$plugin): bool {
         try {
             if (!$plugin->init()) {
                 $plugin->setState(BCState::INIT_FAILED);
@@ -490,90 +599,57 @@ class ComponentsManager
             } else {
                 $plugin->setState(BCState::INIT_SUCCESS);
 
+                // --- save load queue point ---
+                $tmpPluginCacheId = $this->pluginCacheId($plugin);
+                if ($this->_rebuildCache)
+                    $this->_pluginsInitQueue[$tmpPluginCacheId] = $plugin;
+
                 // --- load plugin routes ---
-                $pl_routes = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    ComponentsManager::CONFIG_DIR,
-                                                    ComponentsManager::PLUGIN_ROUTES_FILE);
+                $pl_routes = $this->_pluginsSettings[$tmpPluginCacheId]['routes'] ?? "";
                 if (file_exists($pl_routes))
                     include_once $pl_routes;
 
                 // --- load plugin js files ---
-                $pl_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "app", "assets", "javascripts");
+                $pl_js_dir = $this->_pluginsSettings[$tmpPluginCacheId]['js-dir'] ?? "";
                 AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin css|scss files ---
-                $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "app", "assets", "stylesheets");
+                $pl_css_dir = $this->_pluginsSettings[$tmpPluginCacheId]['css-dir'] ?? "";
                 AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin images ---
-                $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "app", "assets", "images");
+                $pl_image_dir = $this->_pluginsSettings[$tmpPluginCacheId]['image-dir'] ?? "";
                 AssetPipeline::instance()->appendImageDir($pl_image_dir);
 
                 // --- load plugin views ---
-                $pl_views_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "app", "views");
-                $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, false, true);
-                foreach ($pl_views_dir_lst as $vDir) {
-                    if (!is_dir($vDir))
-                        continue;
+                $pl_views_dir_lst = $this->_pluginsSettings[$tmpPluginCacheId]['views-dirs'] ?? [];
+                foreach ($pl_views_dir_lst as $vDir)
                     AssetPipeline::instance()->appendViewDir($vDir);
-                }
 
                 // --- load plugin lib/js files ---
-                $pl_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "lib", "assets", "javascripts");
+                $pl_js_dir = $this->_pluginsSettings[$tmpPluginCacheId]['lib-js-dir'] ?? "";
                 AssetPipeline::instance()->appendJavascriptDir($pl_js_dir);
 
                 // --- load plugin lib/css|scss files ---
-                $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "lib", "assets", "stylesheets");
+                $pl_css_dir = $this->_pluginsSettings[$tmpPluginCacheId]['lib-css-dir'] ?? "";
                 AssetPipeline::instance()->appendStylesheetDir($pl_css_dir);
 
                 // --- load plugin lib/images ---
-                $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                    ComponentsManager::PLUGINS_DIR,
-                                                    $plugin->directory(),
-                                                    "lib", "assets", "images");
+                $pl_image_dir = $this->_pluginsSettings[$tmpPluginCacheId]['lib-image-dir'] ?? "";
                 AssetPipeline::instance()->appendImageDir($pl_image_dir);
 
                 // --- load plugin api-doc files ---
                 if (ApiDoc::instance()->isEnabled() === true) {
-                    $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                            ComponentsManager::PLUGINS_DIR,
-                                                            $plugin->directory(),
-                                                            "doc", "api");
+                    $pl_api_doc_dir = $this->_pluginsSettings[$tmpPluginCacheId]['api-doc-dir'] ?? "";
                     ApiDoc::instance()->appendApiDocDir($pl_api_doc_dir);
                 }
 
                 // --- load plugin help-doc files ---
                 if (HelpDoc::instance()->isEnabled() === true) {
-                    $pl_help_doc_img_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                                 ComponentsManager::PLUGINS_DIR,
-                                                                 $plugin->directory(),
-                                                                 "doc", "help", "images");
+                    $pl_help_doc_img_dir = $this->_pluginsSettings[$tmpPluginCacheId]['help-doc-image-dir'] ?? "";
                     AssetPipeline::instance()->appendImageDir($pl_help_doc_img_dir);
 
-                    $pl_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
-                                                             ComponentsManager::PLUGINS_DIR,
-                                                             $plugin->directory(),
-                                                             "doc", "help");
+                    $pl_help_doc_dir = $this->_pluginsSettings[$tmpPluginCacheId]['help-doc-dir'] ?? "";
                     HelpDoc::instance()->appendHelpDocDir($pl_help_doc_dir);
                 }
             }
@@ -721,6 +797,15 @@ class ComponentsManager
     }
 
     /**
+     * ИД плагина для системы кэширования
+     * @param BaseComponent $plugin
+     * @return string
+     */
+    private function pluginCacheId(BaseComponent &$plugin): string {
+        return $plugin->name() . "-" . $plugin->version();
+    }
+
+    /**
      * Поиск плагина по имени его класса
      * @param string $class_name
      * @throws
@@ -838,9 +923,9 @@ class ComponentsManager
         }
         $fData = file_get_contents($fPath);
         $cacheList = json_decode($fData, true);
-        $this->_cachePluginsInit = $cacheList['plugins-init'];
-        $this->_cachePluginsControllers = $cacheList['plugins-controllers'];
-        $this->_cachePluginsDepTree = $cacheList['plugins-dep-tree'];
+        $this->_pluginsRootFiles = $cacheList['plugins-root-files'];
+        $this->_pluginsSettings = $cacheList['plugins-settings'];
+        $this->_pluginsInitQueue = array_fill_keys($cacheList['plugins-init-queue'], null);
     }
 
     /**
@@ -854,9 +939,9 @@ class ComponentsManager
 
         $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
         $fData = json_encode([
-            'plugins-init' => $this->_cachePluginsInit,
-            'plugins-controllers' => $this->_cachePluginsControllers,
-            'plugins-dep-tree' => $this->_cachePluginsDepTree
+            'plugins-root-files' => $this->_pluginsRootFiles,
+            'plugins-settings' => $this->_pluginsSettings,
+            'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
         ]);
         $tmpFile = tempnam($dirPath, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))

@@ -58,6 +58,14 @@ class ApiDocObject
     }
 
     /**
+     * Является ли пустым?
+     * @return bool
+     */
+    public function isEmpty(): bool {
+        return empty($this->_actions);
+    }
+
+    /**
      * Получить api-doc в формате markdown
      * @return string
      */
