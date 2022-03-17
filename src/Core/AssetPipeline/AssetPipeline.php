@@ -61,6 +61,8 @@ class AssetPipeline
         $defVal = !Config::instance()->isProduction();
         $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
 
+        $prepareRequireList = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_PREPARE_ASSETS_REQUIRES_LIST, true));
+
         $defVal = Config::instance()->isProduction();
         $this->_useCompression = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSETS_COMPRESSION, $defVal));
         $this->_compressionType = \FlyCubePHP\configValue(Config::TAG_ASSETS_COMPRESSION_TYPE, "gzip");
@@ -94,6 +96,7 @@ class AssetPipeline
         $this->_jsBuilder = new JSBuilder();
         $this->_jsBuilder->setCacheDir($cacheDir);
         $this->_jsBuilder->setRebuildCache($use_rebuildCache);
+        $this->_jsBuilder->setPrepareRequireList($prepareRequireList);
         $this->_jsBuilder->loadExtensions();
 
         // --- create css-builder ---
@@ -109,6 +112,7 @@ class AssetPipeline
         $this->_cssBuilder = new CSSBuilder();
         $this->_cssBuilder->setCacheDir($cacheDir);
         $this->_cssBuilder->setRebuildCache($use_rebuildCache);
+        $this->_cssBuilder->setPrepareRequireList($prepareRequireList);
         $this->_cssBuilder->loadExtensions();
 
         // --- create image-builder ---

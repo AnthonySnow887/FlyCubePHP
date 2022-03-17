@@ -24,6 +24,7 @@ class CSSBuilder
     private $_cacheList = array();
     private $_cacheDir = "";
     private $_rebuildCache = false;
+    private $_prepareRequireList = false;
 
     const PRE_BUILD_DIR = "pre_build";
     const SETTINGS_DIR = "tmp/cache/FlyCubePHP/css_builder/";
@@ -71,6 +72,25 @@ class CSSBuilder
      */
     public function hasRebuildCache(): bool {
         return $this->_rebuildCache;
+    }
+
+    /**
+     * Выставить флаг предподготовки списка зависимостей скриптов
+     * @param bool $value
+     *
+     * NOTE: This flag allows you to "insert" at the beginning of the list
+     *       of dependencies libraries located in lib and vendor.
+     */
+    public function setPrepareRequireList(bool $value) {
+        $this->_prepareRequireList = $value;
+    }
+
+    /**
+     * Флаг предподготовки списка зависимостей скриптов
+     * @return bool
+     */
+    public function hasPrepareRequireList(): bool {
+        return $this->_prepareRequireList;
     }
 
     /**
@@ -191,7 +211,7 @@ class CSSBuilder
                     'backtrace-shift' => 2
                 ]);
 
-            $tmpFList = $this->parseRequireList($fPath);
+            $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
             if (empty($tmpFList) || count($tmpFList) === 1) {
                 $fExt = pathinfo($fPath, PATHINFO_EXTENSION);
                 if (strtolower($fExt) === "scss")
@@ -437,7 +457,7 @@ class CSSBuilder
 
         $tmpFileData = "";
         $lastModified = -1;
-        $tmpFList = $this->parseRequireList($fPath);
+        $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
         foreach ($tmpFList as $item) {
             $fExt = pathinfo($item, PATHINFO_EXTENSION);
             if (strtolower($fExt) === "scss")
@@ -719,5 +739,38 @@ class CSSBuilder
         elseif (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $path) === 1)
             $path = substr($path, 0, strlen($path) - 5);
         return $path;
+    }
+
+    /**
+     * "Пересборка" списка зависмостей и их очерёдности загрузки.
+     * @param array $requireList
+     * @return array
+     */
+    private function prepareRequireList(array $requireList): array {
+        if (!$this->_prepareRequireList)
+            return $requireList;
+        $FLCPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'FlyCubePHP');
+        $vendorPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'assets', 'stylesheets');
+        $libPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'lib', 'assets', 'stylesheets');
+        $tmpArray = [];
+        $pos = 0;
+        foreach ($requireList as $key => $value) {
+            if (strpos($value, $FLCPrefix) === 0
+                || strpos($value, $vendorPrefix) === 0
+                || strpos($value, $libPrefix) === 0) {
+                if ($pos <= 0)
+                    $tmpArray[$key] = $value;
+                else {
+                    $a = array_slice($tmpArray, 0, $pos);
+                    $b = array_slice($tmpArray, $pos, count($tmpArray) - 1);
+                    $tmpArray = $a + [$key => $value] + $b;
+                }
+
+                $pos += 1;
+            } else {
+                $tmpArray[$key] = $value;
+            }
+        }
+        return $tmpArray;
     }
 }
