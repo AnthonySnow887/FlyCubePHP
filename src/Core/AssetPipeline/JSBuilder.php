@@ -186,6 +186,7 @@ class JSBuilder
             if (!array_key_exists($tmpName, $this->_jsList))
                 $this->_jsList[$tmpName] = $js;
         }
+        $this->updateCacheList();
     }
 
     /**

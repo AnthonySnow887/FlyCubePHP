@@ -188,6 +188,7 @@ class CSSBuilder
             if (!array_key_exists($tmpName, $this->_cssList))
                 $this->_cssList[$tmpName] = $css;
         }
+        $this->updateCacheList();
     }
 
     /**
