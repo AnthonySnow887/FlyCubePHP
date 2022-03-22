@@ -9,10 +9,12 @@
 namespace FlyCubePHP\Core\AssetPipeline;
 
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
+include_once __DIR__.'/../Cache/APCu.php';
 
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
+use FlyCubePHP\Core\Cache\APCu;
 
 class ImageBuilder
 {
@@ -145,22 +147,26 @@ class ImageBuilder
      * @throws
      */
     private function loadCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
-        if (!file_exists($fPath)) {
-            $this->updateCacheList();
-            return;
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
+            if (!file_exists($fPath)) {
+                $this->updateCacheList();
+                return;
+            }
+            $fData = file_get_contents($fPath);
+            $cacheList = json_decode($fData, true);
+        } else {
+            $cacheList = APCu::cacheData('image-builder-cache', [ 'cache-files' => [] ]);
         }
-        $fData = file_get_contents($fPath);
-        $cacheList = json_decode($fData, true);
         $this->_imageList = $cacheList['cache-files'];
     }
 
@@ -169,27 +175,32 @@ class ImageBuilder
      * @throws
      */
     private function updateCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
-        $fData = json_encode([ 'cache-files' => $this->_imageList ]);
-        $tmpFile = tempnam($dirPath, basename($fPath));
-        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-            @chmod($fPath, 0666 & ~umask());
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
+            $fData = json_encode(['cache-files' => $this->_imageList]);
+            $tmpFile = tempnam($dirPath, basename($fPath));
+            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+                @chmod($fPath, 0666 & ~umask());
+            } else {
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Write file for cache settings failed! Path: $fPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
+            }
         } else {
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Write file for cache settings failed! Path: $fPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+            APCu::setCacheData('image-builder-cache', ['cache-files' => $this->_imageList]);
+            APCu::saveEncodedApcuData('image-builder-cache', ['cache-files' => $this->_imageList]);
         }
     }
 }
