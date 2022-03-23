@@ -11,6 +11,7 @@ namespace FlyCubePHP\ComponentsCore;
 include_once __DIR__.'/../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Core/Error/Error.php';
 include_once __DIR__.'/../Core/Logger/Logger.php';
+include_once __DIR__.'/../Core/Cache/APCu.php';
 include_once 'BaseTypes.php';
 include_once 'BaseComponent.php';
 include_once 'DependencyTreeElement.php';
@@ -24,6 +25,7 @@ use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 use FlyCubePHP\Core\ApiDoc\ApiDoc;
+use FlyCubePHP\Core\Cache\APCu;
 
 class ComponentsManager
 {
@@ -912,17 +914,21 @@ class ComponentsManager
      * @throws
      */
     private function loadCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
-        if (!file_exists($fPath)) {
-            $this->updateCacheList();
-            return;
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
+            if (!file_exists($fPath)) {
+                $this->updateCacheList();
+                return;
+            }
+            $fData = file_get_contents($fPath);
+            $cacheList = json_decode($fData, true);
+        } else {
+            $cacheList = APCu::cacheData('components-manager-cache', [ 'plugins-root-files' => [], 'plugins-settings' => [], 'plugins-init-queue' => [] ]);
         }
-        $fData = file_get_contents($fPath);
-        $cacheList = json_decode($fData, true);
         $this->_pluginsRootFiles = $cacheList['plugins-root-files'];
         $this->_pluginsSettings = $cacheList['plugins-settings'];
         $this->_pluginsInitQueue = array_fill_keys($cacheList['plugins-init-queue'], null);
@@ -933,20 +939,33 @@ class ComponentsManager
      * @throws
      */
     private function updateCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
-        $fData = json_encode([
-            'plugins-root-files' => $this->_pluginsRootFiles,
-            'plugins-settings' => $this->_pluginsSettings,
-            'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
-        ]);
-        $tmpFile = tempnam($dirPath, basename($fPath));
-        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))
-            @chmod($fPath, 0666 & ~umask());
-        else
-            trigger_error("[ComponentsManager] Write file for cache settings failed! Path: $fPath", E_USER_ERROR);
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
+            $fData = json_encode([
+                'plugins-root-files' => $this->_pluginsRootFiles,
+                'plugins-settings' => $this->_pluginsSettings,
+                'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
+            ]);
+            $tmpFile = tempnam($dirPath, basename($fPath));
+            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))
+                @chmod($fPath, 0666 & ~umask());
+            else
+                trigger_error("[ComponentsManager] Write file for cache settings failed! Path: $fPath", E_USER_ERROR);
+        } else {
+            APCu::setCacheData('components-manager-cache', [
+                'plugins-root-files' => $this->_pluginsRootFiles,
+                'plugins-settings' => $this->_pluginsSettings,
+                'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
+            ]);
+            APCu::saveEncodedApcuData('components-manager-cache', [
+                'plugins-root-files' => $this->_pluginsRootFiles,
+                'plugins-settings' => $this->_pluginsSettings,
+                'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
+            ]);
+        }
     }
 }
