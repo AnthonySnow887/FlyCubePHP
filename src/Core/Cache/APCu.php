@@ -17,9 +17,8 @@ class APCu
      * @return bool
      */
     static public function isApcuEnabled(): bool {
-        if (Config::instance()->isDevelopment())
-            return false;
-        return function_exists('apcu_enabled') && apcu_enabled() && CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_APCU_CACHE, false));
+        $defVal = Config::instance()->isProduction();
+        return function_exists('apcu_enabled') && apcu_enabled() && CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_APCU_CACHE, $defVal));
     }
 
     /**
