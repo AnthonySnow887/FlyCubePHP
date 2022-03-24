@@ -957,7 +957,8 @@ function checkAndMakeProjectDefFiles(string $path): bool {
 
     // --- copy ---
     foreach ($copyList as $key => $value) {
-        if (file_exists($value))
+        $tmpPath = buildPath($path, "bin");
+        if (file_exists($value) && strpos($value, $tmpPath) !== 0)
             continue;
         if (!copy($key, $value))
             return false;
