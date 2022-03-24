@@ -777,9 +777,9 @@ class JSBuilder
             if (strpos($value, $FLCPrefix) === 0
                 || strpos($value, $vendorPrefix) === 0
                 || strpos($value, $libPrefix) === 0) {
-                if ($pos <= 0)
-                    $tmpArray[$key] = $value;
-                else {
+                if ($pos <= 0) {
+                    $tmpArray = [$key => $value] + $tmpArray;
+                } else {
                     $a = array_slice($tmpArray, 0, $pos);
                     $b = array_slice($tmpArray, $pos, count($tmpArray) - 1);
                     $tmpArray = $a + [$key => $value] + $b;
