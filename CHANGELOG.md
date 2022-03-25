@@ -4,7 +4,13 @@
  * Add required PHP modules:
     * php7-APCu
 
- * Update loading speed optimization
+ * Update loading speed optimization:
+   >
+   > NOTE:
+   > with enabled opcode caching mechanism OPCache and APCu caching of the FlyCubePHP core in production mode,
+   > the speed of loading web pages is increased by 18%-25%.
+   >
+
  * Added APCu cache system
  * Fix fly_cube_php bin:
    * add AutoLoader
@@ -43,7 +49,6 @@
  * Update AssetPipeline:
    * update loading speed optimization 
    * add prepare assets requires list
-     
      > 
      > NOTE: Use flag 'FLY_CUBE_PHP_PREPARE_ASSETS_REQUIRES_LIST'.
      > 
