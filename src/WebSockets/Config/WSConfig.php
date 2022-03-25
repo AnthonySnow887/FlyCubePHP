@@ -3,9 +3,9 @@
 namespace FlyCubePHP\WebSockets\Config;
 
 use Exception;
-use FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
-use FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\ComponentsCore\ComponentsManager;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class WSConfig
 {

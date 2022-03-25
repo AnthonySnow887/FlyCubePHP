@@ -3,7 +3,7 @@
 include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/Core/AutoLoader/AutoLoaderHelper.php';
 
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use \FlyCubePHP\HelperClasses\CoreHelper;
 
 // --- check needed library ---
 $twig_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "vendor", "Twig-2.x", "Twig");
@@ -28,3 +28,4 @@ if (!is_dir($monolog_dir))
 \FlyCubePHP\appendAutoLoadDir("vendor/JShrink/JShrink/");
 \FlyCubePHP\appendAutoLoadDir("vendor/Psr/");
 \FlyCubePHP\appendAutoLoadDir("vendor/Monolog/Monolog/");
+\FlyCubePHP\appendAutoLoadDir("vendor/FlyCubePHP/");

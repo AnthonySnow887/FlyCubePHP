@@ -16,9 +16,9 @@ include_once 'PostgreSQLAdapter.php';
 include_once 'MySQLAdapter.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\ComponentsCore\ComponentsManager;
 
 class DatabaseFactory
 {

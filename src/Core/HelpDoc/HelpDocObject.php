@@ -7,7 +7,7 @@ include_once 'Helpers/HelpDocAssetHelper.php';
 include_once 'Helpers/HelpDocHeadingHelper.php';
 include_once 'HelpPart.php';
 
-use FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\Core\TemplateCompiler\TCHelperFunction;
 use FlyCubePHP\Core\TemplateCompiler\TemplateCompiler;

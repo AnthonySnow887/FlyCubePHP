@@ -22,6 +22,13 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnvLoader.php"))
     chdir($pwd); // go to pwd
 }
 
+if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPAutoLoader.php")) {
+    $pwd = getcwd();
+    chdir(__DIR__."/../"); // go to app root
+    include_once __DIR__ . "/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPAutoLoader.php";
+    chdir($pwd); // go to pwd
+}
+
 if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.php")) {
     $pwd = getcwd();
     chdir(__DIR__."/../"); // go to app root
@@ -991,7 +998,7 @@ function replaceProjectDefBinary(string $path): bool {
     $copyList = [];
 
     // --- make copy list for bin/* templates ---
-    $binFiles = scanDirectory(__DIR__."/../vendor/FlyCubePHP/templates/bin/");
+    $binFiles = scanDirectory("$path/vendor/FlyCubePHP/templates/bin/");
     foreach ($binFiles as $file) {
         $tmpPath = buildPath($path, "bin", basename($file));
         $copyList[$file] = $tmpPath;
@@ -999,7 +1006,11 @@ function replaceProjectDefBinary(string $path): bool {
 
     // --- copy ---
     foreach ($copyList as $key => $value) {
-        if (file_exists($value) && !unlink($value))
+        if (!file_exists($value))
+            return false;
+        if (!chmod($value, 0666))
+            return false;
+        if (!unlink($value))
             return false;
         if (!copy($key, $value))
             return false;
@@ -2362,6 +2373,12 @@ function createPluginModel($pluginName, $name) {
  */
 function assetsPrecompile(bool $skipRendering = false) {
     chdir(__DIR__."/../"); // go to app root
+    
+    // --- reset settings ---
+    $defVal = !\FlyCubePHP\Core\Config\Config::instance()->isProduction();
+    $useRebuildCache = \FlyCubePHP\HelperClasses\CoreHelper::toBool(\FlyCubePHP\configValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $defVal));
+    \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, true);
+    
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
     if (!class_exists("\FlyCubePHP\Core\Routes\RouteCollector")) {
@@ -2371,6 +2388,13 @@ function assetsPrecompile(bool $skipRendering = false) {
     if (!class_exists("\FlyCubePHP\Core\AssetPipeline\AssetPipeline")) {
         echo "ERROR: Not found AssetPipeline!\r\n";
         return;
+    }
+
+    if (\FlyCubePHP\Core\Config\Config::instance()->hasErrors() === true) {
+        foreach (\FlyCubePHP\Core\Config\Config::instance()->errors() as $error)
+            echo "ERROR: $error\r\n";
+
+        echo "\r\n";
     }
 
     // --- pre-build assets ---
@@ -2396,6 +2420,10 @@ function assetsPrecompile(bool $skipRendering = false) {
         echo "OK\r\n";
     }
 
+    // --- restore settings ---
+    \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $useRebuildCache);
+    \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->resetCacheSettings();
+    
     // --- pre-build Twig templates ---
     if ($skipRendering === true) {
         echo "\r\nNOTE: Controller and template rendering is skipped.\r\n";
@@ -2560,7 +2588,7 @@ function appRoutes() {
         echo "ERROR: Not found RouteCollector!\r\n";
         return;
     }
-    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes();
+    $routes = \FlyCubePHP\Core\Routes\RouteCollector::instance()->allRoutes(true);
     if (empty($routes)) {
         echo "\r\nERROR: Not found routes!\r\n\r\n";
         return;

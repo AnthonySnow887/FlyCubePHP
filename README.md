@@ -345,6 +345,7 @@ Basic system requirements
 Additional required PHP modules
 -------------------------------
 
+- php7-APCu
 - php7-ctype
 - php7-curl
 - php7-json

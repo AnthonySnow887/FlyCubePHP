@@ -597,7 +597,7 @@ function replaceProjectDefBinary(string $path): bool {
     $copyList = [];
 
     // --- make copy list for bin/* templates ---
-    $binFiles = scanDirectory(__DIR__."/../vendor/FlyCubePHP/templates/bin/");
+    $binFiles = scanDirectory("$path/vendor/FlyCubePHP/templates/bin/");
     foreach ($binFiles as $file) {
         $tmpPath = buildPath($path, "bin", basename($file));
         $copyList[$file] = $tmpPath;
@@ -605,7 +605,11 @@ function replaceProjectDefBinary(string $path): bool {
 
     // --- copy ---
     foreach ($copyList as $key => $value) {
-        if (file_exists($value) && !unlink($value))
+        if (!file_exists($value))
+            return false;
+        if (!chmod($value, 0666))
+            return false;
+        if (!unlink($value))
             return false;
         if (!copy($key, $value))
             return false;

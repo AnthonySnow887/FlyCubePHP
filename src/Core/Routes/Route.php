@@ -41,15 +41,15 @@ class RouteType extends \FlyCubePHP\HelperClasses\Enum {
         if (empty($val))
             return -1;
         $tmpVal = strtolower($val);
-        if ($tmpVal == "get")
+        if (strcmp($tmpVal, "get") === 0 || strcmp($tmpVal, "head") === 0)
             return RouteType::GET;
-        elseif ($tmpVal == "post")
+        elseif (strcmp($tmpVal, "post") === 0)
             return RouteType::POST;
-        elseif ($tmpVal == "put")
+        elseif (strcmp($tmpVal, "put") === 0)
             return RouteType::PUT;
-        elseif ($tmpVal == "patch")
+        elseif (strcmp($tmpVal, "patch") === 0)
             return RouteType::PATCH;
-        elseif ($tmpVal == "delete")
+        elseif (strcmp($tmpVal, "delete") === 0)
             return RouteType::DELETE;
         return -1;
     }
@@ -81,11 +81,10 @@ class Route
         $this->_controller = $controller;
         $this->_action = $action;
         if (empty($as)) {
-            $tmpControllerName = $controller;
-            if (preg_match("/.*Controller$/", $tmpControllerName))
-                $tmpControllerName = substr($tmpControllerName, 0, strlen($tmpControllerName) - 10);
-
-            $as = CoreHelper::underscore($tmpControllerName) . "_" . CoreHelper::underscore($action);
+            $tmpUrl = str_replace('/', ' ', $this->uri());
+            $tmpUrl = str_replace(':', ' ', $tmpUrl);
+            $tmpUrl = strtolower(RouteType::intToString($type)) . " $tmpUrl";
+            $as = CoreHelper::underscore(CoreHelper::camelcase($tmpUrl));
         }
         $this->_as = $as;
     }

@@ -2,15 +2,16 @@
 
 namespace FlyCubePHP\Core\ApiDoc;
 
-use Exception;
-use FlyCubePHP\Core\Config\Config as Config;
-use FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
-use FlyCubePHP\HelperClasses\CoreHelper;
-use FlyCubePHP\Core\Error\Error;
-
 include_once 'ApiDocObject.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../../ComponentsCore/ComponentsManager.php';
+include_once __DIR__.'/../Cache/APCu.php';
+
+use Exception;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\Error;
+use FlyCubePHP\Core\Cache\APCu;
 
 class ApiDoc
 {
@@ -151,6 +152,8 @@ class ApiDoc
             || in_array($dir, $this->_apiDocDirs))
             return;
         $this->_apiDocDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpApiDocLst = CoreHelper::scanDir($dir, true);
         foreach ($tmpApiDocLst as $doc) {
             $tmpName = CoreHelper::buildAppPath($doc);
@@ -160,16 +163,10 @@ class ApiDoc
             $tmpName = substr($tmpName, 0, strlen($tmpName) - 5);
             if ($tmpName[0] == DIRECTORY_SEPARATOR)
                 $tmpName = ltrim($tmpName, $tmpName[0]);
-            if (!class_exists($tmpName))
-                throw Error::makeError([
-                    'tag' => 'api-doc',
-                    'message' => "Not found php class for api-doc file (needed class: $tmpName)! Path: $doc",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
             if (!array_key_exists($tmpName, $this->_apiDocList))
                 $this->_apiDocList[$tmpName] = $doc;
         }
+        $this->updateCacheList();
     }
 
     /**
@@ -177,22 +174,28 @@ class ApiDoc
      * @throws
      */
     private function loadCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw Error::makeError([
-                'tag' => 'api-doc',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw Error::makeError([
+                    'tag' => 'api-doc',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', ApiDoc::CACHE_LIST_FILE));
-        if (!file_exists($fPath)) {
-            $this->updateCacheList();
-            return;
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', ApiDoc::CACHE_LIST_FILE));
+            if (!file_exists($fPath)) {
+                $this->updateCacheList();
+                return;
+            }
+            $fData = file_get_contents($fPath);
+            $cacheList = json_decode($fData, true);
+        } else {
+            $cacheList = APCu::cacheData('api-doc-cache', [ 'cache-files' => [], 'api-files' => [] ]);
         }
-        $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_apiDocList = $cacheList['api-files'];
     }
 
     /**
@@ -200,27 +203,32 @@ class ApiDoc
      * @throws
      */
     private function updateCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw Error::makeError([
-                'tag' => 'api-doc',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ApiDoc::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw Error::makeError([
+                    'tag' => 'api-doc',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', ApiDoc::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
-        $tmpFile = tempnam($dirPath, basename($fPath));
-        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-            @chmod($fPath, 0666 & ~umask());
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', ApiDoc::CACHE_LIST_FILE));
+            $fData = json_encode(['cache-files' => $this->_cacheList, 'api-files' => $this->_apiDocList]);
+            $tmpFile = tempnam($dirPath, basename($fPath));
+            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+                @chmod($fPath, 0666 & ~umask());
+            } else {
+                throw Error::makeError([
+                    'tag' => 'api-doc',
+                    'message' => "Write file for cache settings failed! Path: $fPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
+            }
         } else {
-            throw Error::makeError([
-                'tag' => 'api-doc',
-                'message' => "Write file for cache settings failed! Path: $fPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+            APCu::setCacheData('api-doc-cache', ['cache-files' => $this->_cacheList, 'api-files' => $this->_apiDocList]);
+            APCu::saveEncodedApcuData('api-doc-cache', ['cache-files' => $this->_cacheList, 'api-files' => $this->_apiDocList]);
         }
     }
 

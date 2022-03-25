@@ -10,10 +10,12 @@ namespace FlyCubePHP\Core\AssetPipeline;
 
 include_once 'CSSMinifier.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
+include_once __DIR__.'/../Cache/APCu.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
+use FlyCubePHP\Core\Cache\APCu;
 use ScssPhp\ScssPhp\OutputStyle;
 
 class CSSBuilder
@@ -24,6 +26,7 @@ class CSSBuilder
     private $_cacheList = array();
     private $_cacheDir = "";
     private $_rebuildCache = false;
+    private $_prepareRequireList = false;
 
     const PRE_BUILD_DIR = "pre_build";
     const SETTINGS_DIR = "tmp/cache/FlyCubePHP/css_builder/";
@@ -71,6 +74,25 @@ class CSSBuilder
      */
     public function hasRebuildCache(): bool {
         return $this->_rebuildCache;
+    }
+
+    /**
+     * Выставить флаг предподготовки списка зависимостей скриптов
+     * @param bool $value
+     *
+     * NOTE: This flag allows you to "insert" at the beginning of the list
+     *       of dependencies libraries located in lib and vendor.
+     */
+    public function setPrepareRequireList(bool $value) {
+        $this->_prepareRequireList = $value;
+    }
+
+    /**
+     * Флаг предподготовки списка зависимостей скриптов
+     * @return bool
+     */
+    public function hasPrepareRequireList(): bool {
+        return $this->_prepareRequireList;
     }
 
     /**
@@ -143,6 +165,8 @@ class CSSBuilder
             || in_array($dir, $this->_cssDirs))
             return;
         $this->_cssDirs[] = $dir;
+        if (Config::instance()->isProduction() && !$this->_rebuildCache)
+            return;
         $tmpCss = CoreHelper::scanDir($dir, true);
         foreach ($tmpCss as $css) {
             $tmpName = CoreHelper::buildAppPath($css);
@@ -166,6 +190,7 @@ class CSSBuilder
             if (!array_key_exists($tmpName, $this->_cssList))
                 $this->_cssList[$tmpName] = $css;
         }
+        $this->updateCacheList();
     }
 
     /**
@@ -189,7 +214,7 @@ class CSSBuilder
                     'backtrace-shift' => 2
                 ]);
 
-            $tmpFList = $this->parseRequireList($fPath);
+            $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
             if (empty($tmpFList) || count($tmpFList) === 1) {
                 $fExt = pathinfo($fPath, PATHINFO_EXTENSION);
                 if (strtolower($fExt) === "scss")
@@ -435,7 +460,7 @@ class CSSBuilder
 
         $tmpFileData = "";
         $lastModified = -1;
-        $tmpFList = $this->parseRequireList($fPath);
+        $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
         foreach ($tmpFList as $item) {
             $fExt = pathinfo($item, PATHINFO_EXTENSION);
             if (strtolower($fExt) === "scss")
@@ -657,22 +682,28 @@ class CSSBuilder
      * @throws
      */
     private function loadCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), CSSBuilder::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), CSSBuilder::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
-        if (!file_exists($fPath)) {
-            $this->updateCacheList();
-            return;
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
+            if (!file_exists($fPath)) {
+                $this->updateCacheList();
+                return;
+            }
+            $fData = file_get_contents($fPath);
+            $cacheList = json_decode($fData, true);
+        } else {
+            $cacheList = APCu::cacheData('css-builder-cache', [ 'cache-files' => [], 'css-files' => [] ]);
         }
-        $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
+        $this->_cacheList = $cacheList['cache-files'];
+        $this->_cssList = $cacheList['css-files'];
     }
 
     /**
@@ -680,27 +711,32 @@ class CSSBuilder
      * @throws
      */
     private function updateCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), CSSBuilder::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), CSSBuilder::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
-        $tmpFile = tempnam($dirPath, basename($fPath));
-        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-            @chmod($fPath, 0666 & ~umask());
+            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
+            $fData = json_encode(['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
+            $tmpFile = tempnam($dirPath, basename($fPath));
+            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+                @chmod($fPath, 0666 & ~umask());
+            } else {
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Write file for cache settings failed! Path: $fPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
+            }
         } else {
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Write file for cache settings failed! Path: $fPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+            APCu::setCacheData('css-builder-cache', ['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
+            APCu::saveEncodedApcuData('css-builder-cache', ['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
         }
     }
 
@@ -715,5 +751,38 @@ class CSSBuilder
         elseif (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.scss)$/", $path) === 1)
             $path = substr($path, 0, strlen($path) - 5);
         return $path;
+    }
+
+    /**
+     * "Пересборка" списка зависмостей и их очерёдности загрузки.
+     * @param array $requireList
+     * @return array
+     */
+    private function prepareRequireList(array $requireList): array {
+        if (!$this->_prepareRequireList)
+            return $requireList;
+        $FLCPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'FlyCubePHP');
+        $vendorPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'assets', 'stylesheets');
+        $libPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'lib', 'assets', 'stylesheets');
+        $tmpArray = [];
+        $pos = 0;
+        foreach ($requireList as $key => $value) {
+            if (strpos($value, $FLCPrefix) === 0
+                || strpos($value, $vendorPrefix) === 0
+                || strpos($value, $libPrefix) === 0) {
+                if ($pos <= 0) {
+                    $tmpArray = [$key => $value] + $tmpArray;
+                } else {
+                    $a = array_slice($tmpArray, 0, $pos);
+                    $b = array_slice($tmpArray, $pos, count($tmpArray) - 1);
+                    $tmpArray = $a + [$key => $value] + $b;
+                }
+
+                $pos += 1;
+            } else {
+                $tmpArray[$key] = $value;
+            }
+        }
+        return $tmpArray;
     }
 }

@@ -7,8 +7,6 @@ namespace FlyCubePHP\Core\Routes;
 // "------WebKitFormBoundarycpuJ7AJCw5FmD2Aj\r\nContent-Disposition: form-data; name":"\"output\"\r\n\r\njson\r\n\"name\"\r\n\r\nтестовое имя\r\n------WebKitFormBoundarycpuJ7AJCw5FmD2Aj--\r\n"
 //
 
-use FlyCubePHP\Core\Logger\Logger;
-
 class RouteStreamParser
 {
     private $_input;    //!< php raw input stream
@@ -160,7 +158,7 @@ class RouteStreamParser
         preg_match('/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s', $string, $match);
         if (!empty($match))
             return [
-                $match[1] => (isset($match[2]) && !empty($match[2]) ? $match[2] : '')
+                $match[1] => $match[2] ?? ''
             ];
 
         return [];
@@ -207,20 +205,14 @@ class RouteStreamParser
             return [];
         if (preg_match('/(.*?)\[(.*?)\]/i', $match[1], $tmp)) {
             if (empty($tmp)) {
-                $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+                $data[$match[1]] = $match[2] ?? '';
             } else {
                 $data[$tmp[1]] = [];
-                $data[$tmp[1]][$tmp[2]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+                $data[$tmp[1]][$tmp[2]] = $match[2] ?? '';
             }
         } else {
-            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
+            $data[$match[1]] = $match[2] ?? '';
         }
-
-//        if (preg_match('/^(.*)\[\]$/i', $match[1], $tmp))
-//            $data[$tmp[1]][] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
-//        else
-//            $data[$match[1]] = (isset($match[2]) && !empty($match[2]) ? $match[2] : '');
-
         return $data;
     }
 

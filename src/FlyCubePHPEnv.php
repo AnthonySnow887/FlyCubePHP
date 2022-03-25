@@ -23,16 +23,16 @@ include_once __DIR__.'/HelperClasses/CoreHelper.php';
 include_once __DIR__.'/ComponentsCore/ComponentsManager.php';
 include_once 'FlyCubePHPEnvLoader.php';
 
-use \FlyCubePHP\Core\ApiDoc\ApiDoc as ApiDoc;
-use \FlyCubePHP\Core\HelpDoc\HelpDoc as HelpDoc;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Session\Session as Session;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
-use \FlyCubePHP\Core\Controllers\FlashMessages as FlashMessages;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
-use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
+use FlyCubePHP\Core\ApiDoc\ApiDoc;
+use FlyCubePHP\Core\HelpDoc\HelpDoc;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Session\Session;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\AutoLoader\AutoLoader;
+use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\Core\Controllers\FlashMessages;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
+use FlyCubePHP\ComponentsCore\ComponentsManager;
 
 
 // --- include base controllers classes ---
@@ -111,22 +111,11 @@ AssetPipeline::instance()->appendImageDir($app_image_dir);
 
 // --- include all app models ---
 $app_models_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::MODELS_DIR);
-$app_models = CoreHelper::scanDir($app_models_dir);
-foreach ($app_models as $model) {
-    $fExt = pathinfo($model, PATHINFO_EXTENSION);
-    if (strcmp(strtolower($fExt), "php") !== 0)
-        continue;
-    include_once $model;
-}
+AutoLoader::instance()->appendAutoLoadDir($app_models_dir);
 
 // --- include all app controllers ---
 $app_controllers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::CONTROLLERS_DIR);
-$app_controllers = CoreHelper::scanDir($app_controllers_dir);
-foreach ($app_controllers as $controller) {
-    if (!preg_match("/^.*Controller\.php$/", $controller))
-        continue;
-    include_once $controller;
-}
+AutoLoader::instance()->appendAutoLoadDir($app_controllers_dir);
 
 // --- include app routes ---
 $app_routes = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "routes.php");
@@ -144,11 +133,9 @@ if ($enablePluginsCore === true) {
 
     if (!ComponentsManager::instance()->initPlugins())
         trigger_error("Init plugins failed!", E_USER_ERROR);
-}
 
-// --- check app routes ---
-if (!RouteCollector::instance()->checkRoutes())
-    trigger_error("Invalid routes list!", E_USER_ERROR);
+    ComponentsManager::instance()->saveCache();
+}
 
 // --- load api-doc ---
 if (ApiDoc::instance()->isEnabled() === true) {

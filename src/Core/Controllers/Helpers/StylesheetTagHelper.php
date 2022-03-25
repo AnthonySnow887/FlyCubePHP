@@ -10,7 +10,7 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
 
-use \FlyCubePHP\Core\Protection\CSPProtection as CSPProtection;
+use FlyCubePHP\Core\Protection\CSPProtection;
 
 class StylesheetTagHelper extends BaseControllerHelper
 {

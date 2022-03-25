@@ -9,7 +9,7 @@
 namespace FlyCubePHP;
 
 include_once 'Config.php';
-use \FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Config\Config;
 
 /**
  * Задать значение аргумента настроек

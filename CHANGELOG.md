@@ -1,3 +1,125 @@
+# 1.7.0 (25.03.2022)
+
+ * Update Development Guide RUS
+ * Add required PHP modules:
+    * php7-APCu
+
+ * Update loading speed optimization:
+   >
+   > NOTE:
+   > with enabled opcode caching mechanism OPCache and APCu caching of the FlyCubePHP core in production mode,
+   > the speed of loading web pages is increased by 18%-25%.
+   >
+
+ * Added APCu cache system
+ * Fix fly_cube_php bin:
+   * add AutoLoader
+   * show config errors in '--assets-precompile'
+   * fix upgrade function (replaceProjectDefBinary)
+   
+ * Fix RouteStreamParser (fix get input int value '0')
+ * Fix Route alias (now value is generated from route URL)
+ * Update RouteCollector:
+   * update function 'allRoutes' - add argument 'bool  = false'
+     
+     ```php
+     public function allRoutes(bool $sort = false): array {...}
+     ```
+   
+ * Update AutoLoader (add autoload path 'vendor/FlyCubePHP/')
+ * Update Config 
+   * add function hasErrors
+     
+     ```php
+     public function hasErrors(): bool {...}
+     ```
+
+   * add function errors
+
+     ```php
+     public function errors(): array {...}
+     ```
+   
+   * add config settings:
+     * FLY_CUBE_PHP_ASSETS_CACHE_MAX_AGE_SEC
+     * FLY_CUBE_PHP_ENABLE_APCU_CACHE
+     * FLY_CUBE_PHP_PREPARE_ASSETS_REQUIRES_LIST
+     
+ * Fix AssetPipeline (fix error net::ERR_CONTENT_LENGTH_MISMATCH 200 (OK) in browser)
+ * Update AssetPipeline:
+   * update loading speed optimization 
+   * add prepare assets requires list
+     > 
+     > NOTE: Use flag 'FLY_CUBE_PHP_PREPARE_ASSETS_REQUIRES_LIST'.
+     > 
+     > This flag allows you to 'insert' at the beginning of the list of dependencies libraries located in 'lib/assets' and 'vendor/assets'.
+     > 
+     > The dependency tree does not break.
+     > 
+     
+   * added support for APCu cache
+
+ * Update ApiDocObject:
+   * add function isEmpty
+   
+     ```php
+     public function isEmpty(): bool {...}
+     ```
+     
+ * Added support HTTP HEAD (added check in BaseControllers and RouteCollector)
+
+ * Update ApiDoc:
+   * update loading speed optimization 
+   * added support for APCu cache
+
+ * Update HelpDoc:
+   * update loading speed optimization
+   * added support for APCu cache
+ 
+ * Update ComponentsCore: 
+   * update loading speed optimization
+   * added support for APCu cache
+   * remove unused includes
+
+ * Code refactoring
+ * Added 'test_page_load.sh'
+ 
+   ```shell
+   FlyCubePHP/tests> sh ./test_page_load.sh -h
+    
+   Help:
+    
+   --help - show this help (-h)
+    
+   Input args:
+   1 - host (if empty - used 127.0.0.1:8080)
+   2 - application URL prefix (may be empty)
+   3 - number of query iterations (may be empty; default: 10)
+    
+   Examples:
+   #> sh ./test_page_load.sh
+   
+   #> sh ./test_page_load.sh 127.0.0.1:8080 my-project
+   
+   #> sh ./test_page_load.sh 127.0.0.1:8080 my-project 5
+   
+   #> sh ./test_page_load.sh 127.0.0.1:8080 "" 5
+   
+   #> sh ./test_page_load.sh "" "" 5
+   ```
+   Example usage:
+   ```shell
+   FlyCubePHP/tests> sh ./test_page_load.sh 127.0.0.1:8080 my-project 5
+   LOAD: 0.32 sec (for iteration 1)
+   LOAD: 0.31 sec (for iteration 2)
+   LOAD: 0.31 sec (for iteration 3)
+   LOAD: 0.39 sec (for iteration 4)
+   LOAD: 0.30 sec (for iteration 5)
+   -----------------------------------
+   TOTAL: 1.63 sec (for 5 iterations)
+     AVG: 0.326 sec
+   ```
+
 # 1.6.0 (17.02.2022)
 
  * Update Development Guide RUS

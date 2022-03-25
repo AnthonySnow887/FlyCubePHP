@@ -11,12 +11,12 @@ namespace FlyCubePHP\Core\Controllers;
 include_once 'BaseController.php';
 include_once 'ControllerHelperTwigExt.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Protection\CSPProtection as CSPProtection;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Error\ErrorController;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Protection\CSPProtection;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 
 abstract class BaseActionController extends BaseController
 {
@@ -297,7 +297,12 @@ abstract class BaseActionController extends BaseController
 
             $this->_obLevel = 0;
         }
-        echo $pageData;
+
+        // --- check HTTP request (if HEAD - skip body) ---
+        $httpM = strtolower(RouteCollector::currentRouteMethod());
+        if (strcmp($httpM, 'head') !== 0)
+            echo $pageData;
+
         // --- clear ---
         unset($twig);
         unset($loader);
@@ -313,8 +318,9 @@ abstract class BaseActionController extends BaseController
     final public function renderPrivate(string $action) {
         // --- check caller function ---
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-        if (is_null($caller))
+        $callerClass = $dbt[1]['class'] ?? '';
+        $caller = $dbt[1]['function'] ?? '';
+        if (empty($caller))
             throw ErrorController::makeError([
                 'tag' => 'render',
                 'message' => "Not found caller function!",
@@ -322,7 +328,10 @@ abstract class BaseActionController extends BaseController
                 'method' => __FUNCTION__,
                 'action' => $action
             ]);
-        if (strcmp($caller, "FlyCubePHP\\requestProcessing") !== 0
+        if (!empty($callerClass))
+            $caller = "$callerClass::$caller";
+
+        if (strcmp($caller, "FlyCubePHP\Core\Routes\RouteCollector::processingRender") !== 0
             && strcmp($caller, "assetsPrecompile") !== 0)
             throw ErrorController::makeError([
                 'tag' => 'render',

@@ -16,10 +16,9 @@ include_once __DIR__ . '/../Controllers/BaseActionControllerAPI.php';
 include_once __DIR__.'/../Error/ErrorRoutes.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Error\ErrorRoutes as ErrorRoutes;
-use \FlyCubePHP\Core\Controllers\BaseController as BaseController;
-use \FlyCubePHP\Core\Controllers\BaseActionController as BaseActionController;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Controllers\BaseController;
+use FlyCubePHP\Core\Controllers\BaseActionController;
 use FlyCubePHP\Core\Logger\Logger;
 
 class RouteCollector
@@ -91,6 +90,10 @@ class RouteCollector
             return;
         }
         $this->_routes[$tmpName] = $route;
+
+        // --- make route 'as' define ---
+        $tmpAs = $route->routeAs();
+        define($tmpAs."_url", $route->uri());
     }
 
     /**
@@ -133,8 +136,7 @@ class RouteCollector
             return null;
         foreach ($this->_routes as $route) {
             if ($route->type() == RouteType::stringToInt($method)
-                && $route->isRouteMatch($uri) === true
-                /*&& $route->uri() == $uri*/)
+                && $route->isRouteMatch($uri) === true)
                 return $route;
         }
         return null;
@@ -171,10 +173,15 @@ class RouteCollector
 
     /**
      * Получить все маршруты
+     * @param bool $sort - Выполнить ли сортировку по URL
      * @return array
      */
-    public function allRoutes(): array {
-        return $this->_routes;
+    public function allRoutes(bool $sort = false): array {
+        if (!$sort)
+            return $this->_routes;
+        $tmpArray = $this->_routes;
+        usort($tmpArray, [ $this, 'compareRoutes' ]);
+        return $tmpArray;
     }
 
     /**
@@ -199,71 +206,108 @@ class RouteCollector
     }
 
     /**
-     * Метод проверки маршрутов на корректность (верно ли заданы контроллеры и их методы)
-     * @return bool
-     * @throws ErrorRoutes
+     * Обработка входящего запроса и рендеринг страницы
      * @throws \FlyCubePHP\Core\Error\Error
+     * @private
      *
-     * Если найден некорректный маршрут, то он удаляется из списка!
-     * Если найден маршрут, ссылающийся на вспомогательный метод класса (helper method), то выбрасывается исключение!
-     *
-     * Return true if route list is not empty, else - return false.
+     * NOTE: This function is only for use inside the system kernel!
      */
-    public function checkRoutes(): bool {
-        $tmpRemove = array();
-        foreach ($this->_routes as $key => $value) {
-            $tmpClassName = $value->controller();
-            $tmpClassAct = $value->action();
-            if (!class_exists($tmpClassName, false)) {
-                $tmpRemove[$key] = [
-                    'route' => $value,
-                    'msg' => 'Not found controller class!'
-                ];
-                continue;
-            }
-            $tmpController = new $tmpClassName();
-            if (!$tmpController instanceof BaseController)
-                $tmpRemove[$key] = [
-                    'route' => $value,
-                    'msg' => 'Controller class is not instance of BaseController!'
-                ];
-            elseif (!method_exists($tmpController, $tmpClassAct))
-                $tmpRemove[$key] = [
-                    'route' => $value,
-                    'msg' => 'Controller class does not contain required action!'
-                ];
-            elseif ($tmpController instanceof BaseActionController
-                    && $tmpController->isHelperMethod($tmpClassAct))
-                $tmpRemove[$key] = [
-                    'route' => $value,
-                    'msg' => 'Controller class action is a helper method!'
-                ];
+    public function processingRequest() {
+        // --- check caller function ---
+        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = $dbt[1]['function'] ?? null;
+        if (is_null($caller))
+            trigger_error("Not found caller function!", E_USER_ERROR);
+        if (strcmp($caller, "FlyCubePHP\\requestProcessing") !== 0)
+            trigger_error("Invalid caller function!", E_USER_ERROR);
 
-            // --- make route 'as' define ---
-            $tmpAs = $value->routeAs();
-            define($tmpAs."_url", $value->uri());
+        // --- log request ---
+        $httpM = static::currentRouteMethod();
+        $httpUrl = static::currentRouteUri();
+        $httpArgs = static::currentRouteArgs();
+        $clientIP = static::currentClientIP();
+        Logger::info("$httpM $httpUrl (from: $clientIP)");
+        if (empty($httpArgs))
+            Logger::info("PARAMS: {}");
+        else
+            Logger::info("PARAMS:", $httpArgs);
 
-            // --- clear ---
+        // --- check current route ---
+        $tmpCurRoute = $this->currentRoute();
+        if (is_null($tmpCurRoute))
+            $tmpCurRoute = $this->processingFailed("Not found route: [$httpM] $httpUrl", 404);
+
+        // --- processing controller ---
+        $tmpClassName = $tmpCurRoute->controller();
+        $tmpClassAct = $tmpCurRoute->action();
+        $tmpController = new $tmpClassName();
+        if (!$tmpController instanceof BaseController) {
+            $tmpCurRoute = $this->processingFailed("Controller class is not instance of BaseController!", 500);
             unset($tmpController);
+            $tmpController = null;
+        } elseif (!method_exists($tmpController, $tmpClassAct)) {
+            $tmpCurRoute = $this->processingFailed("Controller class does not contain required action!", 500);
+            unset($tmpController);
+            $tmpController = null;
+        } elseif ($tmpController instanceof BaseActionController
+                  && $tmpController->isHelperMethod($tmpClassAct)) {
+            $tmpCurRoute = $this->processingFailed("Controller class action is a helper method!", 500);
+            unset($tmpController);
+            $tmpController = null;
         }
-        foreach ($tmpRemove as $key => $value) {
-            $route = $value['route'];
-            $msg = $value['msg'];
-            if (Config::instance()->isProduction())
-                Logger::warning("Route '". $route->uri() ."' removed! $msg");
-            else
-                throw ErrorRoutes::makeError([
-                    'tag' => 'check-routes',
-                    'message' => "Invalid route '".$route->uri()."'! $msg",
-                    'url' => $route->uri(),
-                    'route-type' => $route->type(),
-                    'controller' => $route->controller(),
-                    'action' => $route->action()
-                ]);
+        $renderMS = $this->processingRender($tmpCurRoute, $tmpController);
+        Logger::info("RENDER: [$renderMS"."ms] $tmpClassName::$tmpClassAct()");
+    }
 
-            unset($this->_routes[$key]);
+    /**
+     * Обработка и рендеринг результата с ошибкой
+     * @param string $message
+     * @param int $httpCode
+     * @return Route|void|null
+     * @throws \FlyCubePHP\Core\Error\Error
+     */
+    private function processingFailed(string $message, int $httpCode = 500)/*: Route|null*/ {
+        if (Config::instance()->isDevelopment())
+            trigger_error($message, E_USER_ERROR);
+
+        Logger::warning($message);
+        if (!$this->containsRoute('GET', "/$httpCode")) {
+            http_response_code($httpCode);
+            die();
         }
-        return count($this->_routes) > 0;
+        $tmpCurRoute = $this->routeByMethodUri('GET', "/$httpCode");
+        if (!isset($_GET['code']))
+            $_GET['code'] = $httpCode;
+
+        return $tmpCurRoute;
+    }
+
+    /**
+     * Рендеринг контроллера и его метода
+     * @param $route
+     * @param $controller
+     * @return float
+     */
+    private function processingRender(/*Route|null*/ $route, /*BaseController|null*/ $controller): float {
+        if (is_null($route))
+            trigger_error("Route object is NULL!", E_USER_ERROR);
+
+        $tmpClassName = $route->controller();
+        $tmpClassAct = $route->action();
+        if (is_null($controller))
+            $tmpController = new $tmpClassName();
+        else
+            $tmpController = $controller;
+
+        $renderStartMS = microtime(true);
+        try {
+            $tmpController->renderPrivate($tmpClassAct);
+        } catch (\Throwable $ex) {
+            $tmpController->evalException($ex);
+        }
+        $renderMS = round(microtime(true) - $renderStartMS, 3);
+        unset($tmpController);
+        return $renderMS;
     }
 
     /**
@@ -815,5 +859,15 @@ class RouteCollector
             $tmpArgs = array_merge($tmpArgs, $route->routeArgsFromUri(self::currentRouteUri()));
         }
         return $tmpArgs;
+    }
+
+    /**
+     * Функция сравнения маршрутов по их URL
+     * @param Route $left
+     * @param Route $right
+     * @return int
+     */
+    static private function compareRoutes(Route $left, Route $right): int {
+        return strcasecmp($left->uri(), $right->uri());
     }
 }

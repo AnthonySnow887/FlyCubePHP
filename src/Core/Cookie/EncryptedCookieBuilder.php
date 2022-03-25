@@ -10,7 +10,7 @@ namespace FlyCubePHP\Core\Cookie;
 
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
+use FlyCubePHP\Core\Config\Config;
 
 class EncryptedCookieBuilder
 {

@@ -11,15 +11,17 @@ namespace FlyCubePHP\Core\AssetPipeline;
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Routes/RouteCollector.php';
 include_once __DIR__.'/../Error/ErrorAssetPipeline.php';
+include_once __DIR__.'/../Cache/APCu.php';
 include_once 'JSBuilder.php';
 include_once 'CSSBuilder.php';
 include_once 'ImageBuilder.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Error\ErrorAssetPipeline as ErrorAssetPipeline;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Error\ErrorAssetPipeline;
+use FlyCubePHP\Core\Cache\APCu;
 
 class AssetPipeline
 {
@@ -33,6 +35,7 @@ class AssetPipeline
 
     private $_useCompression = false;
     private $_compressionType = "";
+    private $_cacheMaxAge = 0;
 
     const CORE_JS_DIR       = __DIR__."/../../assets/javascripts/";
     const CORE_CSS_DIR      = __DIR__."/../../assets/stylesheets/";
@@ -60,14 +63,24 @@ class AssetPipeline
         $defVal = !Config::instance()->isProduction();
         $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
 
+        $prepareRequireList = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_PREPARE_ASSETS_REQUIRES_LIST, true));
+
         $defVal = Config::instance()->isProduction();
         $this->_useCompression = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSETS_COMPRESSION, $defVal));
         $this->_compressionType = \FlyCubePHP\configValue(Config::TAG_ASSETS_COMPRESSION_TYPE, "gzip");
+        $this->_cacheMaxAge = intval(\FlyCubePHP\configValue(Config::TAG_ASSETS_CACHE_MAX_AGE, 31536000));
         if (strcmp($this->_compressionType, "gzip") !== 0
             && strcmp($this->_compressionType, "deflate") !== 0)
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
                 'message' => "Invalid assets compression type (value: \"".$this->_compressionType."\")!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        if ($this->_cacheMaxAge <= 0)
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Invalid assets cache control mag age value (value: \"".$this->_cacheMaxAge."\")!",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__
             ]);
@@ -85,6 +98,7 @@ class AssetPipeline
         $this->_jsBuilder = new JSBuilder();
         $this->_jsBuilder->setCacheDir($cacheDir);
         $this->_jsBuilder->setRebuildCache($use_rebuildCache);
+        $this->_jsBuilder->setPrepareRequireList($prepareRequireList);
         $this->_jsBuilder->loadExtensions();
 
         // --- create css-builder ---
@@ -100,10 +114,12 @@ class AssetPipeline
         $this->_cssBuilder = new CSSBuilder();
         $this->_cssBuilder->setCacheDir($cacheDir);
         $this->_cssBuilder->setRebuildCache($use_rebuildCache);
+        $this->_cssBuilder->setPrepareRequireList($prepareRequireList);
         $this->_cssBuilder->loadExtensions();
 
         // --- create image-builder ---
         $this->_imageBuilder = new ImageBuilder();
+        $this->_imageBuilder->setRebuildCache($use_rebuildCache);
 
         // --- append FlyCubePHP assets ---
         $this->appendJavascriptDir(AssetPipeline::CORE_JS_DIR);
@@ -123,6 +139,21 @@ class AssetPipeline
      */
     public function __wakeup() {
         throw new \Exception("Cannot unserialize singleton");
+    }
+
+    /**
+     * Перезапросить и переустановить настройки кэширования
+     */
+    public function resetCacheSettings() {
+        $defVal = !Config::instance()->isProduction();
+        $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
+
+        if ($this->_jsBuilder)
+            $this->_jsBuilder->setRebuildCache($use_rebuildCache);
+        if ($this->_cssBuilder)
+            $this->_cssBuilder->setRebuildCache($use_rebuildCache);
+        if ($this->_imageBuilder)
+            $this->_imageBuilder->setRebuildCache($use_rebuildCache);
     }
 
     /**
@@ -356,22 +387,26 @@ class AssetPipeline
      * @throws
      */
     private function loadCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), AssetPipeline::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), AssetPipeline::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
-        if (!file_exists($fPath)) {
-            $this->updateCacheList();
-            return;
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+            if (!file_exists($fPath)) {
+                $this->updateCacheList();
+                return;
+            }
+            $fData = file_get_contents($fPath);
+            $this->_cacheList = json_decode($fData, true);
+        } else {
+            $this->_cacheList = APCu::cacheData('asset-pipeline-cache', []);
         }
-        $fData = file_get_contents($fPath);
-        $this->_cacheList = json_decode($fData, true);
     }
 
     /**
@@ -379,27 +414,32 @@ class AssetPipeline
      * @throws
      */
     private function updateCacheList() {
-        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), AssetPipeline::SETTINGS_DIR);
-        if (!CoreHelper::makeDir($dirPath, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache settings failed! Path: $dirPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+        if (!APCu::isApcuEnabled()) {
+            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), AssetPipeline::SETTINGS_DIR);
+            if (!CoreHelper::makeDir($dirPath, 0777, true))
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Make dir for cache settings failed! Path: $dirPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
 
-        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
-        $fData = json_encode($this->_cacheList);
-        $tmpFile = tempnam($dirPath, basename($fPath));
-        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-            @chmod($fPath, 0666 & ~umask());
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', AssetPipeline::CACHE_LIST_FILE));
+            $fData = json_encode($this->_cacheList);
+            $tmpFile = tempnam($dirPath, basename($fPath));
+            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+                @chmod($fPath, 0666 & ~umask());
+            } else {
+                throw ErrorAssetPipeline::makeError([
+                    'tag' => 'asset-pipeline',
+                    'message' => "Write file for cache settings failed! Path: $fPath",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__
+                ]);
+            }
         } else {
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Write file for cache settings failed! Path: $fPath",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+            APCu::setCacheData('asset-pipeline-cache', $this->_cacheList);
+            APCu::saveEncodedApcuData('asset-pipeline-cache', $this->_cacheList);
         }
     }
 
@@ -491,10 +531,16 @@ class AssetPipeline
     private function sendAsset(string $realPath, string $compressedRealPath, string $eTag) {
         $fExt = pathinfo($realPath, PATHINFO_EXTENSION);
         $fType = $fExt;
-        if (strcmp($fType, "js") === 0)
-            $fType = "javascript";
-
         $cType = "text/$fType";
+        $supportCompression = false;
+        if (strcmp($fType, "js") === 0) {
+            $cType = "application/javascript";
+            $supportCompression = true;
+        }
+        if (strcmp($fType, "css") === 0) {
+            $cType = "text/css";
+            $supportCompression = true;
+        }
         if (strcmp($fType, "png") === 0
             || strcmp($fType, "jpg") === 0
             || strcmp($fType, "jpeg") === 0
@@ -526,7 +572,7 @@ class AssetPipeline
 
             // --- check Accept-Encoding ---
             $contentEncodingHeader = "";
-            if ($this->_useCompression === true && strpos($cType, "text/") !== false) {
+            if ($this->_useCompression === true && $supportCompression === true) {
                 $acceptEncoding = trim(RouteCollector::currentRouteHeader('Accept-Encoding'));
                 if (!empty($acceptEncoding)
                     && strpos($acceptEncoding, $this->_compressionType) !== false
@@ -540,12 +586,12 @@ class AssetPipeline
             // --- send data ---
             header($_SERVER["SERVER_PROTOCOL"] . " 200 OK");
             header("Accept-Ranges: bytes");
+            header("Cache-Control: public, max-age=" . $this->_cacheMaxAge);
             header("Content-Length: ".filesize($realPath));
             header("Content-Type: $cType");
             header("Date: ".gmdate('D, d M Y H:i:s', time())." GMT");
             header("ETag: \"$eTag\"");
             header("Last-Modified: ".gmdate('D, d M Y H:i:s', $lastModified)." GMT");
-            header("Connection: close");
             if (!empty($contentEncodingHeader))
                 header("Content-Encoding: $contentEncodingHeader");
 

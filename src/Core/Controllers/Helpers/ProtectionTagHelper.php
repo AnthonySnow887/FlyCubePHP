@@ -12,8 +12,8 @@ include_once __DIR__.'/../../Protection/RequestForgeryProtection.php';
 include_once __DIR__.'/../../Protection/CSPProtection.php';
 include_once 'BaseControllerHelper.php';
 
-use \FlyCubePHP\Core\Protection\CSPProtection as CSPProtection;
-use \FlyCubePHP\Core\Protection\RequestForgeryProtection as RequestForgeryProtection;
+use FlyCubePHP\Core\Protection\CSPProtection;
+use FlyCubePHP\Core\Protection\RequestForgeryProtection;
 
 class ProtectionTagHelper extends BaseControllerHelper
 {

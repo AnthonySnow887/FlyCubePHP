@@ -11,10 +11,10 @@ namespace FlyCubePHP\Core\Controllers;
 include_once 'BaseController.php';
 include_once __DIR__.'/../Error/ErrorController.php';
 
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\Error\ErrorController as ErrorController;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\Error\ErrorController;
 
 class BaseActionControllerAPI extends BaseController
 {
@@ -36,8 +36,9 @@ class BaseActionControllerAPI extends BaseController
     public function renderPrivate(string $action) {
         // --- check caller function ---
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-        if (is_null($caller))
+        $callerClass = $dbt[1]['class'] ?? '';
+        $caller = $dbt[1]['function'] ?? '';
+        if (empty($caller))
             throw ErrorController::makeError([
                 'tag' => 'render',
                 'message' => "Not found caller function!",
@@ -45,7 +46,10 @@ class BaseActionControllerAPI extends BaseController
                 'method' => __FUNCTION__,
                 'action' => $action
             ]);
-        if (strcmp($caller, "FlyCubePHP\\requestProcessing") !== 0
+        if (!empty($callerClass))
+            $caller = "$callerClass::$caller";
+
+        if (strcmp($caller, "FlyCubePHP\Core\Routes\RouteCollector::processingRender") !== 0
             && strcmp($caller, "assetsPrecompile") !== 0)
             throw ErrorController::makeError([
                 'tag' => 'render',

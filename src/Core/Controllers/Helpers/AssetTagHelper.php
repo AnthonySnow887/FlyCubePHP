@@ -11,10 +11,10 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 include_once 'BaseControllerHelper.php';
 
 use FlyCubePHP\ComponentsCore\ComponentsManager;
-use \FlyCubePHP\Core\Routes\RouteType as RouteType;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Routes\RouteCollector as RouteCollector;
-use \FlyCubePHP\Core\AssetPipeline\AssetPipeline as AssetPipeline;
+use FlyCubePHP\Core\Routes\RouteType;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Routes\RouteCollector;
+use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 
 class AssetTagHelper extends BaseControllerHelper
 {

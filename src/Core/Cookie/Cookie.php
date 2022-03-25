@@ -14,9 +14,9 @@ include_once 'SignedCookieBuilder.php';
 include_once 'EncryptedCookieBuilder.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\Core\Error\ErrorCookie as ErrorCookie;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Error\ErrorCookie;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class Cookie
 {

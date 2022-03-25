@@ -20,10 +20,10 @@ include_once 'PostgreSQLMigrator.php';
 include_once 'MySQLMigrator.php';
 
 use Exception;
-use \FlyCubePHP\Core\Config\Config as Config;
-use \FlyCubePHP\HelperClasses\CoreHelper as CoreHelper;
-use \FlyCubePHP\Core\Database\DatabaseFactory as DatabaseFactory;
-use \FlyCubePHP\ComponentsCore\ComponentsManager as ComponentsManager;
+use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\ComponentsCore\ComponentsManager;
 
 class MigrationsCore
 {
