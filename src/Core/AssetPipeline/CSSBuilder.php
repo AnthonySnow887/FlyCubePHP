@@ -558,7 +558,7 @@ class CSSBuilder
         // --- compile scss ---
         $compiler = new \ScssPhp\ScssPhp\Compiler();
         foreach ($this->_cssDirs as $dir)
-            $compiler->setImportPaths(CoreHelper::buildAppPath($dir));
+            $compiler->addImportPath(CoreHelper::buildAppPath($dir));
 
         // --- append helper functions ---
         $this->appendHelperFunctions($compiler);
