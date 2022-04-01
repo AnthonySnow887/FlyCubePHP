@@ -45,8 +45,11 @@ abstract class BaseActionController extends BaseController
      *
      * - [bool]     layout_support  - отрисовывать или нет базовый слой (default: true)
      * - [string]   layout          - задать базовый layout (должен раполагаться в каталоге: app/views/layouts/)
+     * - [string]   view            - задать view для отрисовки (view для метода контроллера, если он существует, будет проигнорирован)
+     * - [array]    args            - задать массив аргументов, который будет передан в Twig при рендеринге
      * - [bool]     skip_render     - пропустить отрисовку страницы
      *
+     * NOTE: Key 'render_action' in args array is reserved!
      */
     final public function render(string $action = "", array $options = [ 'layout_support' => true ]) {
         // --- check skip in options ---
@@ -88,30 +91,35 @@ abstract class BaseActionController extends BaseController
         $coreLayoutsDirectory = $this->coreLayoutsDirectory();
         $viewsDirectory = $this->viewsDirectory();
         $viewsDirectoryNamespace = basename($viewsDirectory);
-        if (!is_dir($viewsDirectory))
-            throw ErrorController::makeError([
-                'tag' => 'render',
-                'message' => "Views directory not found!",
-                'additional-data' => ["Dir", $viewsDirectory],
-                'controller' => $this->controllerName(),
-                'method' => __FUNCTION__,
-                'action' => $action
-            ]);
-
-        $viewPath = $this->viewPath($action);
-        $viewFileName = CoreHelper::fileName($viewPath);
-        if (empty($viewPath))
-            throw ErrorController::makeError([
-                'tag' => 'render',
-                'message' => "Views file not found!",
-                'controller' => $this->controllerName(),
-                'method' => __FUNCTION__,
-                'action' => $action
-            ]);
+        if (!isset($options['view'])) {
+            $viewPath = $this->viewPath($action);
+            $viewFileName = CoreHelper::fileName($viewPath);
+            if (!is_dir($viewsDirectory))
+                throw ErrorController::makeError([
+                    'tag' => 'render',
+                    'message' => "Views directory not found!",
+                    'additional-data' => ["Dir", $viewsDirectory],
+                    'controller' => $this->controllerName(),
+                    'method' => __FUNCTION__,
+                    'action' => $action
+                ]);
+            if (empty($viewPath))
+                throw ErrorController::makeError([
+                    'tag' => 'render',
+                    'message' => "Views file not found!",
+                    'controller' => $this->controllerName(),
+                    'method' => __FUNCTION__,
+                    'action' => $action
+                ]);
+            $actionView = "$viewsDirectoryNamespace/$viewFileName";
+        } else {
+            $actionView = $this->prepareViewPath($options['view']);
+        }
 
         $loader = new \Twig\Loader\FilesystemLoader($coreLayoutsDirectory);
         try {
-            $loader->addPath($viewsDirectory, $viewsDirectoryNamespace);
+            if (is_dir($viewsDirectory))
+                $loader->addPath($viewsDirectory, $viewsDirectoryNamespace);
 
             // --- append other views paths ---
             $tmpViewsLst = AssetPipeline::instance()->viewDirs();
@@ -178,11 +186,26 @@ abstract class BaseActionController extends BaseController
         if (isset($options['layout']) && !empty(trim($options['layout'])))
             $localLayout = trim($options['layout']);
 
+        // --- make & check render args ---
+        $viewArgs = [];
+        if (isset($options['args']) && is_array($options['args']))
+            $viewArgs = $options['args'];
+        if (isset($viewArgs['render_action']))
+            throw ErrorController::makeError([
+                'tag' => 'render',
+                'message' => "Unsupported argument key! Key 'render_action' is reserved!",
+                'controller' => $this->controllerName(),
+                'method' => __FUNCTION__,
+                'action' => $action
+            ]);
+
         try {
-            if ($localLayoutSupport === true && $this->_layoutSupport === true)
-                $pageData = $twig->render($localLayout, [ 'render_action' => "@$viewsDirectoryNamespace/$viewFileName" ]);
-            else
-                $pageData = $twig->render("@$viewsDirectoryNamespace/$viewFileName");
+            if ($localLayoutSupport === true && $this->_layoutSupport === true) {
+                $viewArgs = array_merge($viewArgs, [ 'render_action' => "@$actionView" ]);
+                $pageData = $twig->render($localLayout, $viewArgs);
+            } else {
+                $pageData = $twig->render("@$actionView", $viewArgs);
+            }
         } catch (\Twig\Error\LoaderError $e) {
             $errFile = "";
             $errLine = -1;
@@ -663,5 +686,27 @@ abstract class BaseActionController extends BaseController
             include_once $this->helperPath();
         $hlpName = $this->helperName();
         $this->_helper = new $hlpName();
+    }
+
+    /**
+     * Подготовить путь для view
+     * @param string $path - путь
+     * @return string
+     *
+     * echo prepareViewPath("@@/tmp/app1.html");
+     *   => "tmp/app1.html"
+     */
+    final private function prepareViewPath(string $path): string {
+        if (empty($path))
+            return $path;
+        if (strcmp($path[0], "@") === 0) {
+            if (strlen($path) > 1) {
+                $path = ltrim($path, "@");
+                $path = $this->prepareViewPath($path);
+            } else {
+                $path = "";
+            }
+        }
+        return CoreHelper::splicePathFirst($path);
     }
 }
