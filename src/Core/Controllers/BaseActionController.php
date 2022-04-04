@@ -117,6 +117,12 @@ abstract class BaseActionController extends BaseController
         }
 
         $loader = new \Twig\Loader\FilesystemLoader($coreLayoutsDirectory);
+
+        // --- append core layouts namespaces ---
+        $coreLayoutsNS = $this->layoutsDirectoryNamespaces(CoreHelper::buildPath(CoreHelper::rootDir(), "app", "views", "layouts"));
+        foreach ($coreLayoutsNS as $key => $value)
+            $loader->addPath($value, $key);
+
         try {
             if (is_dir($viewsDirectory))
                 $loader->addPath($viewsDirectory, $viewsDirectoryNamespace);
@@ -617,6 +623,21 @@ abstract class BaseActionController extends BaseController
      */
     final private function coreLayoutsDirectory(): string {
         return CoreHelper::buildAppPath("app", "views", "layouts");
+    }
+
+    /**
+     * Список подкаталогов и их namespace-ов для layouts
+     * @param string $dir
+     * @return array
+     */
+    final private function layoutsDirectoryNamespaces(string $dir): array {
+        $tmpPaths = CoreHelper::scanDir($dir, true, true, true);
+        $tmpNS = [];
+        foreach ($tmpPaths as $path) {
+            $tmpNSName = CoreHelper::splicePathFirst(str_replace($dir, "", $path));
+            $tmpNS[$tmpNSName] = CoreHelper::buildAppPath($path);
+        }
+        return $tmpNS;
     }
 
     /**

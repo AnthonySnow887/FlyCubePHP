@@ -205,11 +205,13 @@ class CoreHelper
      * @param string $dir
      * @param bool $recursive - использовать ли рекурсивное сканирование
      * @param bool $appendDirs - добавлять или нет подкаталоги
+     * @param bool $onlyDirs - поиск только каталогов
      * @return array
      */
     static public function scanDir(string $dir,
                                    bool $recursive = false,
-                                   bool $appendDirs = false): array {
+                                   bool $appendDirs = false,
+                                   bool $onlyDirs = false): array {
         if (!is_dir($dir))
             return array();
         $files = scandir($dir);
@@ -217,12 +219,13 @@ class CoreHelper
         foreach ($files as $key => $value) {
             $path = realpath($dir . DIRECTORY_SEPARATOR . $value);
             if (!is_dir($path)) {
-                $results[] = $path;
+                if ($onlyDirs !== true)
+                    $results[] = $path;
             } elseif ($value != "." && $value != "..") {
                 if ($appendDirs === true)
                     $results[] = $path;
                 if ($recursive === true)
-                    $results = array_merge($results, CoreHelper::scanDir($path, $recursive, $appendDirs));
+                    $results = array_merge($results, CoreHelper::scanDir($path, $recursive, $appendDirs, $onlyDirs));
             }
         }
         return $results;
