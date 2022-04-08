@@ -124,8 +124,14 @@ abstract class BaseActionController extends BaseController
             $loader->addPath($value, $key);
 
         try {
-            if (is_dir($viewsDirectory))
+            if (is_dir($viewsDirectory)) {
                 $loader->addPath($viewsDirectory, $viewsDirectoryNamespace);
+
+                // --- append controller layouts namespaces ---
+                $controllerLayoutsNS = $this->layoutsDirectoryNamespaces(CoreHelper::buildPath(CoreHelper::rootDir(), $viewsDirectory));
+                foreach ($controllerLayoutsNS as $key => $value)
+                    $loader->addPath($value, "$viewsDirectoryNamespace/$key");
+            }
 
             // --- append other views paths ---
             $tmpViewsLst = AssetPipeline::instance()->viewDirs();
