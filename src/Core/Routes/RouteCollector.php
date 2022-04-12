@@ -525,10 +525,11 @@ class RouteCollector
     }
 
     /**
-     * Получить текущий URL без аргументов
+     * Получить текущий URL маршрута
+     * @param bool $withParams - удалить из маршрута аргументы или нет
      * @return string
      */
-    static public function currentRouteUri(): string {
+    static public function currentRouteUri(bool $withParams = false): string {
         $tmpURI = $_SERVER['REQUEST_URI'];
         $appPrefix = RouteCollector::applicationUrlPrefix();
         if (!empty($appPrefix) && $appPrefix !== "/") {
@@ -536,8 +537,10 @@ class RouteCollector
             if ($pos !== false)
                 $tmpURI = substr_replace($tmpURI, "", $pos, strlen($appPrefix));
         }
-        $tmpURILst = explode('?', $tmpURI);
-        $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
+        if (!$withParams) {
+            $tmpURILst = explode('?', $tmpURI);
+            $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
+        }
         if (empty($tmpURI))
             $tmpURI = "/";
         return $tmpURI;
