@@ -2,6 +2,7 @@
   "default_ipc_dev": {
     "adapter": "ipc",
     "adapter_socket": "/tmp/fly_cube_php_development.soc",
+    "adapter_socket_mode": "0777",
     "server_host": "127.0.0.1",
     "server_port": 8000,
     "server_workers": 1
@@ -10,6 +11,7 @@
   "default_ipc_prod": {
     "adapter": "ipc",
     "adapter_socket": "/tmp/fly_cube_php_production.soc",
+    "adapter_socket_mode": "0777",
     "server_host": "127.0.0.1",
     "server_port": 8000,
     "server_workers": 5
