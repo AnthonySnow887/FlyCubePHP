@@ -968,6 +968,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $tmplParams['USER'] = currentUser();
     $tmplParams['DATE'] = date('d.m.y');
     $tmplParams['TIME'] = date('H:i');
+    $tmplParams['NAME'] = "Application";
     $tmplParams['APP_NAME'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
     $tmplParams['APP_PATH'] = spliceUrlLast($path);
     $tmplParams['APP_URL_PREFIX'] = spliceUrlLast(spliceUrlFirst($nameUnderscore));
