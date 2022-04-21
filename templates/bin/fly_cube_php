@@ -939,6 +939,7 @@ function checkAndMakeProjectDefFiles(string $path): bool {
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/index.php.tmpl"] = buildPath($path, "index.php");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/apache24.conf.tmpl"] = buildPath($path, $nameUnderscore.".apache24.conf");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/application_env.conf.tmpl"] = buildPath($path, "config", "application_env.conf");
+    $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/routes.php.tmpl"] = buildPath($path, "config", "routes.php");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/ignore-list.conf.tmpl"] = buildPath($path, "config", "ignore-list.conf");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/database.json.tmpl"] = buildPath($path, "config", "database.json");
     $templatesList[__DIR__."/../vendor/FlyCubePHP/templates/development.php.tmpl"] = buildPath($path, "config", "environments", "development.php");
