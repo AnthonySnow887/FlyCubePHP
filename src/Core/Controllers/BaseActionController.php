@@ -141,6 +141,11 @@ abstract class BaseActionController extends BaseController
                     continue;
                 $dirNamespace = basename($value);
                 $loader->addPath($value, $dirNamespace);
+
+                // --- append other views namespaces ---
+                $otherLayoutsNS = $this->layoutsDirectoryNamespaces(CoreHelper::buildPath(CoreHelper::rootDir(), $value));
+                foreach ($otherLayoutsNS as $otherKey => $otherValue)
+                    $loader->addPath($otherValue, "$dirNamespace/$otherKey");
             }
         } catch (\Twig\Error\LoaderError $e) {
             throw ErrorController::makeError([

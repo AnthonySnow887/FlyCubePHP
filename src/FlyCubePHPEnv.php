@@ -117,6 +117,12 @@ AutoLoader::instance()->appendAutoLoadDir($app_models_dir);
 $app_controllers_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::CONTROLLERS_DIR);
 AutoLoader::instance()->appendAutoLoadDir($app_controllers_dir);
 
+// --- include all app view dirs ---
+$app_views_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::VIEWS_DIR);
+$app_views = CoreHelper::scanDir($app_views_dir, false, true, true);
+foreach ($app_views as $path)
+    AssetPipeline::instance()->appendViewDir($path);
+
 // --- include app routes ---
 $app_routes = CoreHelper::buildPath(CoreHelper::rootDir(), "config", "routes.php");
 if (file_exists($app_routes))
