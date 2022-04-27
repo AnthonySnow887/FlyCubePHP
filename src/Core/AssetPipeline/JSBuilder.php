@@ -165,7 +165,7 @@ class JSBuilder
         $this->_jsDirs[] = $dir;
         if (Config::instance()->isProduction() && !$this->_rebuildCache)
             return;
-        $tmpJS = CoreHelper::scanDir($dir, true);
+        $tmpJS = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpJS as $js) {
             $tmpName = CoreHelper::buildAppPath($js);
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $tmpName))
@@ -312,7 +312,7 @@ class JSBuilder
                     $line = substr($line, 13, strlen($line));
                     $line = trim($line);
                     $tmpPath = $this->makeDirPath(dirname($path), $line);
-                    $tmpJS = CoreHelper::scanDir($tmpPath, true);
+                    $tmpJS = CoreHelper::scanDir($tmpPath, [ 'recursive' => true ]);
                     foreach ($tmpJS as $js) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $js))
                             continue;

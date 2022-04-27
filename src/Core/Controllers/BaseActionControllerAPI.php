@@ -16,7 +16,7 @@ use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\Core\Error\ErrorController;
 
-class BaseActionControllerAPI extends BaseController
+abstract class BaseActionControllerAPI extends BaseController
 {
     use Extensions\NetworkBase {
         isNetworkUsed as private;
@@ -33,7 +33,7 @@ class BaseActionControllerAPI extends BaseController
      *
      * ПРИМЕЧАНИЕ: используется системой! Использование запрещено!
      */
-    public function renderPrivate(string $action) {
+    final public function renderPrivate(string $action) {
         // --- check caller function ---
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $callerClass = $dbt[1]['class'] ?? '';

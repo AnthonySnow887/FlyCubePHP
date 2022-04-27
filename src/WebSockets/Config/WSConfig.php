@@ -18,12 +18,14 @@ class WSConfig
     const TAG_WS_SERVER_PORT        = "server_port";
     const TAG_WS_SERVER_WORKERS_NUM = "server_workers";
     const TAG_IPC_SOCK_PATH         = "adapter_socket";
+    const TAG_IPC_SOCK_MODE         = "adapter_socket_mode";
     const TAG_REDIS_HOST            = "redis_host";
     const TAG_REDIS_PORT            = "redis_port";
     const TAG_REDIS_PASSWORD        = "redis_password";
     const TAG_REDIS_CHANNEL         = "redis_channel";
 
     const DEFAULT_IPC_SOCK_PATH     = "/tmp/fly_cube_php.soc";
+    const DEFAULT_IPC_SOCK_MODE     = "0755";
 
     /**
      * gets the instance via lazy initialization (created on first usage)

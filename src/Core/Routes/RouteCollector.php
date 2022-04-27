@@ -354,6 +354,33 @@ class RouteCollector
     }
 
     /**
+     * Получить адрес текущего сервера
+     * @return string
+     */
+    static public function serverHost(): string {
+        $tmpHost = explode(':', $_SERVER['HTTP_HOST']);
+        if (!empty($tmpHost))
+            return $tmpHost[0];
+        return "";
+    }
+
+    /**
+     * Получить порт текущего сервера
+     * @return int
+     */
+    static public function serverPort(): int {
+        $tmpHost = explode(':', $_SERVER['HTTP_HOST']);
+        if (count($tmpHost) >= 2) {
+            return intval($tmpHost[1]);
+        } else if (strcmp(self::currentHostProtocol(), 'http') === 0) {
+            return 80;
+        } else if (strcmp(self::currentHostProtocol(), 'https') === 0) {
+            return 443;
+        }
+        return -1;
+    }
+
+    /**
      * Получить информацию о USER AGENT текущего клиента
      * @return string
      */
@@ -525,10 +552,11 @@ class RouteCollector
     }
 
     /**
-     * Получить текущий URL без аргументов
+     * Получить текущий URL маршрута
+     * @param bool $withParams - удалить из маршрута аргументы или нет
      * @return string
      */
-    static public function currentRouteUri(): string {
+    static public function currentRouteUri(bool $withParams = false): string {
         $tmpURI = $_SERVER['REQUEST_URI'];
         $appPrefix = RouteCollector::applicationUrlPrefix();
         if (!empty($appPrefix) && $appPrefix !== "/") {
@@ -536,8 +564,10 @@ class RouteCollector
             if ($pos !== false)
                 $tmpURI = substr_replace($tmpURI, "", $pos, strlen($appPrefix));
         }
-        $tmpURILst = explode('?', $tmpURI);
-        $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
+        if (!$withParams) {
+            $tmpURILst = explode('?', $tmpURI);
+            $tmpURI = RouteCollector::spliceUrlLast($tmpURILst[0]);
+        }
         if (empty($tmpURI))
             $tmpURI = "/";
         return $tmpURI;

@@ -14,6 +14,7 @@ class IPCServerAdapter extends BaseServerAdapter
     const MAX_SOCKET_BUFFER_SIZE    = 10240;
 
     private $_sockPath;
+    private $_sockMode;
     private $_server = null;
     private $_clients = array();
     private $_read = array();  // read buffers
@@ -22,6 +23,7 @@ class IPCServerAdapter extends BaseServerAdapter
     {
         parent::__construct($workersControls);
         $this->_sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
+        $this->_sockMode = octdec(WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_MODE, WSConfig::DEFAULT_IPC_SOCK_MODE));
         if (empty($this->_sockPath)) {
             $errMsg = "[". self::class ."] Invalid IPC socket path!";
             $this->log(Logger::ERROR, $errMsg);
@@ -45,6 +47,12 @@ class IPCServerAdapter extends BaseServerAdapter
         $sockPath = $this->_sockPath;
         $this->_server = stream_socket_server("unix://$sockPath", $errorNumber, $errorString);
         stream_set_blocking($this->_server, true);
+        if (!chmod($sockPath, $this->_sockMode)) {
+            $errMsg = "[". self::class ."] chmod server socket failed (mode: " .$this->_sockMode. ")!";
+            $this->log(Logger::ERROR, $errMsg);
+            fwrite(STDERR, "$errMsg\r\n");
+            die();
+        }
         if (!$this->_server) {
             $errMsg = "[". self::class ."] stream_socket_server: $errorString ($errorNumber)";
             $this->log(Logger::ERROR, $errMsg);

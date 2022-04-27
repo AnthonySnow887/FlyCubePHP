@@ -49,6 +49,7 @@ class ComponentsManager
     const CONFIG_DIR = "config";
     const CONTROLLERS_DIR = "controllers";
     const CHANNELS_DIR = "channels";
+    const VIEWS_DIR = "views";
     const MODELS_DIR = "models";
     const PLUGIN_INIT_FILE = "init.php";
     const PLUGIN_ROUTES_FILE = "routes.php";
@@ -230,7 +231,7 @@ class ComponentsManager
                 $plDir,
                 "app", "views");
             $pl_views_dirs = [];
-            $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, false, true);
+            $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, [ 'append-dirs' => true ]);
             foreach ($pl_views_dir_lst as $vDir) {
                 if (!is_dir($vDir))
                     continue;
