@@ -45,7 +45,7 @@ abstract class BaseActionController extends BaseController
      *
      * - [bool]     layout_support  - отрисовывать или нет базовый слой (default: true)
      * - [string]   layout          - задать базовый layout (должен раполагаться в каталоге: app/views/layouts/)
-     * - [string]   view            - задать view для отрисовки (view для метода контроллера, если он существует, будет проигнорирован)
+     * - [string]   view            - задать view для отрисовки (view текущего метода контроллера, если он существует, будет проигнорирован)
      * - [array]    args            - задать массив аргументов, который будет передан в Twig при рендеринге
      * - [bool]     skip_render     - пропустить отрисовку страницы
      *

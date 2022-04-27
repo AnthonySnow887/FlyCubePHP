@@ -71,6 +71,57 @@ This behavior can be disabled by specifying the input argument:
 --download-requires=false
 ```
 
+Operating systems tested
+------------------------
+
+- OpenSUSE 15.1 and later
+- CentOS 8
+- Ubuntu 20.04
+- Astra Linux SE 1.6 (Linux kernel: 4.15.3-1)
+
+Development guides
+------------------
+
+- [RUS](https://github.com/AnthonySnow887/FlyCubePHP/blob/main/FlyCubePHP_Development_Guide_RUS.pdf)
+- ENG: Coming soon...
+
+Basic system requirements
+-------------------------
+
+- PHP >= 7.0
+
+Additional required PHP modules
+-------------------------------
+
+- php7-APCu
+- php7-ctype
+- php7-curl
+- php7-json
+- php7-mbstring
+- php7-mysql
+- php7-openssl
+- php7-pcntl
+- php7-pdo
+- php7-pgsql
+- php7-posix
+- php7-redis
+- php7-sockets
+- php7-sqlite
+- php7-xmlreader
+- php7-xmlwriter
+- php7-zip
+- php7-zlib
+
+Releases
+--------
+
+Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP/releases).
+
+License
+-------
+
+FlyCubePHP is licensed under the MIT License. See the LICENSE file for details.
+
 Usage
 -----
 
@@ -330,53 +381,3 @@ The project will be updated to version 1.5.0. Continue? [yes/no] (yes): y
 
 === FlyCubePHP ====================
 ```
-
-Development guides
-------------------
-
-- [RUS](https://github.com/AnthonySnow887/FlyCubePHP/blob/main/FlyCubePHP_Development_Guide_RUS.pdf)
-- ENG: Coming soon...
-
-Basic system requirements
--------------------------
-
-- PHP >= 7.0
-
-Additional required PHP modules
--------------------------------
-
-- php7-APCu
-- php7-ctype
-- php7-curl
-- php7-json
-- php7-mbstring
-- php7-mysql
-- php7-openssl
-- php7-pcntl
-- php7-pdo
-- php7-pgsql
-- php7-posix
-- php7-redis
-- php7-sockets
-- php7-sqlite
-- php7-xmlreader
-- php7-xmlwriter
-- php7-zip
-- php7-zlib
-
-Operating systems tested
-------------------------
-
-- OpenSUSE 15.1 and later
-- CentOS 8
-- Astra Linux SE 1.6 (Linux kernel: 4.15.3-1)
-
-Releases
---------
-
-Releases of FlyCubePHP are available on [Github](https://github.com/AnthonySnow887/FlyCubePHP/releases).
-
-License
--------
-
-FlyCubePHP is licensed under the MIT License. See the LICENSE file for details.

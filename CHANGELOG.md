@@ -1,3 +1,108 @@
+# 1.7.1 (27.04.2022)
+
+ * Update Development Guide RUS
+ * Fix AssetPipeline/CSSBuilder (fix scss import path)
+ * Fix fly_cube_php bin (fix create new project)
+ * Update BaseActionController:
+   * update render function:
+     * add params: view, args
+     
+     ```php
+     /**
+      * Метод отрисовки
+      * @param string $action
+      * @param array $options - дополнительные настройки отрисовки
+      * @throws
+      *
+      * ==== Options
+      *
+      * - [bool]     layout_support  - отрисовывать или нет базовый слой (default: true)
+      * - [string]   layout          - задать базовый layout (должен раполагаться в каталоге: app/views/layouts/)
+      * - [string]   view            - задать view для отрисовки (view текущего метода контроллера, если он существует, будет проигнорирован)
+      * - [array]    args            - задать массив аргументов, который будет передан в Twig при рендеринге
+      * - [bool]     skip_render     - пропустить отрисовку страницы
+      *
+      * NOTE: Key 'render_action' in args array is reserved!
+      */
+     final public function render(string $action = "", array $options = [ 'layout_support' => true ]) {...}
+     ```
+     
+     * add other views paths
+   * add core layouts namespaces
+   * add controller layouts namespaces
+
+ * Fix BaseActionControllerAPI (add abstract)
+ * Fix FlyCubePHPEnv.php (add app views paths)
+ * Update RouteCollector:
+   * add function serverHost
+  
+     ```php
+     /**
+      * Получить адрес текущего сервера
+      * @return string
+      */
+     static public function serverHost(): string {...}
+     ```
+
+   * add function serverPort
+  
+     ```php
+     /**
+      * Получить порт текущего сервера
+      * @return int
+      */
+     static public function serverPort(): int {...}
+     ```
+    
+   * update function currentRouteUri (add input argument 'bool $withParams = false')
+
+     ```php
+     /**
+      * Получить текущий URL маршрута
+      * @param bool $withParams - удалить из маршрута аргументы или нет
+      * @return string
+      */
+     static public function currentRouteUri(bool $withParams = false): string {...}
+     ```
+
+ * Update Web Sockets:
+   * add adapter ipc socket mode in cable.json (default: 0755)
+  
+     ```json
+     {
+       "default_ipc_dev": {
+         "adapter": "ipc",
+         "adapter_socket": "/tmp/fly_cube_php_development.soc",
+         "adapter_socket_mode": "0755",
+         "server_host": "127.0.0.1",
+         "server_port": 8000,
+         "server_workers": 1
+       }
+     }
+     ```
+
+ * Update CoreHelper:
+   * update function scanDir (function arguments changed) (see UPGRADE-1.7.1 how to upgrade to the latest version)
+
+     ```php
+     /**
+      * Сканирование каталога
+      * @param string $dir
+      * @param array $args - массив параметров сканирования
+      * @return array
+      *
+      * ==== Args
+      *
+      * - [bool] recursive       - use recursive scan (default: false)
+      * - [bool] append-dirs     - add subdirectories (default: false)
+      * - [bool] only-dirs       - search only directories (default: false)
+      */
+     static public function scanDir(string $dir, array $args = []): array {...}
+     ```
+
+ * Code refactoring
+
+
 # 1.7.0 (25.03.2022)
 
  * Update Development Guide RUS
