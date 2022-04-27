@@ -122,7 +122,7 @@ class ImageBuilder
         $this->_imageDirs[] = $dir;
         if (Config::instance()->isProduction() && !$this->_rebuildCache)
             return;
-        $tmpImages = CoreHelper::scanDir($dir, true);
+        $tmpImages = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpImages as $img) {
             $tmpName = CoreHelper::buildAppPath($img);
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif)$/", $tmpName))

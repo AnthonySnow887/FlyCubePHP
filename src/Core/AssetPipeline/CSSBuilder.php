@@ -167,7 +167,7 @@ class CSSBuilder
         $this->_cssDirs[] = $dir;
         if (Config::instance()->isProduction() && !$this->_rebuildCache)
             return;
-        $tmpCss = CoreHelper::scanDir($dir, true);
+        $tmpCss = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpCss as $css) {
             $tmpName = CoreHelper::buildAppPath($css);
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $tmpName))
@@ -316,7 +316,7 @@ class CSSBuilder
                     $line = substr($line, 13, strlen($line));
                     $line = trim($line);
                     $tmpPath = $this->makeDirPath(dirname($path), $line);
-                    $tmpCSS = CoreHelper::scanDir($tmpPath, true);
+                    $tmpCSS = CoreHelper::scanDir($tmpPath, [ 'recursive' => true ]);
                     foreach ($tmpCSS as $css) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
                             continue;

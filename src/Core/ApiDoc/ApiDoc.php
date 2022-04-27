@@ -154,7 +154,7 @@ class ApiDoc
         $this->_apiDocDirs[] = $dir;
         if (Config::instance()->isProduction() && !$this->_rebuildCache)
             return;
-        $tmpApiDocLst = CoreHelper::scanDir($dir, true);
+        $tmpApiDocLst = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpApiDocLst as $doc) {
             $tmpName = CoreHelper::buildAppPath($doc);
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.json)$/", $tmpName))

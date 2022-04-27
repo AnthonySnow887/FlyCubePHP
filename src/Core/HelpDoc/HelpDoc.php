@@ -153,7 +153,7 @@ class HelpDoc
         $this->_helpDocDirs[] = $dir;
         if (Config::instance()->isProduction() && !$this->_rebuildCache)
             return;
-        $tmpHelpDocLst = CoreHelper::scanDir($dir, true);
+        $tmpHelpDocLst = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpHelpDocLst as $doc) {
             $tmpName = CoreHelper::buildAppPath($doc);
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.md)$/", $tmpName))

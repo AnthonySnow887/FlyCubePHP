@@ -642,7 +642,7 @@ abstract class BaseActionController extends BaseController
      * @return array
      */
     final private function layoutsDirectoryNamespaces(string $dir): array {
-        $tmpPaths = CoreHelper::scanDir($dir, true, true, true);
+        $tmpPaths = CoreHelper::scanDir($dir, [ 'recursive' => true, 'append-dirs' => true, 'only-dirs' => true ]);
         $tmpNS = [];
         foreach ($tmpPaths as $path) {
             $tmpNSName = CoreHelper::splicePathFirst(str_replace($dir, "", $path));

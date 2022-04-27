@@ -119,7 +119,7 @@ AutoLoader::instance()->appendAutoLoadDir($app_controllers_dir);
 
 // --- include all app view dirs ---
 $app_views_dir = CoreHelper::buildPath(CoreHelper::rootDir(), "app", ComponentsManager::VIEWS_DIR);
-$app_views = CoreHelper::scanDir($app_views_dir, false, true, true);
+$app_views = CoreHelper::scanDir($app_views_dir, [ 'append-dirs' => true, 'only-dirs' => true ]);
 foreach ($app_views as $path)
     AssetPipeline::instance()->appendViewDir($path);
 

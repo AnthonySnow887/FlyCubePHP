@@ -203,17 +203,22 @@ class CoreHelper
     /**
      * Сканирование каталога
      * @param string $dir
-     * @param bool $recursive - использовать ли рекурсивное сканирование
-     * @param bool $appendDirs - добавлять или нет подкаталоги
-     * @param bool $onlyDirs - поиск только каталогов
+     * @param array $args - массив параметров сканирования
      * @return array
+     *
+     * ==== Args
+     *
+     * - [bool] recursive       - use recursive scan (default: false)
+     * - [bool] append-dirs     - add subdirectories (default: false)
+     * - [bool] only-dirs       - search only directories (default: false)
      */
-    static public function scanDir(string $dir,
-                                   bool $recursive = false,
-                                   bool $appendDirs = false,
-                                   bool $onlyDirs = false): array {
+    static public function scanDir(string $dir, array $args = []): array {
         if (!is_dir($dir))
             return array();
+        $recursive = $args['recursive'] ?? false;
+        $appendDirs = $args['append-dirs'] ?? false;
+        $onlyDirs = $args['only-dirs'] ?? false;
+
         $files = scandir($dir);
         $results = array();
         foreach ($files as $key => $value) {
@@ -225,7 +230,7 @@ class CoreHelper
                 if ($appendDirs === true)
                     $results[] = $path;
                 if ($recursive === true)
-                    $results = array_merge($results, CoreHelper::scanDir($path, $recursive, $appendDirs, $onlyDirs));
+                    $results = array_merge($results, CoreHelper::scanDir($path, $args));
             }
         }
         return $results;

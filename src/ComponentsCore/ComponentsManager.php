@@ -231,7 +231,7 @@ class ComponentsManager
                 $plDir,
                 "app", "views");
             $pl_views_dirs = [];
-            $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, false, true);
+            $pl_views_dir_lst = CoreHelper::scanDir($pl_views_dir, [ 'append-dirs' => true ]);
             foreach ($pl_views_dir_lst as $vDir) {
                 if (!is_dir($vDir))
                     continue;
