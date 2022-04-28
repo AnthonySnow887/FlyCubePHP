@@ -250,7 +250,7 @@ class AssetPipeline
      * === Example
      *
      *   javascriptFilePathReal('application')
-     *   * => app/assets/javascripts/application-e869470b75d3b312f45e9fa0f624016f7f416b59914493c6e1ebb9d83a441abb.js
+     *   * => app/assets/javascripts/application.js
      */
     public function javascriptFilePathReal(string $name)/*: string|array*/ {
         if (is_null($this->_jsBuilder))

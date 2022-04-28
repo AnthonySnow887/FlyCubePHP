@@ -113,7 +113,7 @@ EOT;
      * ==== Examples
      *
      *   javascript_asset_tag("application")
-     *   * => <script type="text/css">
+     *   * => <script>
      *        //<![CDATA[
      *        //
      *        // Created by FlyCubePHP generator.
