@@ -221,6 +221,11 @@ class AssetPipeline
      * @param string $name
      * @return array|string
      * @throws
+     *
+     * === Example
+     *
+     *   javascriptFilePath('application')
+     *   * => /assets/application-e869470b75d3b312f45e9fa0f624016f7f416b59914493c6e1ebb9d83a441abb.js
      */
     public function javascriptFilePath(string $name)/*: string|array*/ {
         if (is_null($this->_jsBuilder))
@@ -234,6 +239,23 @@ class AssetPipeline
             return $tmpAssetPaths;
         }
         return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
+    }
+
+    /**
+     * Получить физический путь (список путей) для JS файлов
+     * @param string $name
+     * @return array|string
+     * @throws
+     *
+     * === Example
+     *
+     *   javascriptFilePathReal('application')
+     *   * => app/assets/javascripts/application-e869470b75d3b312f45e9fa0f624016f7f416b59914493c6e1ebb9d83a441abb.js
+     */
+    public function javascriptFilePathReal(string $name)/*: string|array*/ {
+        if (is_null($this->_jsBuilder))
+            return "";
+        return $this->_jsBuilder->javascriptFilePath($name);
     }
 
     /**
@@ -273,6 +295,11 @@ class AssetPipeline
      * @param string $name
      * @return array|string
      * @throws
+     *
+     * === Example
+     *
+     *   stylesheetFilePath('application')
+     *   * => /assets/application-ad08b6bea609d12d0b678befdd49138306c7d34d8567fcefa3e1bab3d33d9013.css
      */
     public function stylesheetFilePath(string $name)/*: string|array*/ {
         if (is_null($this->_cssBuilder))
@@ -286,6 +313,23 @@ class AssetPipeline
             return $tmpAssetPaths;
         }
         return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
+    }
+
+    /**
+     * Получить физический путь (список путей) для CSS файлов
+     * @param string $name
+     * @return array|string
+     * @throws
+     *
+     * === Example
+     *
+     *   stylesheetFilePathReal('application')
+     *   * => app/assets/stylesheets/application.css
+     */
+    public function stylesheetFilePathReal(string $name)/*: string|array*/ {
+        if (is_null($this->_cssBuilder))
+            return "";
+        return $this->_cssBuilder->stylesheetFilePath($name);
     }
 
     /**
@@ -316,9 +360,30 @@ class AssetPipeline
      * @return string
      * @throws
      *
-     * imagePath("configure.svg") => "app/assets/images/configure.svg"
+     * === Example
+     *
+     *   imageFilePath("configure.svg")
+     *   * => /assets/configure-00f4bd1cfae9c8fd0b1877596b78d384638484e744e0769d49a1efc48c7f3fb8.svg
      */
     public function imageFilePath(string $name): string {
+        if (is_null($this->_imageBuilder))
+            return "";
+        $tmpPath = $this->_imageBuilder->imageFilePath($name);
+        return $this->buildAssetPath($tmpPath);
+    }
+
+    /**
+     * Поиск физического пути до image файла по имени
+     * @param string $name
+     * @return string
+     * @throws
+     *
+     * === Example
+     *
+     *   imageFilePathReal("configure.svg")
+     *   * => app/assets/images/configure.svg
+     */
+    public function imageFilePathReal(string $name): string {
         if (is_null($this->_imageBuilder))
             return "";
         $tmpPath = $this->_imageBuilder->imageFilePath($name);
