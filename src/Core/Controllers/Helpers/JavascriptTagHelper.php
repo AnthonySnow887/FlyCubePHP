@@ -32,6 +32,7 @@ class JavascriptTagHelper extends BaseControllerHelper
      * - type   - Set script type
      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
      * NOTE: for use nonce - enable CSP Protection.
      *
      * ==== Examples
@@ -45,6 +46,13 @@ class JavascriptTagHelper extends BaseControllerHelper
      *
      *   javascript_tag("alert('Hi!');", {"type": "application/javascript"})
      *   * => <script type="application/javascript">
+     *        //<![CDATA[
+     *        alert('Hi!');
+     *        //]]>
+     *        </script>
+     *
+     *   javascript_tag("alert('Hi!');", {"type": "application/javascript", "my_attr": "my_attr_value"})
+     *   * => <script type="application/javascript" my_attr="my_attr_value">
      *        //<![CDATA[
      *        alert('Hi!');
      *        //]]>
@@ -70,10 +78,19 @@ class JavascriptTagHelper extends BaseControllerHelper
     {
         if (empty($data) && empty($options))
             return "";
+        $tmpOptions = "";
+        foreach ($options as $key => $value) {
+            if (strcmp($key, 'type') === 0
+                || strcmp($key, 'nonce') === 0)
+                continue;
+            $tmpOptions .= " $key=\"$value\"";
+        }
+        $tmpOptions = trim($tmpOptions);
+
         $data = trim($data);
         $jsData = <<<EOT
             
-<script>
+<script $tmpOptions>
 //<![CDATA[
 $data
 //]]>
@@ -106,6 +123,7 @@ EOT;
      * - type   - Set script type
      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
      * NOTE: for use nonce - enable CSP Protection.
      * NOTE: this is overload function for 'javascript_tag(...)'.
      * NOTE: all dependent scripts are also built into the body of the block.

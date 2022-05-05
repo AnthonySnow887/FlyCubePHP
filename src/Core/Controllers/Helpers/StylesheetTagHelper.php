@@ -31,12 +31,20 @@ class StylesheetTagHelper extends BaseControllerHelper
      *
      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
      * NOTE: for use nonce - enable CSP Protection.
      *
      * ==== Examples
      *
      *   stylesheet_tag("html,body { background-color: red !important; }")
      *   * => <script type="text/css">
+     *        //<![CDATA[
+     *        html,body { background-color: red !important; }
+     *        //]]>
+     *        </script>
+     *
+     *   stylesheet_tag("html,body { background-color: red !important; }", {"my_attr": "my_attr_value"})
+     *   * => <script type="text/css" my_attr="my_attr_value">
      *        //<![CDATA[
      *        html,body { background-color: red !important; }
      *        //]]>
@@ -63,10 +71,19 @@ class StylesheetTagHelper extends BaseControllerHelper
     {
         if (empty($data) && empty($options))
             return "";
+        $tmpOptions = "";
+        foreach ($options as $key => $value) {
+            if (strcmp($key, 'type') === 0
+                || strcmp($key, 'nonce') === 0)
+                continue;
+            $tmpOptions .= " $key=\"$value\"";
+        }
+        $tmpOptions = trim($tmpOptions);
+
         $data = trim($data);
         $cssData = <<<EOT
             
-<script type="text/css">
+<script type="text/css" $tmpOptions>
 //<![CDATA[
 $data
 //]]>
@@ -94,6 +111,7 @@ EOT;
      *
      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
      * NOTE: for use nonce - enable CSP Protection.
      * NOTE: this is overload function for 'stylesheet_tag(...)'.
      * NOTE: all dependent scripts are also built into the body of the block.
