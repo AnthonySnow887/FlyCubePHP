@@ -9,6 +9,7 @@
 namespace FlyCubePHP\Core\AssetPipeline;
 
 include_once 'CSSMinifier.php';
+include_once 'SCSSLogger.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Cache/APCu.php';
 
@@ -27,6 +28,7 @@ class CSSBuilder
     private $_cacheDir = "";
     private $_rebuildCache = false;
     private $_prepareRequireList = false;
+    private $_enableScssLogging = false;
 
     const PRE_BUILD_DIR = "pre_build";
     const SETTINGS_DIR = "tmp/cache/FlyCubePHP/css_builder/";
@@ -93,6 +95,22 @@ class CSSBuilder
      */
     public function hasPrepareRequireList(): bool {
         return $this->_prepareRequireList;
+    }
+
+    /**
+     * Выставить флаг логирования SCSS для функций: @debug, @warn
+     * @param bool $value
+     */
+    public function setEnableScssLogging(bool $value) {
+        $this->_enableScssLogging = $value;
+    }
+
+    /**
+     * Флаг логирования SCSS для функций: @debug, @warn
+     * @return bool
+     */
+    public function hasEnableScssLogging(): bool {
+        return $this->_enableScssLogging;
     }
 
     /**
@@ -557,6 +575,8 @@ class CSSBuilder
 
         // --- compile scss ---
         $compiler = new \ScssPhp\ScssPhp\Compiler();
+        if ($this->_enableScssLogging === true)
+            $compiler->setLogger(new SCSSLogger($path));
         foreach ($this->_cssDirs as $dir)
             $compiler->addImportPath(CoreHelper::buildAppPath($dir));
 
@@ -570,6 +590,7 @@ class CSSBuilder
             $tmpCss = $compiler->compileString($tmpCss)->getCss();
         } catch (\ScssPhp\ScssPhp\Exception\SassException $e) {
             unset($compiler);
+            $errMessage = str_replace("(unknown file)", "(".basename($path).")", $e->getMessage());
             $errFile = $path;
             $errLine = -1;
             preg_match('/.*line: ([0-9]{1,}).*/', $e->getMessage(), $matches, PREG_OFFSET_CAPTURE);
@@ -578,7 +599,7 @@ class CSSBuilder
 
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Pre-Build scss file failed! Error: ".  $e->getMessage(),
+                'message' => "Pre-Build scss file failed! Error: $errMessage",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $path,
