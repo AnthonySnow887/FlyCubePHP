@@ -10,11 +10,14 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once __DIR__.'/../../Protection/RequestForgeryProtection.php';
 include_once 'BaseControllerHelper.php';
+include_once 'Extensions/TagBuilder.php';
 
 use FlyCubePHP\Core\Protection\RequestForgeryProtection;
 
 class FormTagHelper extends BaseControllerHelper
 {
+    use Extensions\TagBuilder;
+
     function __construct() {
         $this->appendSafeFunction("form_with");
         $this->appendSafeFunction("label");
@@ -105,9 +108,12 @@ class FormTagHelper extends BaseControllerHelper
      *     </form>
      */
     public function form_with(array $options = array()): string {
-        $action = "/";
-        if (isset($options['url']))
-            $action = $options['url'];
+        $props['accept-charset'] = 'UTF-8';
+        $props['action'] = '/';
+        if (isset($options['url'])) {
+            $props['action'] = $options['url'];
+            unset($options['url']);
+        }
 
         $method = "post";
         if (isset($options['method']))
@@ -117,34 +123,40 @@ class FormTagHelper extends BaseControllerHelper
         if (strcmp($method, "put") === 0
             || strcmp($method, "patch") === 0
             || strcmp($method, "delete") === 0) {
-            $methodTypeTag = "<input name=\"_method\" type=\"hidden\" value=\"$method\" />";
+            $methodTypeTag = $this->makeTag('input', '', [ 'name' => '_method', 'type' => 'hidden', 'value' => $method]);//"<input name=\"_method\" type=\"hidden\" value=\"$method\" />";
             $method = "post";
         }
+        $props['method'] = $method;
 
         $authenticityToken = true;
-        if (isset($options['authenticity_token'])
-            && $options['authenticity_token'] === false)
-            $authenticityToken = false;
+        if (isset($options['authenticity_token'])) {
+            if ($options['authenticity_token'] === false)
+                $authenticityToken = false;
+            unset($options['authenticity_token']);
+        }
 
-        $encType = "";
-        if (isset($options['encrypt_type'])
-            && !empty($options['encrypt_type']))
-            $encType = "enctype=\"" . trim($options['encrypt_type']) . "\"";
+        $props['enctype'] = '';
+        if (isset($options['encrypt_type'])) {
+            if (!empty($options['encrypt_type']))
+                $props['enctype'] = trim($options['encrypt_type']);
+            unset($options['encrypt_type']);
+        }
 
-        $html = "<form accept-charset=\"UTF-8\" $encType action=\"$action\" method=\"$method\">";
+        $html = "";
         if (!empty($methodTypeTag))
             $html .= "\r\n" . $methodTypeTag;
         if ($authenticityToken === true
             && RequestForgeryProtection::instance()->isProtectFromForgery()) {
             $token = RequestForgeryProtection::instance()->formAuthenticityToken();
-            $html .= "\r\n<input name=\"authenticity_token\" type=\"hidden\" value=\"$token\" />";
+            $html .= "\r\n" . $this->makeTag('input', '', [ 'name' => 'authenticity_token', 'type' => 'hidden', 'value' => $token ]);//<input name=\"authenticity_token\" type=\"hidden\" value=\"$token\" />";
         }
-        if (isset($options['html_body'])
-            && !empty($options['html_body']))
-            $html .= "\r\n" . trim($options['html_body']);
-
-        $html .= "\r\n</form>";
-        return $html;
+        if (isset($options['html_body'])) {
+            if (!empty($options['html_body']))
+                $html .= "\r\n" . trim($options['html_body']);
+            unset($options['html_body']);
+        }
+        $props = $this->prepareTagAttributes($props, $options);
+        return $this->makeTag('form', $html, $props, true);//$html;
     }
 
     /**
@@ -169,19 +181,7 @@ class FormTagHelper extends BaseControllerHelper
      *     <input type="text" id="my-input" name="my-input-text" />
      */
     public function label(string $text, array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $for = "";
-        if (isset($options['for']) && !empty($options['for']))
-            $for = "for=\"" . $options['for'] . "\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        return "<label $id $for $class>$text</label>";
+        return $this->makeTag('label', $text, $options, true);
     }
 
     /**
@@ -226,31 +226,15 @@ class FormTagHelper extends BaseControllerHelper
      *     <input type="button" id="my-button-id" name="my-button" value="some button value" />
      */
     public function button_tag(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
+        $type = "button";
+        if (isset($options['type'])
+            && (strcmp($options['type'], 'button') === 0
+                || strcmp($options['type'], 'reset') === 0
+                || strcmp($options['type'], 'submit') === 0))
+            $type = $options['type'];
 
-        $name = "name=\"commit\"";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "value=\"Commit data\"";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        $type = "type=\"button\"";
-        if (isset($options['type']) && !empty($options['type']))
-            $type = "type=\"" . $options['type'] . "\"";
-
-        $disabled = "";
-        if (isset($options['disabled']) && $options['disabled'] === true)
-            $disabled = "disabled=\"disabled\"";
-
-        return "<input $type $id $name $class $value $disabled />";
+        $props = $this->prepareTagAttributes([ 'type' => $type ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -294,30 +278,27 @@ class FormTagHelper extends BaseControllerHelper
      * * => <input type="file" id="file" name="commit" accept="image/png,image/gif,image/jpeg" />
      */
     public function file_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $multiple = "";
+        $props['type'] = 'file';
         $multipleName = "";
-        if (isset($options['multiple']) && $options['multiple'] === true) {
-            $multiple = "multiple=\"multiple\"";
-            $multipleName = "[]";
+        if (isset($options['multiple'])) {
+            if ($options['multiple'] === true) {
+                $props['multiple'] = 'multiple';
+                $multipleName = "[]";
+            }
+            unset($options['multiple']);
         }
 
-        $name = "name=\"commit$multipleName\"";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
+        $props['name'] = "commit$multipleName";
+        if (isset($options['name']) && !empty($options['name'])) {
+            $tmpName = $options['name'];
+            $pos = strpos($tmpName, '[');
+            if ($pos !== false)
+                $tmpName = substr($tmpName, 0, $pos);
 
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        $accept = "";
-        if (isset($options['accept']) && !empty($options['accept']))
-            $accept = "accept=\"" . $options['accept'] . "\"";
-
-        return "<input type=\"file\" $id $name $class $accept $multiple />";
+            $props['name'] = $tmpName . $multipleName;
+        }
+        $props = $this->prepareTagAttributes($props, $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -337,19 +318,8 @@ class FormTagHelper extends BaseControllerHelper
      * * => <input type="hidden" id="my-hidden-id" name="my-hidden-obj" value="some hidden value" />
      */
     public function hidden_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        return "<input type=\"hidden\" $id $name $value />";
+        $props = $this->prepareTagAttributes([ 'type' => 'hidden' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -376,34 +346,29 @@ class FormTagHelper extends BaseControllerHelper
      *      <input type="checkbox" checked="checked"  name="chk_test_2"  checked="checked" value="yes" />
      */
     public function check_box(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
+        $propsHidden['type'] = 'hidden';
         if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
+            $propsHidden['name'] = $options['name'];
 
         $checkedValue = "1";
-        if (isset($options['checked_value']) && !empty($options['checked_value']))
-            $checkedValue = strval($options['checked_value']);
-
+        if (isset($options['checked_value'])) {
+            if (!empty($options['checked_value']))
+                $checkedValue = strval($options['checked_value']);
+            unset($options['checked_value']);
+        }
         $uncheckedValue = "0";
-        if (isset($options['unchecked_value']) && !empty($options['unchecked_value']))
-            $uncheckedValue = strval($options['unchecked_value']);
+        if (isset($options['unchecked_value'])) {
+            if (!empty($options['unchecked_value']))
+                $uncheckedValue = strval($options['unchecked_value']);
+            unset($options['unchecked_value']);
+        }
+        $propsHidden['value'] = $uncheckedValue;
 
-        $value = "value=\"$checkedValue\"";
-        $hidenValue = "value=\"$uncheckedValue\"";
-        $checked = "checked=\"checked\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        return <<<EOT
-<input type="hidden" $name $hidenValue />
-<input type="checkbox" $checked $id $name $class $checked $value />
-EOT;
+        $props['type'] = 'checkbox';
+        $props['value'] = $checkedValue;
+        $props['checked'] = 'checked';
+        $props = $this->prepareTagAttributes($props, $options);
+        return $this->makeTag('input', '', $propsHidden) . $this->makeTag('input', '', $props);
     }
 
     /**
@@ -423,19 +388,8 @@ EOT;
      * * => <input type="color" id="my-color-id" name="my-color" value="#4c4c4c" />
      */
     public function color_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        return "<input type=\"color\" $id $name $value />";
+        $props = $this->prepareTagAttributes([ 'type' => 'color' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -457,27 +411,8 @@ EOT;
      * * => <input type="date" id="my-date-id" name="my-date" value="2021-10-18" />
      */
     public function date_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        return "<input type=\"date\" $id $name $value $min $max />";
+        $props = $this->prepareTagAttributes([ 'type' => 'date' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -489,9 +424,9 @@ EOT;
      *
      * - id     - Set input id
      * - name   - Set input name
-     * - value  - Set input value (fromat: yyyy-MM-ddThh:mm)
-     * - min    - Set input min value (fromat: yyyy-MM-ddThh:mm)
-     * - max    - Set input max value (fromat: yyyy-MM-ddThh:mm)
+     * - value  - Set input value (format: yyyy-MM-ddThh:mm)
+     * - min    - Set input min value (format: yyyy-MM-ddThh:mm)
+     * - max    - Set input max value (format: yyyy-MM-ddThh:mm)
      *
      * ==== Examples in Twig notations
      *
@@ -499,27 +434,8 @@ EOT;
      * * => <input type="datetime-local" id="my-datetime-id" name="my-datetime" value="2021-10-18T15:10" />
      */
     public function datetime_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        return "<input type=\"datetime-local\" $id $name $value $min $max />";
+        $props = $this->prepareTagAttributes([ 'type' => 'datetime-local' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -559,35 +475,8 @@ EOT;
      * * => <input type="email" id="my-email-id" name="my-email" pattern=".+@my.com" size="20" required />
      */
     public function email_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $pattern = "";
-        if (isset($options['pattern']) && !empty($options['pattern']))
-            $pattern = "pattern=\"" . $options['pattern'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $maxLength = "";
-        if (isset($options['maxlength']) && !empty($options['maxlength']))
-            $maxLength = "maxlength=\"" . $options['maxlength'] . "\"";
-
-        $minLength = "";
-        if (isset($options['minlength']) && !empty($options['minlength']))
-            $minLength = "minlength=\"" . $options['minlength'] . "\"";
-
-        $required = "";
-        if (isset($options['required']) && $options['required'] === true)
-            $required = "required";
-
-        return "<input type=\"email\" $id $name $pattern $size $maxLength $minLength $required />";
+        $props = $this->prepareTagAttributes([ 'type' => 'email' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -609,27 +498,8 @@ EOT;
      * * => <input type="month" id="my-month-id" name="my-month" value="2021-10" />
      */
     public function month_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        return "<input type=\"month\" $id $name $value $min $max />";
+        $props = $this->prepareTagAttributes([ 'type' => 'month' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -652,31 +522,8 @@ EOT;
      * * => <input type="number" id="my-number-id" name="my-number" value="2021" min="2000" max="2500" step="5" />
      */
     public function number_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        $step = "";
-        if (isset($options['step']) && !empty($options['step']))
-            $step = "step=\"" . $options['step'] . "\"";
-
-        return "<input type=\"number\" $id $name $value $min $max $step />";
+        $props = $this->prepareTagAttributes([ 'type' => 'number' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -704,31 +551,8 @@ EOT;
      *     <input type="password" id="my-password-id" name="my-password"  size="10"  onchange="if ($('#my-password-id').val().length > 30) { alert('Your password needs to be shorter!'); }" />
      */
     public function password_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $onChange = "";
-        if (isset($options['onchange']) && !empty($options['onchange']))
-            $onChange = "onchange=\"" . $options['onchange'] . "\"";
-
-        return "<input type=\"password\" $id $name $class $size $value $onChange />";
+        $props = $this->prepareTagAttributes([ 'type' => 'password' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -752,35 +576,8 @@ EOT;
      * * => <input type="tel" id="my-tel-id" name="my-tel" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" size="10" required />
      */
     public function telephone_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $pattern = "";
-        if (isset($options['pattern']) && !empty($options['pattern']))
-            $pattern = "pattern=\"" . $options['pattern'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $maxLength = "";
-        if (isset($options['maxlength']) && !empty($options['maxlength']))
-            $maxLength = "maxlength=\"" . $options['maxlength'] . "\"";
-
-        $minLength = "";
-        if (isset($options['minlength']) && !empty($options['minlength']))
-            $minLength = "minlength=\"" . $options['minlength'] . "\"";
-
-        $required = "";
-        if (isset($options['required']) && $options['required'] === true)
-            $required = "required";
-
-        return "<input type=\"tel\" $id $name $pattern $size $maxLength $minLength $required />";
+        $props = $this->prepareTagAttributes([ 'type' => 'tel' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -814,29 +611,14 @@ EOT;
      * ==== Examples in Twig notations
      *
      * radio_button({'id': 'post_category_rails', 'name': 'post[category]', 'value': 'rails', 'checked': true})
-     * radio_button({'id': 'post_category_rails', 'name': 'post[category]', 'value': 'java'})
+     * radio_button({'id': 'post_category_java', 'name': 'post[category]', 'value': 'java'})
      * * => <input type="radio" id="post_category_rails" name="post[category]" value="rails" checked="checked" />
      *      <input type="radio" id="post_category_java" name="post[category]" value="java" />
      *
      */
     public function radio_button(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $checked = "";
-        if (isset($options['checked']) && $options['checked'] === true)
-            $checked = "checked=\"checked\"";
-
-        return "<input type=\"radio\" $id $name $value $checked />";
+        $props = $this->prepareTagAttributes([ 'type' => 'radio' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -859,39 +641,8 @@ EOT;
      * * => <input type="range" id="my-range-id" name="my-range" value="5" min="0" max="10" step="1" />
      */
     public function range_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min'])) {
-            if (is_string($options['min']) && !empty($options['min']))
-                $min = "min=\"" . $options['min'] . "\"";
-            else if (is_numeric($options['min']))
-                $min = "min=\"" . $options['min'] . "\"";
-        }
-
-        $max = "";
-        if (isset($options['max'])) {
-            if (is_string($options['max']) && !empty($options['max']))
-                $max = "max=\"" . $options['max'] . "\"";
-            else if (is_numeric($options['max']))
-                $max = "max=\"" . $options['max'] . "\"";
-        }
-
-        $step = "";
-        if (isset($options['step']) && !empty($options['step']))
-            $step = "step=\"" . $options['step'] . "\"";
-
-        return "<input type=\"range\" $id $name $value $min $max $step />";
+        $props = $this->prepareTagAttributes([ 'type' => 'range' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -914,31 +665,8 @@ EOT;
      * * => <input type="search" id="my-search-id" name="my-search" pattern="[A-z]{2}[0-9]{4}" size="6" />
      */
     public function search_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $pattern = "";
-        if (isset($options['pattern']) && !empty($options['pattern']))
-            $pattern = "pattern=\"" . $options['pattern'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $maxLength = "";
-        if (isset($options['maxlength']) && !empty($options['maxlength']))
-            $maxLength = "maxlength=\"" . $options['maxlength'] . "\"";
-
-        $minLength = "";
-        if (isset($options['minlength']) && !empty($options['minlength']))
-            $minLength = "minlength=\"" . $options['minlength'] . "\"";
-
-        return "<input type=\"search\" $id $name $pattern $size $maxLength $minLength />";
+        $props = $this->prepareTagAttributes([ 'type' => 'search' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -965,39 +693,12 @@ EOT;
      *      </textarea>
      */
     public function text_area(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $cols = "";
-        if (isset($options['cols']) && !empty($options['cols']))
-            $cols = "cols=\"" . $options['cols'] . "\"";
-
-        $rows = "";
-        if (isset($options['rows']) && !empty($options['rows']))
-            $rows = "rows=\"" . $options['rows'] . "\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        $disabled = "";
-        if (isset($options['disabled']) && $options['disabled'] === true)
-            $disabled = "disabled=\"disabled\"";
-
         $textBody = "";
-        if (isset($options['text_body']))
+        if (isset($options['text_body'])) {
             $textBody = htmlentities($options['text_body']);
-
-        return <<<EOT
-<textarea $id $cols $rows $name $class $disabled>
-$textBody
-</textarea>
-EOT;
+            unset($options['text_body']);
+        }
+        return $this->makeTag('textarea', $textBody, $options, true);
     }
 
     /**
@@ -1027,39 +728,8 @@ EOT;
      *     <input type="text" id="my-text-id" name="my-text" size="10" value="123-qwe-456-rty" onchange="if ($('#my-text-id').val().length > 30) { alert('Your text needs to be shorter!'); }" />
      */
     public function text_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $class = "";
-        if (isset($options['class']) && !empty($options['class']))
-            $class = "class=\"" . $options['class'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $maxLength = "";
-        if (isset($options['maxlength']) && !empty($options['maxlength']))
-            $maxLength = "maxlength=\"" . $options['maxlength'] . "\"";
-
-        $minLength = "";
-        if (isset($options['minlength']) && !empty($options['minlength']))
-            $minLength = "minlength=\"" . $options['minlength'] . "\"";
-
-        $onChange = "";
-        if (isset($options['onchange']) && !empty($options['onchange']))
-            $onChange = "onchange=\"" . $options['onchange'] . "\"";
-
-        return "<input type=\"text\" $id $name $class $size $value $minLength $maxLength $onChange />";
+        $props = $this->prepareTagAttributes([ 'type' => 'text' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -1083,35 +753,8 @@ EOT;
      * * => <input type="time" id="my-time-id" name="my-time" value="17:16" min="13:00" max="18:00" required />
      */
     public function time_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        $step = "";
-        if (isset($options['step']) && !empty($options['step']))
-            $step = "step=\"" . $options['step'] . "\"";
-
-        $required = "";
-        if (isset($options['required']) && $options['required'] === true)
-            $required = "required";
-
-        return "<input type=\"time\" $id $name $value $min $max $step $required />";
+        $props = $this->prepareTagAttributes([ 'type' => 'time' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -1137,43 +780,8 @@ EOT;
      * * => <input type="url" id="my-url-id" name="my-url" size="30" placeholder="https://example.com" pattern="https://.*" required />
      */
     public function url_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $pattern = "";
-        if (isset($options['pattern']) && !empty($options['pattern']))
-            $pattern = "pattern=\"" . $options['pattern'] . "\"";
-
-        $placeholder = "";
-        if (isset($options['placeholder']) && !empty($options['placeholder']))
-            $placeholder = "placeholder=\"" . $options['placeholder'] . "\"";
-
-        $size = "";
-        if (isset($options['size']) && !empty($options['size']))
-            $size = "size=\"" . $options['size'] . "\"";
-
-        $maxLength = "";
-        if (isset($options['maxlength']) && !empty($options['maxlength']))
-            $maxLength = "maxlength=\"" . $options['maxlength'] . "\"";
-
-        $minLength = "";
-        if (isset($options['minlength']) && !empty($options['minlength']))
-            $minLength = "minlength=\"" . $options['minlength'] . "\"";
-
-        $required = "";
-        if (isset($options['required']) && $options['required'] === true)
-            $required = "required";
-
-        return "<input type=\"url\" $id $name $minLength $maxLength $size $placeholder $pattern $required $value />";
+        $props = $this->prepareTagAttributes([ 'type' => 'url' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 
     /**
@@ -1197,34 +805,7 @@ EOT;
      * * => <input type="week" id="my-week-id" name="my-week" value="2021-W42" />
      */
     public function week_field(array $options = []): string {
-        $id = "";
-        if (isset($options['id']) && !empty($options['id']))
-            $id = "id=\"" . $options['id'] . "\"";
-
-        $name = "";
-        if (isset($options['name']) && !empty($options['name']))
-            $name = "name=\"" . $options['name'] . "\"";
-
-        $value = "";
-        if (isset($options['value']) && !empty($options['value']))
-            $value = "value=\"" . $options['value'] . "\"";
-
-        $max = "";
-        if (isset($options['max']) && !empty($options['max']))
-            $max = "max=\"" . $options['max'] . "\"";
-
-        $min = "";
-        if (isset($options['min']) && !empty($options['min']))
-            $min = "min=\"" . $options['min'] . "\"";
-
-        $step = "";
-        if (isset($options['step']) && !empty($options['step']))
-            $step = "step=\"" . $options['step'] . "\"";
-
-        $required = "";
-        if (isset($options['required']) && $options['required'] === true)
-            $required = "required";
-
-        return "<input type=\"week\" $id $name $min $max $step $required $value />";
+        $props = $this->prepareTagAttributes([ 'type' => 'week' ], $options);
+        return $this->makeTag('input', '', $props);
     }
 }

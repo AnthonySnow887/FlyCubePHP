@@ -9,6 +9,7 @@
 namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
+include_once 'Extensions/TagBuilder.php';
 
 use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 use FlyCubePHP\Core\Protection\CSPProtection;
@@ -16,6 +17,8 @@ use FlyCubePHP\HelperClasses\CoreHelper;
 
 class JavascriptTagHelper extends BaseControllerHelper
 {
+    use Extensions\TagBuilder;
+
     function __construct() {
         $this->appendSafeFunction("javascript_tag");
         $this->appendSafeFunction("javascript_asset_tag");
@@ -78,38 +81,21 @@ class JavascriptTagHelper extends BaseControllerHelper
     {
         if (empty($data) && empty($options))
             return "";
-        $tmpOptions = "";
-        foreach ($options as $key => $value) {
-            if (strcmp($key, 'type') === 0
-                || strcmp($key, 'nonce') === 0)
-                continue;
-            $tmpOptions .= " $key=\"$value\"";
+        if (isset($options["nonce"])) {
+            if ($options["nonce"] === true
+                && CSPProtection::instance()->isContentSecurityPolicy() === true) {
+                $options["nonce"] = CSPProtection::instance()->nonceKey();
+            } else {
+                unset($options["nonce"]);
+            }
         }
-        $tmpOptions = trim($tmpOptions);
-
         $data = trim($data);
         $jsData = <<<EOT
-            
-<script $tmpOptions>
 //<![CDATA[
 $data
 //]]>
-</script>
-
 EOT;
-        if (empty($options))
-            return $jsData;
-        if (array_key_exists("type", $options)) {
-            $val = strval($options["type"]);
-            $jsData = str_replace("<script", "<script type=\"$val\"", $jsData);
-        }
-        if (array_key_exists("nonce", $options)
-            && $options["nonce"] === true
-            && CSPProtection::instance()->isContentSecurityPolicy() === true) {
-            $val = CSPProtection::instance()->nonceKey();
-            $jsData = str_replace("<script", "<script nonce=\"$val\"", $jsData);
-        }
-        return $jsData;
+        return $this->makeTag('script', $jsData, $options, true);
     }
 
     /**

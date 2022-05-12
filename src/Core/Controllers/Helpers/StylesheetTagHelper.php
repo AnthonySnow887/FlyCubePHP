@@ -9,6 +9,7 @@
 namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
+include_once 'Extensions/TagBuilder.php';
 
 use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 use FlyCubePHP\Core\Protection\CSPProtection;
@@ -16,6 +17,8 @@ use FlyCubePHP\HelperClasses\CoreHelper;
 
 class StylesheetTagHelper extends BaseControllerHelper
 {
+    use Extensions\TagBuilder;
+
     function __construct() {
         $this->appendSafeFunction("stylesheet_tag");
         $this->appendSafeFunction("stylesheet_asset_tag");
@@ -71,34 +74,22 @@ class StylesheetTagHelper extends BaseControllerHelper
     {
         if (empty($data) && empty($options))
             return "";
-        $tmpOptions = "";
-        foreach ($options as $key => $value) {
-            if (strcmp($key, 'type') === 0
-                || strcmp($key, 'nonce') === 0)
-                continue;
-            $tmpOptions .= " $key=\"$value\"";
+        $options['type'] = 'text/css';
+        if (isset($options["nonce"])) {
+            if ($options["nonce"] === true
+                && CSPProtection::instance()->isContentSecurityPolicy() === true) {
+                $options["nonce"] = CSPProtection::instance()->nonceKey();
+            } else {
+                unset($options["nonce"]);
+            }
         }
-        $tmpOptions = trim($tmpOptions);
-
         $data = trim($data);
         $cssData = <<<EOT
-            
-<script type="text/css" $tmpOptions>
 //<![CDATA[
 $data
 //]]>
-</script>
-
 EOT;
-        if (empty($options))
-            return $cssData;
-        if (array_key_exists("nonce", $options)
-            && $options["nonce"] === true
-            && CSPProtection::instance()->isContentSecurityPolicy() === true) {
-            $val = CSPProtection::instance()->nonceKey();
-            $cssData = str_replace("<script", "<script nonce=\"$val\"", $cssData);
-        }
-        return $cssData;
+        return $this->makeTag('script', $cssData, $options, true);
     }
 
     /**

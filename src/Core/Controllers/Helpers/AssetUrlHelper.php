@@ -68,32 +68,7 @@ class AssetUrlHelper extends BaseControllerHelper
             && $options["skip_asset_pipeline"] === true)
             return "/assets/$name";
 
-        if (isset($options["type"]) && strcmp($options["type"], "image") === 0) {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-        } else if (isset($options["type"]) && strcmp($options["type"], "js") === 0) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-        } else if (isset($options["type"]) && strcmp($options["type"], "css") === 0) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif)$/", $name)) {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/", $name)) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $name)) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-        } else {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-            if (empty($fPath)) {
-                $name = CoreHelper::fileName($name, true);
-                $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-                if (empty($fPath))
-                    $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-            }
-        }
-
+        $fPath = $this->prepareAssetPath($name, $options);
         if (empty($fPath))
             throw new \RuntimeException("[asset_path] Not found asset in asset pipeline (name: $name)!");
 
@@ -101,7 +76,7 @@ class AssetUrlHelper extends BaseControllerHelper
     }
 
     /**
-     * Computes the full URL to an some asset.
+     * Computes the full URL to a some asset.
      * @param string $name
      * @param array $options
      * @return string
@@ -158,31 +133,7 @@ class AssetUrlHelper extends BaseControllerHelper
             && $options["skip_asset_pipeline"] === true)
             return "$host/assets/$name";
 
-        if (isset($options["type"]) && strcmp($options["type"], "image") === 0) {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-        } else if (isset($options["type"]) && strcmp($options["type"], "js") === 0) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-        } else if (isset($options["type"]) && strcmp($options["type"], "css") === 0) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif)$/", $name)) {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/", $name)) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $name)) {
-            $name = CoreHelper::fileName($name, true);
-            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-        } else {
-            $fPath = AssetPipeline::instance()->imageFilePath($name);
-            if (empty($fPath)) {
-                $name = CoreHelper::fileName($name, true);
-                $fPath = AssetPipeline::instance()->javascriptFilePath($name);
-                if (empty($fPath))
-                    $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
-            }
-        }
+        $fPath = $this->prepareAssetPath($name, $options);
         if (empty($fPath))
             throw new \RuntimeException("[asset_url] Not found asset in asset pipeline (name: $name)!");
 
@@ -190,7 +141,7 @@ class AssetUrlHelper extends BaseControllerHelper
     }
 
     /**
-     * Computes the path to an javascript asset.
+     * Computes the path to a javascript asset.
      * @param string $name
      * @param array $options
      * @return string
@@ -302,7 +253,7 @@ class AssetUrlHelper extends BaseControllerHelper
     }
 
     /**
-     * Computes the path to an stylesheet asset.
+     * Computes the path to a stylesheet asset.
      * @param string $name
      * @param array $options
      * @return string
@@ -556,5 +507,36 @@ class AssetUrlHelper extends BaseControllerHelper
      */
     public function make_valid_url(string $url): string {
         return CoreHelper::makeValidUrl($url);
+    }
+
+    // --- private ---
+
+    private function prepareAssetPath(string $name, array $options): string {
+        if (isset($options["type"]) && strcmp($options["type"], "image") === 0) {
+            $fPath = AssetPipeline::instance()->imageFilePath($name);
+        } else if (isset($options["type"]) && strcmp($options["type"], "js") === 0) {
+            $name = CoreHelper::fileName($name, true);
+            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
+        } else if (isset($options["type"]) && strcmp($options["type"], "css") === 0) {
+            $name = CoreHelper::fileName($name, true);
+            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
+        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif)$/", $name)) {
+            $fPath = AssetPipeline::instance()->imageFilePath($name);
+        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js)$/", $name)) {
+            $name = CoreHelper::fileName($name, true);
+            $fPath = AssetPipeline::instance()->javascriptFilePath($name);
+        } else if (preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $name)) {
+            $name = CoreHelper::fileName($name, true);
+            $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
+        } else {
+            $fPath = AssetPipeline::instance()->imageFilePath($name);
+            if (empty($fPath)) {
+                $name = CoreHelper::fileName($name, true);
+                $fPath = AssetPipeline::instance()->javascriptFilePath($name);
+                if (empty($fPath))
+                    $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
+            }
+        }
+        return $fPath;
     }
 }
