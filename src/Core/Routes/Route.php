@@ -238,6 +238,10 @@ class Route
             $tmpConstraint = $matches[2][0];
             $tmpConstraintEnd = $matches[3][0];
         }
+        if (empty($tmpConstraintStart))
+            $tmpConstraintStart = "/";
+        if (empty($tmpConstraintEnd))
+            $tmpConstraintEnd = "/";
 
         if (strcmp($tmpConstraint[0], '^') !== 0)
             $tmpConstraint = '^' . $tmpConstraint;
