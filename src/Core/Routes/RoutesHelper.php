@@ -39,6 +39,7 @@ function root(string $controller, string $action) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -55,6 +56,12 @@ function root(string $controller, string $action) {
  *      - show  - The name of the controller action
  *
  * get('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * get('/test/:id', [ 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -80,6 +87,7 @@ function get(string $uri, array $args = []) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -96,6 +104,12 @@ function get(string $uri, array $args = []) {
  *      - show  - The name of the controller action
  *
  * post('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * post('/test/:id', [ 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -121,6 +135,7 @@ function post(string $uri, array $args = []) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -137,6 +152,12 @@ function post(string $uri, array $args = []) {
  *      - show  - The name of the controller action
  *
  * put('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * put('/test/:id', [ 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -162,6 +183,7 @@ function put(string $uri, array $args = []) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -178,6 +200,12 @@ function put(string $uri, array $args = []) {
  *      - show  - The name of the controller action
  *
  * patch('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * patch('/test/:id', [ 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -203,6 +231,7 @@ function patch(string $uri, array $args = []) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -219,6 +248,12 @@ function patch(string $uri, array $args = []) {
  *      - show  - The name of the controller action
  *
  * delete('/test', [ 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * delete('/test/:id', [ 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -246,6 +281,7 @@ function delete(string $uri, array $args = []) {
  * - [string] controller    - The name of the controller
  * - [string] action        - The name of the controller action
  * - [string] as            - Alias for quick access to the route (define is automatically generated)
+ * - [array]  constraints   - Add constraints to use automatic regular expression validation for the dynamic segment
  *
  * Other arguments will be transferred as input parameters.
  *
@@ -262,6 +298,12 @@ function delete(string $uri, array $args = []) {
  *      - show  - The name of the controller action
  *
  * make_route('/test', [ 'type' => RouteType::DELETE, 'to' => 'Test#show', 'as' => 'test' ])
+ *    where
+ *      - Test  - The name of the controller class without expansion controller
+ *      - show  - The name of the controller action
+ *      - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * make_route('/test/:id', [ 'type' => RouteType::DELETE, 'to' => 'Test#show', 'as' => 'test', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ])
  *    where
  *      - Test  - The name of the controller class without expansion controller
  *      - show  - The name of the controller action
@@ -307,6 +349,11 @@ function make_route(string $uri, array $args = []) {
     if (isset($args['as']))
         $tmpAs = $args['as'];
 
+    // --- constraints ---
+    $tmpConstraints = [];
+    if (isset($args['constraints']) && is_array($args['constraints']))
+        $tmpConstraints = $args['constraints'];
+
     // --- clear ---
     if (isset($args['to']))
         unset($args['to']);
@@ -316,9 +363,11 @@ function make_route(string $uri, array $args = []) {
         unset($args['action']);
     if (isset($args['as']))
         unset($args['as']);
+    if (isset($args['constraints']))
+        unset($args['constraints']);
 
     // --- create & add ---
     $tmpController .= "Controller";
-    $route = new Route($tmpType, $tmpUri, $args, $tmpController, $tmpAct, $tmpAs);
+    $route = new Route($tmpType, $tmpUri, $args, $tmpController, $tmpAct, $tmpAs, $tmpConstraints);
     RouteCollector::instance()->appendRoute($route);
 }

@@ -186,7 +186,7 @@ class RouteCollector
 
     /**
      * Получить объект маршрута для текущего запроса
-     * @return Route|Route
+     * @return Route|null
      */
     public function currentRoute()/*: Route|null*/ {
         $tmpURI = RouteCollector::currentRouteUri();

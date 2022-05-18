@@ -10,69 +10,28 @@ namespace FlyCubePHP\Core\Routes;
 
 use FlyCubePHP\HelperClasses\CoreHelper;
 
-include_once __DIR__.'/../../HelperClasses/Enum.php';
-
-class RouteType extends \FlyCubePHP\HelperClasses\Enum {
-    const GET       = 0;
-    const POST      = 1;
-    const PUT       = 2;
-    const PATCH     = 3;
-    const DELETE    = 4;
-
-    static public function intToString(int $val): string {
-        switch ($val) {
-            case RouteType::GET:
-                return "GET";
-            case RouteType::POST:
-                return "POST";
-            case RouteType::PUT:
-                return "PUT";
-            case RouteType::PATCH:
-                return "PATCH";
-            case RouteType::DELETE:
-                return "DELETE";
-            default:
-                break;
-        }
-        return "???";
-    }
-
-    static public function stringToInt(string $val): int {
-        if (empty($val))
-            return -1;
-        $tmpVal = strtolower($val);
-        if (strcmp($tmpVal, "get") === 0 || strcmp($tmpVal, "head") === 0)
-            return RouteType::GET;
-        elseif (strcmp($tmpVal, "post") === 0)
-            return RouteType::POST;
-        elseif (strcmp($tmpVal, "put") === 0)
-            return RouteType::PUT;
-        elseif (strcmp($tmpVal, "patch") === 0)
-            return RouteType::PATCH;
-        elseif (strcmp($tmpVal, "delete") === 0)
-            return RouteType::DELETE;
-        return -1;
-    }
-}
+include_once 'RouteType.php';
 
 /**
  * Класс маршрута
  */
 class Route
 {
-    private $_type;         /**< тип маршрута (get/post/put/patch/delete) */
-    private $_uri;          /**< url маршрута */
-    private $_uriArgs = []; /**< статические аргументы маршрута */
-    private $_controller;   /**< название класса контроллера */
-    private $_action;       /**< название метода контроллера */
-    private $_as;           /**< псевдоним для быстрого доступа к маршруту */
+    private $_type;             /**< тип маршрута (get/post/put/patch/delete) */
+    private $_uri;              /**< url маршрута */
+    private $_uriArgs = [];     /**< статические аргументы маршрута */
+    private $_controller;       /**< название класса контроллера */
+    private $_action;           /**< название метода контроллера */
+    private $_as;               /**< псевдоним для быстрого доступа к маршруту */
+    private $_constraints = []; /**< constraints для проверки параметров в динамической части маршрута (Пример маршрута: /ROUTE/:id) */
 
     function __construct(int $type,
                          string $uri,
                          array $uriArgs,
                          string $controller,
                          string $action,
-                         string $as = "") {
+                         string $as = "",
+                         array $constraints = []) {
         $this->_type = $type;
         $this->_uri = $uri;
         if (count(explode('?', $this->_uri)) > 1)
@@ -87,6 +46,7 @@ class Route
             $as = CoreHelper::underscore(CoreHelper::camelcase($tmpUrl));
         }
         $this->_as = $as;
+        $this->_constraints = $constraints;
     }
 
     /**
@@ -138,8 +98,12 @@ class Route
             $uriPath = $uriLst[$i];
             if (empty($localPath) && empty($uriPath))
                 continue;
-            if (strcmp($localPath[0], ':') === 0)
+            if (strcmp($localPath[0], ':') === 0) {
+                $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
+                if (!empty($constraint) && !preg_match($constraint, $uriPath))
+                    return false;
                 continue; // skip
+            }
             if (strcmp($localPath, $uriPath) !== 0)
                 return false;
         }
@@ -213,6 +177,14 @@ class Route
     }
 
     /**
+     * Constraints для проверки параметров в динамической части маршрута (Пример маршрута: /ROUTE/:id)
+     * @return array
+     */
+    public function constraints(): array {
+        return $this->_constraints;
+    }
+
+    /**
      * Метод разбора аргументов
      */
     private function parseArgs() {
@@ -245,5 +217,32 @@ class Route
                 }
             }
         }
+    }
+
+    /**
+     * Подготовить корректный constraint
+     * @param string $constraint
+     * @return string
+     */
+    private function prepareConstraint(string $constraint): string {
+        if (empty($constraint))
+            return '';
+
+        $tmpConstraintStart = "";
+        $tmpConstraint = trim($constraint);
+        $tmpConstraintEnd = "";
+
+        preg_match('/(\/?)(.*)(\/\w*)/', $tmpConstraint, $matches, PREG_OFFSET_CAPTURE);
+        if (!empty($matches)) {
+            $tmpConstraintStart = $matches[1][0];
+            $tmpConstraint = $matches[2][0];
+            $tmpConstraintEnd = $matches[3][0];
+        }
+
+        if (strcmp($tmpConstraint[0], '^') !== 0)
+            $tmpConstraint = '^' . $tmpConstraint;
+        if (strcmp($tmpConstraint[strlen($tmpConstraint) - 1], '$') !== 0)
+            $tmpConstraint = $tmpConstraint . '$';
+        return $tmpConstraintStart . $tmpConstraint . $tmpConstraintEnd;
     }
 }
