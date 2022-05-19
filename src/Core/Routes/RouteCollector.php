@@ -252,6 +252,7 @@ class RouteCollector
             $redirectStatus = $tmpCurRoute->redirectStatus();
             http_response_code($redirectStatus);
             header("Location: $redirectUri", true, $redirectStatus);
+            Logger::info("REDIRECT TO: [status: $redirectStatus] $redirectUri");
             die();
         }
 
