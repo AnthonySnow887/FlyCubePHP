@@ -91,28 +91,85 @@ class Route
      * @return bool
      */
     public function isRouteMatch(string $uri): bool {
-        $localUri = $this->uri();
+        $uri = $this->prepareUri($uri);
+        $localUri = $this->prepareUri($this->uri());
         if (strcmp($localUri, $uri) === 0)
             return true;
-        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri))
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri)
+            && !preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri))
             return false;
         // --- check ---
         $localUriLst = explode('/', $localUri);
         $uriLst = explode('/', $uri);
-        if (count($localUriLst) != count($uriLst))
-            return false;
-        for ($i = 0; $i < count($localUriLst); $i++) {
-            $localPath = $localUriLst[$i];
-            $uriPath = $uriLst[$i];
-            if (empty($localPath) && empty($uriPath))
-                continue;
-            if (strcmp($localPath[0], ':') === 0) {
-                $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
-                if (!empty($constraint) && !preg_match($constraint, $uriPath))
+        if (!preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri)) {
+            if (count($localUriLst) != count($uriLst))
+                return false;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$i];
+                if (empty($localPath) && empty($uriPath))
+                    continue;
+                if (strcmp($localPath[0], ':') === 0) {
+                    $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
+                    if (!empty($constraint) && !preg_match($constraint, $uriPath))
+                        return false;
+                    continue; // skip
+                }
+                if (strcmp($localPath, $uriPath) !== 0)
                     return false;
-                continue; // skip
             }
-            if (strcmp($localPath, $uriPath) !== 0)
+        } else {
+            if (count($localUriLst) > count($uriLst))
+                return false;
+            $uriPathCount = 0;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                // --- check uri-path-count ---
+                if ($uriPathCount >= count($uriLst))
+                    return false;
+                // --- check ---
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$uriPathCount];
+                if (empty($localPath) && empty($uriPath)) {
+                    $uriPathCount += 1;
+                    continue;
+                }
+                if (strcmp($localPath[0], ':') === 0) {
+                    $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
+                    if (!empty($constraint) && !preg_match($constraint, $uriPath))
+                        return false;
+                    $uriPathCount += 1;
+                    continue; // skip
+                }
+                if (strcmp($localPath[0], '*') === 0) {
+                    $isSuccess = false;
+                    if ($i + 1 < count($localUriLst)) {
+                        $localPathNext = $localUriLst[$i + 1];
+                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                            $uriPath = $uriLst[$j];
+                            if (strcmp($localPathNext, $uriPath) === 0
+                                || strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
+                                $uriPathCount = $j - 1;
+                                $isSuccess = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        $uriPathCount = count($uriLst) - 1;
+                        $isSuccess = true;
+                    }
+                    if (!$isSuccess)
+                        return false;
+
+                    $uriPathCount += 1;
+                    continue; // skip
+                }
+                if (strcmp($localPath, $uriPath) !== 0)
+                    return false;
+
+                $uriPathCount += 1;
+            }
+            // --- check uri-path-count ---
+            if ($uriPathCount < count($uriLst))
                 return false;
         }
         return true;
@@ -124,22 +181,73 @@ class Route
      * @return array
      */
     public function routeArgsFromUri(string $uri): array {
-        $localUri = $this->uri();
-        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri))
+        $uri = $this->prepareUri($uri);
+        $localUri = $this->prepareUri($this->uri());
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri)
+            && !preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri))
             return [];
         // --- select ---
         $tmpArgs = [];
         $localUriLst = explode('/', $localUri);
         $uriLst = explode('/', $uri);
-        if (count($localUriLst) != count($uriLst))
-            return [];
-        for ($i = 0; $i < count($localUriLst); $i++) {
-            $localPath = $localUriLst[$i];
-            $uriPath = $uriLst[$i];
-            if (empty($localPath) && empty($uriPath))
-                continue;
-            if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1)
-                $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+        if (!preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri)) {
+            if (count($localUriLst) != count($uriLst))
+                return [];
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$i];
+                if (empty($localPath) && empty($uriPath))
+                    continue;
+                if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1)
+                    $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+            }
+        } else {
+            if (count($localUriLst) > count($uriLst))
+                return [];
+            $uriPathCount = 0;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                // --- check uri-path-count ---
+                if ($uriPathCount >= count($uriLst))
+                    return [];
+                // --- make args ---
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$uriPathCount];
+                if (empty($localPath) && empty($uriPath)) {
+                    $uriPathCount += 1;
+                    continue;
+                }
+                if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1) {
+                    $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+                } else if (strcmp($localPath[0], '*') === 0) {
+                    $tmpUriPath = $uriPath;
+                    if ($i + 1 < count($localUriLst)) {
+                        $localPathNext = $localUriLst[$i + 1];
+                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                            $uriPath = $uriLst[$j];
+                            if (strcmp($localPathNext, $uriPath) === 0
+                                || strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
+                                $uriPathCount = $j - 1;
+                                break;
+                            } else if (empty($tmpUriPath)) {
+                                $tmpUriPath .= $uriPath;
+                            } else {
+                                $tmpUriPath .= "/$uriPath";
+                            }
+                        }
+                    } else {
+                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                            $uriPath = $uriLst[$j];
+                            $tmpUriPath .= "/$uriPath";
+                        }
+                        $uriPathCount = count($uriLst) - 1;
+                    }
+                    $tmpArgs[ltrim($localPath, "*")] = $tmpUriPath;
+                }
+                $uriPathCount += 1;
+            }
+            // --- check uri-path-count ---
+            if ($uriPathCount < count($uriLst))
+                return [];
         }
         return $tmpArgs;
     }
@@ -149,7 +257,9 @@ class Route
      * @return bool
      */
     public function hasUriArgs(): bool {
-        return (!empty($this->_uriArgs) || preg_match('/\:([a-zA-Z0-9_]*)/i', $this->uri()));
+        return (!empty($this->_uriArgs)
+                || preg_match('/\:([a-zA-Z0-9_]*)/i', $this->uri())
+                || preg_match('/\*([a-zA-Z0-9_]*)/i', $this->uri()));
     }
 
     /**
@@ -305,5 +415,18 @@ class Route
             }
         }
         return $tmpUri;
+    }
+
+    /**
+     * Подготовить URI
+     * @param string $uri
+     * @return string
+     */
+    private function prepareUri(string $uri): string {
+        if (empty($uri))
+            return "";
+        if (strcmp($uri[0], '/') === 0)
+            $uri = substr($uri, 1, strlen($uri) - 1);
+        return $uri;
     }
 }

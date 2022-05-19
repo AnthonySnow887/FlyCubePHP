@@ -349,7 +349,7 @@ function make_route(string $uri, array $args = []) {
     if (empty($uri))
         trigger_error("Make $tmpTypeStr route failed! Empty uri!", E_USER_ERROR);
 
-    $tmpUri = RouteCollector::makeValidRouteUrl($uri);
+    $tmpUri = (strcmp($uri[0], '*') === 0) ? $uri : RouteCollector::makeValidRouteUrl($uri);
     if (empty($tmpUri))
         trigger_error("Make $tmpTypeStr route failed! Invalid URI!", E_USER_ERROR);
 
