@@ -9,8 +9,10 @@
 namespace FlyCubePHP\Core\Routes;
 
 use FlyCubePHP\HelperClasses\CoreHelper;
+use GuiCore\MenuBar\ActionBase;
 
 include_once 'RouteType.php';
+include_once 'RouteRedirect.php';
 
 /**
  * Класс маршрута
@@ -24,14 +26,16 @@ class Route
     private $_action;           /**< название метода контроллера */
     private $_as;               /**< псевдоним для быстрого доступа к маршруту */
     private $_constraints = []; /**< constraints для проверки параметров в динамической части маршрута (Пример маршрута: /ROUTE/:id) */
+    private $_redirect = null;  /**< объект с сописанием перенаправления маршрута */
 
     function __construct(int $type,
                          string $uri,
                          array $uriArgs,
                          string $controller,
                          string $action,
-                         string $as = "",
-                         array $constraints = []) {
+                         string $as,
+                         array $constraints,
+                         /*RouteRedirect*/ $redirect = null) {
         $this->_type = $type;
         $this->_uri = $uri;
         if (count(explode('?', $this->_uri)) > 1)
@@ -47,6 +51,10 @@ class Route
         }
         $this->_as = $as;
         $this->_constraints = $constraints;
+
+        if (!is_null($redirect) && !$redirect instanceof RouteRedirect)
+            trigger_error("[Route] Append route redirect failed! Invalid redirect class!", E_USER_ERROR);
+        $this->_redirect = $redirect;
     }
 
     /**
@@ -185,6 +193,35 @@ class Route
     }
 
     /**
+     * Задано ли перенаправление маршрута?
+     * @return bool
+     */
+    public function hasRedirect(): bool {
+        return !is_null($this->_redirect);
+    }
+
+    /**
+     * Маршрут перенаправления
+     * @param string $currentUri - текущий маршрут с параметрами
+     * @return string
+     */
+    public function redirectUri(string $currentUri): string {
+        if (is_null($this->_redirect))
+            return "";
+        return $this->makeRedirectUri($currentUri);
+    }
+
+    /**
+     * HTTP статус перенаправления
+     * @return int
+     */
+    public function redirectStatus(): int {
+        if (is_null($this->_redirect))
+            return -1;
+        return $this->_redirect->status();
+    }
+
+    /**
      * Метод разбора аргументов
      */
     private function parseArgs() {
@@ -248,5 +285,25 @@ class Route
         if (strcmp($tmpConstraint[strlen($tmpConstraint) - 1], '$') !== 0)
             $tmpConstraint = $tmpConstraint . '$';
         return $tmpConstraintStart . $tmpConstraint . $tmpConstraintEnd;
+    }
+
+    /**
+     * Создать корректный маршрут перенаправления
+     * @param string $currentUri
+     * @return string
+     */
+    private function makeRedirectUri(string $currentUri): string {
+        if (is_null($this->_redirect))
+            return "";
+        $tmpUri = $this->_redirect->uri();
+        if ($this->_redirect->hasUriArgs()) {
+            $tmpArgs = $this->routeArgsFromUri($currentUri);
+            foreach ($tmpArgs as $key => $value) {
+                $argName = "%{".$key."}";
+                if (strpos($tmpUri, $argName) !== false)
+                    $tmpUri = str_replace($argName, $value, $tmpUri);
+            }
+        }
+        return $tmpUri;
     }
 }

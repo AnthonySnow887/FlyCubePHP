@@ -11,6 +11,7 @@ namespace FlyCubePHP;
 include_once 'RouteCollector.php';
 
 use FlyCubePHP\Core\Routes\Route;
+use FlyCubePHP\Core\Routes\RouteRedirect;
 use FlyCubePHP\Core\Routes\RouteType;
 use FlyCubePHP\Core\Routes\RouteCollector;
 
@@ -24,7 +25,7 @@ function root(string $controller, string $action) {
         trigger_error("Make ROOT route failed! Empty controller name or action name!", E_USER_ERROR);
 
     $tmpController = $controller."Controller";
-    $route = new Route(RouteType::GET, "/", [], $tmpController, $action, 'root');
+    $route = new Route(RouteType::GET, "/", [], $tmpController, $action, 'root', []);
     RouteCollector::instance()->appendRoute($route);
 }
 
@@ -269,6 +270,30 @@ function delete(string $uri, array $args = []) {
 }
 
 /**
+ * Создать перенаправления маршрута
+ * @param string $uri - новый маршрут
+ * @param int $status - HTTP статус код
+ * @return RouteRedirect
+ *
+ * ==== Examples
+ *
+ * get("/stories", [ 'to' => redirect("/articles") ] );
+ *
+ * get("/stories/:name", [ 'to' => redirect("/articles/%{name}") ] );
+ *
+ * get("/stories/:name", [ 'to' => redirect("/articles/%{name}", 302) ] );
+ */
+function redirect(string $uri, int $status = 303): RouteRedirect {
+    // --- check uri ---
+    if (empty($uri))
+        trigger_error("Make route redirect failed! Empty uri!", E_USER_ERROR);
+    if ($status < 300 || $status >= 400)
+        trigger_error("Make route redirect failed! Invalid HTTP status code ($status)!", E_USER_ERROR);
+
+    return new RouteRedirect($uri, $status);
+}
+
+/**
  * Задать HTTP url
  * @param string $uri
  * @param array $args - массив аргументов
@@ -329,13 +354,22 @@ function make_route(string $uri, array $args = []) {
         trigger_error("Make $tmpTypeStr route failed! Invalid URI!", E_USER_ERROR);
 
     // --- check args ---
+    $tmpRedirect = null;
     if (isset($args['to']) && !empty($args['to'])) {
-        $tmpTo = explode('#', $args['to']);
-        if (count($tmpTo) != 2)
-            trigger_error("Make $tmpTypeStr route failed! Invalid argument 'to'!", E_USER_ERROR);
+        if (is_string($args['to'])) {
+            $tmpTo = explode('#', $args['to']);
+            if (count($tmpTo) != 2)
+                trigger_error("Make $tmpTypeStr route failed! Invalid argument 'to'!", E_USER_ERROR);
 
-        $tmpController = $tmpTo[0];
-        $tmpAct = $tmpTo[1];
+            $tmpController = $tmpTo[0];
+            $tmpAct = $tmpTo[1];
+        } else if ($args['to'] instanceof RouteRedirect) {
+            $tmpController = "";
+            $tmpAct = "";
+            $tmpRedirect = $args['to'];
+        } else {
+            trigger_error("Make $tmpTypeStr route failed! Invalid argument 'to'!", E_USER_ERROR);
+        }
     } else if (isset($args['controller']) && !empty($args['controller'])
         && isset($args['action']) && !empty($args['action'])) {
         $tmpController = $args['controller'];
@@ -368,6 +402,6 @@ function make_route(string $uri, array $args = []) {
 
     // --- create & add ---
     $tmpController .= "Controller";
-    $route = new Route($tmpType, $tmpUri, $args, $tmpController, $tmpAct, $tmpAs, $tmpConstraints);
+    $route = new Route($tmpType, $tmpUri, $args, $tmpController, $tmpAct, $tmpAs, $tmpConstraints, $tmpRedirect);
     RouteCollector::instance()->appendRoute($route);
 }
