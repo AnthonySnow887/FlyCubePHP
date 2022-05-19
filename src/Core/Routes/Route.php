@@ -144,13 +144,17 @@ class Route
                     $isSuccess = false;
                     if ($i + 1 < count($localUriLst)) {
                         $localPathNext = $localUriLst[$i + 1];
-                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
-                            $uriPath = $uriLst[$j];
-                            if (strcmp($localPathNext, $uriPath) === 0
-                                || strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
-                                $uriPathCount = $j - 1;
-                                $isSuccess = true;
-                                break;
+                        if (strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
+                            $uriPathCount = count($uriLst) - (count($localUriLst) - $i);
+                            $isSuccess = true;
+                        } else {
+                            for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                                $uriPath = $uriLst[$j];
+                                if (strcmp($localPathNext, $uriPath) === 0) {
+                                    $uriPathCount = $j - 1;
+                                    $isSuccess = true;
+                                    break;
+                                }
                             }
                         }
                     } else {
@@ -222,10 +226,13 @@ class Route
                     $tmpUriPath = $uriPath;
                     if ($i + 1 < count($localUriLst)) {
                         $localPathNext = $localUriLst[$i + 1];
-                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                        $uriLstCount = count($uriLst);
+                        if (strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1)
+                            $uriLstCount = count($uriLst) - (count($localUriLst) - $i - 1);
+
+                        for ($j = $uriPathCount + 1; $j < $uriLstCount; $j++) {
                             $uriPath = $uriLst[$j];
-                            if (strcmp($localPathNext, $uriPath) === 0
-                                || strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
+                            if (strcmp($localPathNext, $uriPath) === 0) {
                                 $uriPathCount = $j - 1;
                                 break;
                             } else if (empty($tmpUriPath)) {
@@ -233,6 +240,7 @@ class Route
                             } else {
                                 $tmpUriPath .= "/$uriPath";
                             }
+                            $uriPathCount = $j;
                         }
                     } else {
                         for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
