@@ -7,8 +7,6 @@
  * Time: 16:19
  */
 
-use FlyCubePHP\HelperClasses\CoreHelper;
-
 error_reporting(E_ALL);
 
 if (version_compare(PHP_VERSION, '7.0') < 0) {
