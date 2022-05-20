@@ -46,6 +46,7 @@ class Route
         if (empty($as)) {
             $tmpUrl = str_replace('/', ' ', $this->uri());
             $tmpUrl = str_replace(':', ' ', $tmpUrl);
+            $tmpUrl = str_replace('*', ' ', $tmpUrl);
             $tmpUrl = strtolower(RouteType::intToString($type)) . " $tmpUrl";
             $as = CoreHelper::underscore(CoreHelper::camelcase($tmpUrl));
         }

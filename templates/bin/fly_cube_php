@@ -2375,12 +2375,12 @@ function createPluginModel($pluginName, $name) {
  */
 function assetsPrecompile(bool $skipRendering = false) {
     chdir(__DIR__."/../"); // go to app root
-    
+
     // --- reset settings ---
     $defVal = !\FlyCubePHP\Core\Config\Config::instance()->isProduction();
     $useRebuildCache = \FlyCubePHP\HelperClasses\CoreHelper::toBool(\FlyCubePHP\configValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $defVal));
     \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, true);
-    
+
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
     if (!class_exists("\FlyCubePHP\Core\Routes\RouteCollector")) {
@@ -2425,7 +2425,7 @@ function assetsPrecompile(bool $skipRendering = false) {
     // --- restore settings ---
     \FlyCubePHP\setConfigValue(\FlyCubePHP\Core\Config\Config::TAG_REBUILD_CACHE, $useRebuildCache);
     \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->resetCacheSettings();
-    
+
     // --- pre-build Twig templates ---
     if ($skipRendering === true) {
         echo "\r\nNOTE: Controller and template rendering is skipped.\r\n";
@@ -2458,17 +2458,32 @@ function assetsPrecompile(bool $skipRendering = false) {
         if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
             continue;
 
+        $routeUri = $route->uri();
+        if ($route->hasRedirect()) {
+            $redirectTo = $route->redirectUri("");
+            fwrite($STDOUT_2, "[Render: $routeUri] Skip. Redirect to: $redirectTo.\r\n");
+            unset($tmpController);
+            continue;
+        }
+
         // --- set default route args ---
         $requestUri = $route->uri();
         $routeArgs = $route->uriArgs();
-        if (preg_match('/\:([a-zA-Z0-9_]*)/i', $route->uri())) {
+        if (preg_match('/\:([a-zA-Z0-9_]*)/i', $route->uri())
+            || preg_match('/\*([a-zA-Z0-9_]*)/i', $route->uri())) {
             $requestUri = "";
             $tmpArgs = [];
-            $localUriLst = explode('/', $route->uri());
+            $tmpRouteUri = $routeUri;
+            if (strcmp($tmpRouteUri[0], '/') === 0)
+                $tmpRouteUri = substr($tmpRouteUri, 1, strlen($tmpRouteUri) - 1);
+            $localUriLst = explode('/', $tmpRouteUri);
             for ($i = 0; $i < count($localUriLst); $i++) {
                 $localPath = $localUriLst[$i];
                 if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1) {
                     $tmpArgs[ltrim($localPath, ":")] = "";
+                    $requestUri .= "/";
+                } else if (strcmp($localPath[0], '*') === 0 && strlen($localPath) > 1) {
+                    $tmpArgs[ltrim($localPath, "*")] = "";
                     $requestUri .= "/";
                 } else {
                     $requestUri .= "/$localPath";
@@ -2490,11 +2505,11 @@ function assetsPrecompile(bool $skipRendering = false) {
             continue;
         }
         if (!$tmpController->hasView($tmpClassAct)) {
-            fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
+            fwrite($STDOUT_2, "[Render: $routeUri] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
             unset($tmpController);
             continue;
         }
-        fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: ");
+        fwrite($STDOUT_2, "[Render: $routeUri] $tmpClassName->$tmpClassAct: ");
         try {
             $tmpController->renderPrivate($tmpClassAct);
         } catch (\Throwable $e) {
@@ -2600,6 +2615,7 @@ function appRoutes() {
 
     $maxLen = 0;
     $maxLen2 = 0;
+    $maxLen3 = 0;
     foreach ($routes as $route) {
         // --- uri length ---
         $rURI = $route->uri();
@@ -2613,6 +2629,12 @@ function appRoutes() {
         $len = strlen("$rController#$rAction");
         if ($maxLen2 < $len)
             $maxLen2 = $len;
+
+        // --- as length ---
+        $rAs = $route->routeAs();
+        $len = strlen("as: $rAs");
+        if ($maxLen3 < $len)
+            $maxLen3 = $len;
     }
     foreach ($routes as $route) {
         $rType = \FlyCubePHP\Core\Routes\RouteType::intToString($route->type());
@@ -2620,9 +2642,15 @@ function appRoutes() {
         $rURI = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($route->uri(), $maxLen + 2);
         $rController = $route->controller();
         $rAction = $route->action();
-        $rAs = $route->routeAs();
         $rClass = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("$rController#$rAction", $maxLen2 + 2);
-        echo "  $rType  $rURI  $rClass  as: $rAs\r\n";
+        $rAs = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("as: " . $route->routeAs(), $maxLen3 + 2);
+        $rRedirect = "";
+        if ($route->hasRedirect()) {
+            $rClass = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("---", $maxLen2 + 2);
+            $rRedirectStatus = $route->redirectStatus();
+            $rRedirect = "redirect to: ($rRedirectStatus) ". $route->redirectUri("");
+        }
+        echo "  $rType  $rURI  $rClass  $rAs  $rRedirect\r\n";
     }
 }
 
