@@ -12,8 +12,9 @@ include_once 'Migration.php';
 
 abstract class BaseSchema extends Migration
 {
-    public function __construct(int $version) {
+    public function __construct(int $version, string $database) {
         parent::__construct($version);
+        $this->setDatabase($database);
     }
 
     final public function down() {

@@ -16,6 +16,7 @@ use FlyCubePHP\Core\Database\DatabaseFactory;
 abstract class Migration
 {
     private $_version = -1;
+    private $_database = '';
     private $_dbAdapter = null;
     private $_migrator = null;
 
@@ -83,14 +84,20 @@ abstract class Migration
         if (empty($migratorClassName))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator class name!);
 
-        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+        // --- configuration current migration ---
+        $this->configuration();
+
+        // --- get adapter ---
+        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->_database ]);
         if (is_null($this->_dbAdapter))
             return false; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
 
+        // --- make migrator ---
         $this->_migrator = new $migratorClassName($this->_dbAdapter);
         if (is_null($this->_migrator))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
 
+        // --- migrate ---
         $this->_dbAdapter->setShowOutput($showOutput);
         $this->_dbAdapter->setOutputDelimiter($outputDelimiter);
         $this->_dbAdapter->beginTransaction();
@@ -107,6 +114,12 @@ abstract class Migration
     }
 
     // --- protected ---
+
+    /**
+     * Метод конфигурирования миграции
+     */
+    protected function configuration() {
+    }
 
     /**
      * Внесение изменений миграции
@@ -457,5 +470,13 @@ abstract class Migration
         if (is_null($this->_migrator))
             return; // TODO throw new \RuntimeException('Migration -> execute: invalid database migrator (NULL)!');
         $this->_migrator->execute($sql);
+    }
+
+    /**
+     * Задать название используемой базы данных
+     * @param string $database
+     */
+    final protected function setDatabase(string $database) {
+        $this->_database = $database;
     }
 }

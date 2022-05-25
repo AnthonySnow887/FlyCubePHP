@@ -23,7 +23,8 @@ use FlyCubePHP\ComponentsCore\ComponentsManager;
 class DatabaseFactory
 {
     private static $_instance = null;
-    private $_settings = null;
+    private $_settings = [];
+    private $_additionalSettings = [];
     private $_adapters = [];
     private $_isLoaded = false;
 
@@ -111,40 +112,63 @@ class DatabaseFactory
 
     /**
      * Создать адаптер по работе с базой данных
-     * @param bool $autoConnect - автоматически подключаться при создании
+     * @param array $args - массив параметров создания адаптера
      * @return BaseDatabaseAdapter|null
+     *
+     * ==== Args
+     *
+     * - [bool] auto-connect - connect automatically on creation (default: true)
+     * - [string] database   - database key name in '*_additional' config (default: '')
+     *
+     * NOTE: If database name is empty - used primary database.
      */
-    public function createDatabaseAdapter(bool $autoConnect = true)/*: BaseDatabaseAdapter|null */ {
-        if (is_null($this->_settings))
+    public function createDatabaseAdapter(array $args = [ 'auto-connect' => true ])/*: BaseDatabaseAdapter|null */ {
+        if (empty($this->_settings) && empty($this->_additionalSettings))
             return null;
-        if (!array_key_exists('adapter', $this->_settings))
+        if (!isset($args['database']) || empty($args['database']))
+            return $this->createAdapter($this->_settings, $args);
+        if (!isset($this->_additionalSettings[$args['database']]))
             return null;
-        $adapterClassName = $this->selectAdapterClassName($this->_settings['adapter']);
-        if (empty($adapterClassName))
-            return null;
-        $adapter = new $adapterClassName($this->_settings);
-        if ($autoConnect === true)
-            $adapter->recreatePDO();
-        return $adapter;
+        return $this->createAdapter($this->_additionalSettings[$args['database']], $args);
     }
 
     /**
-     * Имя текущего адаптера по работе с базой данных
+     * Имя основного (первичного) адаптера по работе с базой данных
      * @return string
      */
-    public function currentAdapterName(): string {
-        if (is_null($this->_settings))
+    public function primaryAdapterName(): string {
+        return $this->adapterName($this->_settings);
+    }
+
+    /**
+     * Имя вторичного адаптера по работе с базой данных
+     * @param string $database - название базы данных
+     * @return string
+     */
+    public function additionalAdapterName(string $database): string {
+        if (empty($this->_additionalSettings) || empty($database))
             return "";
-        if (!array_key_exists('adapter', $this->_settings))
+        if (!isset($this->_additionalSettings[$database]))
             return "";
-        return $this->_settings['adapter'];
+        return $this->adapterName($this->_additionalSettings[$database]);
+    }
+
+    /**
+     * Список названий ключей к дполнительным базам данных из раздела конфигурации '*_additional'
+     * @return array
+     */
+    public function additionalDatabases(): array {
+        $tmpDatabases = [];
+        foreach ($this->_additionalSettings as $key => $value)
+            $tmpDatabases[] = $key;
+        return $tmpDatabases;
     }
 
     /**
      * Загрузить настройки для работы с базой данных
      */
     public function loadConfig() {
-        if (!is_null($this->_settings))
+        if (!empty($this->_settings))
             return;
         $path = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::CONFIG_DIR, DatabaseFactory::DATABASE_CONFIG);
         if (!is_readable($path))
@@ -153,57 +177,41 @@ class DatabaseFactory
         $configDataJSON = json_decode($configData, true);
         if (!is_array($configDataJSON))
             throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database configs (invalid JSON)! Path: $path");
-        if (Config::instance()->isProduction()) {
-            if (array_key_exists('production', $configDataJSON)) {
-                $tmpSettings = $configDataJSON['production'];
-                if (is_string($tmpSettings)) {
-                    if (!array_key_exists($tmpSettings, $configDataJSON))
-                        throw new \RuntimeException("[DatabaseFactory][loadConfig] Not found database production settings ($tmpSettings)! Path: $path");
-                    $tmpSettingsArr = $configDataJSON[$tmpSettings];
-                    if (!is_array($tmpSettingsArr))
-                        throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database production settings (is nor array)! Key: $tmpSettings; Path: $path");
-                    $this->_settings = $tmpSettingsArr;
-                } elseif (is_array($tmpSettings)) {
-                    $this->_settings = $tmpSettings;
-                } else {
-                    throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database production settings (is nor array or string)! Path: $path");
-                }
-            }
-        } elseif (Config::instance()->isDevelopment()) {
-            if (array_key_exists('development', $configDataJSON)) {
-                $tmpSettings = $configDataJSON['development'];
-                if (is_string($tmpSettings)) {
-                    if (!array_key_exists($tmpSettings, $configDataJSON))
-                        throw new \RuntimeException("[DatabaseFactory][loadConfig] Not found database development settings ($tmpSettings)! Path: $path");
-                    $tmpSettingsArr = $configDataJSON[$tmpSettings];
-                    if (!is_array($tmpSettingsArr))
-                        throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database development settings (is nor array)! Key: $tmpSettings; Path: $path");
-                    $this->_settings = $tmpSettingsArr;
-                } elseif (is_array($tmpSettings)) {
-                    $this->_settings = $tmpSettings;
-                } else {
-                    throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database development settings (is nor array or string)! Path: $path");
-                }
-            }
-        }
-        if (is_null($this->_settings))
+
+        // --- load primary settings ---
+        $dbMode = 'development';
+        if (Config::instance()->isProduction())
+            $dbMode = 'production';
+
+        $this->_settings = $this->loadDatabaseSettings($dbMode, $configDataJSON, $path);
+        if (empty($this->_settings))
             throw new \RuntimeException("[DatabaseFactory][loadConfig] Invalid database configs (invalid JSON)! Path: $path");
 
         // --- check supported adapters ---
-        if (!array_key_exists('adapter', $this->_settings))
-            throw new \RuntimeException("[DatabaseFactory][loadConfig] Not found database adapter! Path: $path");
+        $this->checkSupportedAdapters($this->_settings, $path);
 
-        $tmpAdapter = $this->_settings['adapter'];
-        if (empty($this->selectAdapterClassName($tmpAdapter)))
-            throw new \RuntimeException("[DatabaseFactory][loadConfig] Unsupported database adapter! Name: $tmpAdapter; Path: $path");
+        // --- load additional settings ---
+        if (!array_key_exists($dbMode."_additional", $configDataJSON))
+            return;
+        $this->_additionalSettings = $this->loadDatabaseAdditionalSettings($dbMode."_additional", $configDataJSON, $path);
+        if (!empty($this->_additionalSettings)) {
+            // --- check supported adapters ---
+            foreach ($this->_additionalSettings as $settingsPath)
+                $this->checkSupportedAdapters($settingsPath, $path);
+        }
     }
 
     /**
      * Сбросить настройки конфигурации
      */
     public function resetConfig() {
+        // --- reset primary settings ---
         unset($this->_settings);
-        $this->_settings = null;
+        $this->_settings = [];
+
+        // --- reset additional settings ---
+        unset($this->_additionalSettings);
+        $this->_additionalSettings = [];
     }
 
     /**
@@ -216,5 +224,98 @@ class DatabaseFactory
         if (array_key_exists($name, $this->_adapters))
             return $this->_adapters[$name];
         return "";
+    }
+
+    /**
+     * Загрузить настройки по работе с БД
+     * @param string $key - ключ раздела настроек в JSON
+     * @param array $configDataJSON - данные файла конфигурации в формате JSON
+     * @param string $path - путь до файла конфигурации
+     * @return array
+     */
+    private function loadDatabaseSettings(string $key, array $configDataJSON, string $path): array {
+        if (!array_key_exists($key, $configDataJSON))
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSettings] Not found database $key settings! Path: $path");
+
+        $tmpSettings = $configDataJSON[$key];
+        if (is_string($tmpSettings))
+            return $this->loadDatabaseSettings($tmpSettings, $configDataJSON, $path);
+        elseif (is_array($tmpSettings) && !CoreHelper::arrayIsList($tmpSettings))
+            return $tmpSettings;
+        else
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSettings] Invalid database $key settings (is not valid array or string)! Path: $path");
+    }
+
+    /**
+     * Загрузить дополнительные настройки по работе с БД
+     * @param string $key - ключ раздела настроек в JSON
+     * @param array $configDataJSON - данные файла конфигурации в формате JSON
+     * @param string $path - путь до файла конфигурации
+     * @return array
+     */
+    private function loadDatabaseAdditionalSettings(string $key, array $configDataJSON, string $path): array {
+        if (!array_key_exists($key, $configDataJSON))
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseAdditionalSettings] Not found database $key settings! Path: $path");
+
+        $tmpSettings = $configDataJSON[$key];
+        if (is_string($tmpSettings)) {
+            return $this->loadDatabaseSettings($tmpSettings, $configDataJSON, $path);
+        } elseif (is_array($tmpSettings) && !CoreHelper::arrayIsList($tmpSettings)) {
+            $tmpAdditionalSettings = [];
+            foreach ($tmpSettings as $tmpKey => $tmpValue)
+                $tmpAdditionalSettings[$tmpKey] = $this->loadDatabaseSettings($tmpValue, $configDataJSON, $path);
+
+            return $tmpAdditionalSettings;
+        } else {
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSettings] Invalid database $key settings (is not valid array or string)! Path: $path");
+        }
+    }
+
+    /**
+     * Метод проверки поддерживаемых адаптеров по работе с БД
+     * @param array $settings - настройки по работе с БД
+     * @param string $path - путь до файла конфигурации
+     */
+    private function checkSupportedAdapters(array $settings, string $path) {
+        if (!array_key_exists('adapter', $settings))
+            throw new \RuntimeException("[DatabaseFactory][checkSupportedAdapters] Not found database adapter! Path: $path");
+
+        $tmpAdapter = $settings['adapter'];
+        if (empty($this->selectAdapterClassName($tmpAdapter)))
+            throw new \RuntimeException("[DatabaseFactory][checkSupportedAdapters] Unsupported database adapter! Name: $tmpAdapter; Path: $path");
+    }
+
+    /**
+     * Создать адаптер по работе с БД
+     * @param array $settings - настройки подключения
+     * @param array|bool[] $args - массив параметров создания адаптера
+     * @return BaseDatabaseAdapter|null
+     */
+    private function createAdapter(array $settings, array $args = [ 'auto-connect' => true ])/*: BaseDatabaseAdapter|null */ {
+        if (empty($settings))
+            return null;
+        if (!array_key_exists('adapter', $settings))
+            return null;
+        $adapterClassName = $this->selectAdapterClassName($settings['adapter']);
+        if (empty($adapterClassName))
+            return null;
+        $adapter = new $adapterClassName($settings);
+        $autoConnect = $args['auto-connect'] ?? true;
+        if ($autoConnect === true)
+            $adapter->recreatePDO();
+        return $adapter;
+    }
+
+    /**
+     * Имя адаптера по работе с базой данных
+     * @param array $settings - настройки подключения
+     * @return string
+     */
+    private function adapterName(array $settings): string {
+        if (empty($settings))
+            return "";
+        if (!array_key_exists('adapter', $settings))
+            return "";
+        return $settings['adapter'];
     }
 }

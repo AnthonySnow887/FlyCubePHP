@@ -171,7 +171,7 @@ class MigrationsCore
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
         // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
+        $adapterName = DatabaseFactory::instance()->primaryAdapterName();
         if (empty($adapterName))
             return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
 
@@ -325,7 +325,7 @@ class MigrationsCore
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
         // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
+        $adapterName = DatabaseFactory::instance()->primaryAdapterName();
         if (empty($adapterName))
             return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
 
@@ -395,30 +395,44 @@ class MigrationsCore
 
     /**
      * Выполнить дамп схемы базы данных
+     * @param string $db
      * @param bool $showOutput
      */
-    public function schemaDump(bool $showOutput = false) {
+    public function schemaDump(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->additionalAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
         $curV = $this->currentMigrationVersion();
         $dumpData = "";
         $dumper = new SchemaDumper();
-        $dumper->dump($curV, $migratorName, $showOutput, "\r\n", $dumpData);
+        $dumper->dump($curV, $migratorName, $showOutput, "\r\n", $db, $dumpData);
         unset($dumper);
 
         // --- write file ---
-        $resultFilePath = CoreHelper::buildPath("db", "Schema.php");
+        $fName = "Schema";
+        if (!empty($db))
+            $fName = "Schema-$db";
+
+        $fName = CoreHelper::camelcase($fName);
+        $resultFilePath = CoreHelper::buildPath("db", "$fName.php");
         if (false !== @file_put_contents($resultFilePath, $dumpData)) {
             @chmod($resultFilePath, 0644 & ~umask());
             echo "[Created] $resultFilePath\r\n";
@@ -428,41 +442,59 @@ class MigrationsCore
 
     /**
      * Пересоздать базу данных и установить дамп
+     * @param string $db
      * @param bool $showOutput
      */
-    public function schemaLoad(bool $showOutput = false) {
+    public function schemaLoad(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->additionalAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
-        $schemaFilePath = CoreHelper::buildPath("db", "Schema.php");
+        $fName = "Schema";
+        if (!empty($db))
+            $fName = "Schema-$db";
+
+        $fName = CoreHelper::camelcase($fName);
+        $schemaFilePath = CoreHelper::buildPath("db", "$fName.php");
         if (!is_file($schemaFilePath) || !is_readable($schemaFilePath)) {
             echo "MigrationsCore: Not found schema dump file!\r\n";
             return;
         }
         include_once $schemaFilePath;
-        if (!class_exists('Schema')) {
-            echo "MigrationsCore: Not found schema dump class!\r\n";
+        if (!class_exists($fName)) {
+            echo "MigrationsCore: Not found schema dump class '$fName'!\r\n";
             return;
         }
 
         // --- re-create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "MigrationsCore: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "MigrationsCore: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
@@ -481,8 +513,8 @@ class MigrationsCore
         unset($migrator);
         unset($dbAdapter);
 
-        echo "MigrationsCore: Start load schema dump\r\n";
-        $tmpSchema = new \Schema();
+        echo "MigrationsCore: Start load schema dump '$fName'\r\n";
+        $tmpSchema = new $fName();
         $tmpV = $tmpSchema->version();
         if ($tmpV <= 0) {
             echo "MigrationsCore: Invalid schema dump version (version: $tmpV)!\r\n";
@@ -507,31 +539,44 @@ class MigrationsCore
 
     /**
      * Создать базу данных для миграций
+     * @param string $db
      * @param bool $showOutput
      */
-    public function dbCreate(bool $showOutput = false) {
+    public function dbCreate(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->additionalAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
 
         // --- create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "Migration: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "Migration: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
@@ -554,31 +599,44 @@ class MigrationsCore
 
     /**
      * Удалить базу данных для миграций
+     * @param string $db
      * @param bool $showOutput
      */
-    public function dbDrop(bool $showOutput = false) {
+    public function dbDrop(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->additionalAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
 
         // --- create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "Migration: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "Migration: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
