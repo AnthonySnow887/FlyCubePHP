@@ -24,7 +24,7 @@ class DatabaseFactory
 {
     private static $_instance = null;
     private $_settings = [];
-    private $_additionalSettings = [];
+    private $_secondarySettings = [];
     private $_adapters = [];
     private $_isLoaded = false;
 
@@ -118,18 +118,18 @@ class DatabaseFactory
      * ==== Args
      *
      * - [bool] auto-connect - connect automatically on creation (default: true)
-     * - [string] database   - database key name in '*_additional' config (default: '')
+     * - [string] database   - database key name in '*_secondary' config (default: '')
      *
      * NOTE: If database name is empty - used primary database.
      */
     public function createDatabaseAdapter(array $args = [ 'auto-connect' => true ])/*: BaseDatabaseAdapter|null */ {
-        if (empty($this->_settings) && empty($this->_additionalSettings))
+        if (empty($this->_settings) && empty($this->_secondarySettings))
             return null;
         if (!isset($args['database']) || empty($args['database']))
             return $this->createAdapter($this->_settings, $args);
-        if (!isset($this->_additionalSettings[$args['database']]))
+        if (!isset($this->_secondarySettings[$args['database']]))
             return null;
-        return $this->createAdapter($this->_additionalSettings[$args['database']], $args);
+        return $this->createAdapter($this->_secondarySettings[$args['database']], $args);
     }
 
     /**
@@ -145,21 +145,21 @@ class DatabaseFactory
      * @param string $database - название базы данных
      * @return string
      */
-    public function additionalAdapterName(string $database): string {
-        if (empty($this->_additionalSettings) || empty($database))
+    public function secondaryAdapterName(string $database): string {
+        if (empty($this->_secondarySettings) || empty($database))
             return "";
-        if (!isset($this->_additionalSettings[$database]))
+        if (!isset($this->_secondarySettings[$database]))
             return "";
-        return $this->adapterName($this->_additionalSettings[$database]);
+        return $this->adapterName($this->_secondarySettings[$database]);
     }
 
     /**
-     * Список названий ключей к дполнительным базам данных из раздела конфигурации '*_additional'
+     * Список названий ключей к дополнительным базам данных из раздела конфигурации '*_secondary'
      * @return array
      */
-    public function additionalDatabases(): array {
+    public function secondaryDatabases(): array {
         $tmpDatabases = [];
-        foreach ($this->_additionalSettings as $key => $value)
+        foreach ($this->_secondarySettings as $key => $value)
             $tmpDatabases[] = $key;
         return $tmpDatabases;
     }
@@ -190,13 +190,13 @@ class DatabaseFactory
         // --- check supported adapters ---
         $this->checkSupportedAdapters($this->_settings, $path);
 
-        // --- load additional settings ---
-        if (!array_key_exists($dbMode."_additional", $configDataJSON))
+        // --- load secondary settings ---
+        if (!array_key_exists($dbMode."_secondary", $configDataJSON))
             return;
-        $this->_additionalSettings = $this->loadDatabaseAdditionalSettings($dbMode."_additional", $configDataJSON, $path);
-        if (!empty($this->_additionalSettings)) {
+        $this->_secondarySettings = $this->loadDatabaseSecondarySettings($dbMode."_secondary", $configDataJSON, $path);
+        if (!empty($this->_secondarySettings)) {
             // --- check supported adapters ---
-            foreach ($this->_additionalSettings as $settingsPath)
+            foreach ($this->_secondarySettings as $settingsPath)
                 $this->checkSupportedAdapters($settingsPath, $path);
         }
     }
@@ -210,8 +210,8 @@ class DatabaseFactory
         $this->_settings = [];
 
         // --- reset additional settings ---
-        unset($this->_additionalSettings);
-        $this->_additionalSettings = [];
+        unset($this->_secondarySettings);
+        $this->_secondarySettings = [];
     }
 
     /**
@@ -253,9 +253,9 @@ class DatabaseFactory
      * @param string $path - путь до файла конфигурации
      * @return array
      */
-    private function loadDatabaseAdditionalSettings(string $key, array $configDataJSON, string $path): array {
+    private function loadDatabaseSecondarySettings(string $key, array $configDataJSON, string $path): array {
         if (!array_key_exists($key, $configDataJSON))
-            throw new \RuntimeException("[DatabaseFactory][loadDatabaseAdditionalSettings] Not found database $key settings! Path: $path");
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSecondarySettings] Not found database $key settings! Path: $path");
 
         $tmpSettings = $configDataJSON[$key];
         if (is_string($tmpSettings)) {
@@ -267,7 +267,7 @@ class DatabaseFactory
 
             return $tmpAdditionalSettings;
         } else {
-            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSettings] Invalid database $key settings (is not valid array or string)! Path: $path");
+            throw new \RuntimeException("[DatabaseFactory][loadDatabaseSecondarySettings] Invalid database $key settings (is not valid array or string)! Path: $path");
         }
     }
 

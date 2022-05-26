@@ -637,6 +637,7 @@ abstract class ActiveRecord
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
         $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
@@ -655,8 +656,10 @@ abstract class ActiveRecord
             if (!empty($tmpWhere))
                 $tmpWhere .= " AND";
             $tmpColumn = $key;
+            if (array_key_exists($key, $columnMappings))
+                $tmpColumn = $columnMappings[$key];
             if ($prepareNames === true)
-                $tmpColumn = CoreHelper::underscore($key);
+                $tmpColumn = CoreHelper::underscore($tmpColumn);
             $tmpWhere .= " ".$db->quoteTableName("$tName.$tmpColumn")." = :key_$tmpKey";
             $tmpWhereVal[":key_".$tmpKey] = $val;
         }
@@ -731,6 +734,7 @@ abstract class ActiveRecord
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
         $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
@@ -753,8 +757,10 @@ abstract class ActiveRecord
         }
         $tmpWhere = trim($tmpWhere);
         $tmpColumn = $column;
+        if (array_key_exists($column, $columnMappings))
+            $tmpColumn = $columnMappings[$column];
         if ($prepareNames === true)
-            $tmpColumn = CoreHelper::underscore($column);
+            $tmpColumn = CoreHelper::underscore($tmpColumn);
         try {
             $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tmpColumn")." IN ($tmpWhere) LIMIT 1;", $tmpWhereVal);
         } catch (ErrorDatabase $ex) {
@@ -783,6 +789,7 @@ abstract class ActiveRecord
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
         $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
@@ -799,8 +806,10 @@ abstract class ActiveRecord
             if (!empty($tmpColumns))
                 $tmpColumns .= ",";
             $tmpVal = $val;
+            if (array_key_exists($val, $columnMappings))
+                $tmpVal = $columnMappings[$val];
             if ($prepareNames === true)
-                $tmpVal = CoreHelper::underscore($val);
+                $tmpVal = CoreHelper::underscore($tmpVal);
             $tmpColumns .= " ".$db->quoteTableName($tmpVal);
         }
         $tmpColumns = trim($tmpColumns);

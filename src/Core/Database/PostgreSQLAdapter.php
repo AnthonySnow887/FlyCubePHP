@@ -30,6 +30,25 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
     }
 
     /**
+     * Метод запроса списка расширений базы данных
+     * @return array|null
+     */
+    public function extensions()/*: array|null */ {
+        $res = $this->query("SELECT * FROM pg_extension;");
+        if (!is_null($res)) {
+            $tmpArr = array();
+            foreach ($res as $item) {
+                $tmpName = $item->extname;
+                if (strcmp($tmpName, 'plpgsql') === 0)
+                    continue;
+                $tmpArr[] = $tmpName;
+            }
+            return $tmpArr;
+        }
+        return [];
+    }
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      * @throws

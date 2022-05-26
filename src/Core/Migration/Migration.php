@@ -59,6 +59,14 @@ abstract class Migration
     }
 
     /**
+     * Используемая база данных
+     * @return string
+     */
+    final public function database(): string {
+        return $this->_database;
+    }
+
+    /**
      * Выполнить миграцию
      * @param int $version
      * @param string $migratorClassName
@@ -84,11 +92,8 @@ abstract class Migration
         if (empty($migratorClassName))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator class name!);
 
-        // --- configuration current migration ---
-        $this->configuration();
-
         // --- get adapter ---
-        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->_database ]);
+        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($this->_dbAdapter))
             return false; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
 
@@ -118,7 +123,7 @@ abstract class Migration
     /**
      * Метод конфигурирования миграции
      */
-    protected function configuration() {
+    public function configuration() {
     }
 
     /**
@@ -144,6 +149,36 @@ abstract class Migration
             return $this->_dbAdapter->name();
 
         return "";
+    }
+
+    /**
+     * Подключить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_not_exists - добавить флаг 'IF NOT EXISTS'
+     */
+    final protected function createExtension(string $name, array $props = []) {
+        if (is_null($this->_migrator))
+            return; // TODO throw new \RuntimeException('Migration -> createExtension: invalid database migrator (NULL)!');
+        $this->_migrator->createExtension($name, $props);
+    }
+
+    /**
+     * Удалить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_exists - добавить флаг 'IF EXISTS'
+     */
+    final protected function dropExtension(string $name, array $props = []) {
+        if (is_null($this->_migrator))
+            return; // TODO throw new \RuntimeException('Migration -> dropExtension: invalid database migrator (NULL)!');
+        $this->_migrator->dropExtension($name, $props);
     }
 
     /**

@@ -70,11 +70,13 @@ class SchemaDumper
         $this->dumpDataStart($dumpData);
 
         // --- dump extensions ---
-        // TODO extensions for PostgreSQL...
+        $dbExtensions = $this->_dbAdapter->extensions();
+        foreach ($dbExtensions as $extension)
+            $this->dumpExtension($extension, $dumpData);
 
+        // --- dump tables ---
         $schemaLst = [];
         $tables = $this->_dbAdapter->tables();
-        // --- dump tables ---
         foreach ($tables as $table) {
             if (strcmp($table, "public.schema_migrations") === 0
                 || strcmp($table, "schema_migrations") === 0)
@@ -173,7 +175,16 @@ EOT;
     }
 
     /**
-     * Добавить методо создания схемы базы данных в дамп-файл
+     * Добавить метод создания расширения базы данных в дамп-файл
+     * @param string $name
+     * @param string $stream
+     */
+    private function dumpExtension(string $name, string &$stream) {
+        $stream .= "\r\n        \$this->createExtension('$name', [ 'if_not_exists' => true ]);";
+    }
+
+    /**
+     * Добавить метод создания схемы базы данных в дамп-файл
      * @param string $name
      * @param string $stream
      */
