@@ -16,7 +16,7 @@ In terms of its structure, the plug-in partially repeats the architecture of the
 Currently FlyCubePHP supports
 -----------------------------
 
-- creating projects that architecturally repeat Ruby on Rails 5 / 6 projects:
+- creating projects that architecturally repeat Ruby on Rails 5 / 6 / 7 projects:
   - creation of controllers (gui / api);
   - creation of data models;
   - creation of templates for WEB pages;
@@ -42,6 +42,9 @@ Currently FlyCubePHP supports
   or when checking an existing project for missing directories and files);
 - creation of plugins that extend or change the functionality of your application;
 - creation of database migrations and a wide range of tools for working with migrations;
+- multiple databases usage:
+  - in ActiveRecord;
+  - in database migrations.
 - creation of extensions to the FlyCubePHP kernel allowing:
   - add support for the required databases;
   - add support for the required databases for the migration system;
@@ -62,7 +65,7 @@ Third-party dependencies
 These dependencies are required for the framework to work correctly: 
 - Twig-2.x - used to generate and render templates for web pages (https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip);
 - JShrink - used to build * .min.js files in production mode (https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip);
-- ScssPhp - used to build from Sass Stylesheets files to css (https://github.com/scssphp/scssphp/archive/refs/tags/v1.8.1.zip);
+- ScssPhp - used to build from Sass Stylesheets files to css (https://github.com/scssphp/scssphp/archive/refs/tags/v1.10.2.zip);
 - Monolog - used to application logging (https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip).
 
 NOTE: required third party dependencies will be automatically downloaded when creating a new FlyCubePHP project. 

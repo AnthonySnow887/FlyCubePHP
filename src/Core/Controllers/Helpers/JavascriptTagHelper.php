@@ -21,7 +21,7 @@ class JavascriptTagHelper extends BaseControllerHelper
 
     function __construct() {
         $this->appendSafeFunction("javascript_tag");
-        $this->appendSafeFunction("javascript_asset_tag");
+        $this->appendSafeFunction("javascript_content_tag");
     }
 
     /**
@@ -116,7 +116,7 @@ EOT;
      *
      * ==== Examples
      *
-     *   javascript_asset_tag("application")
+     *   javascript_content_tag("application")
      *   * => <script>
      *        //<![CDATA[
      *        //
@@ -136,10 +136,10 @@ EOT;
      *        //]]>
      *        </script>
      */
-    public function javascript_asset_tag(string $name, array $options = []): string {
+    public function javascript_content_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->javascriptFilePathReal($name);
         if (empty($tmpLst))
-            throw new \RuntimeException("[javascript_asset_tag] Not found javascript in asset pipeline (name: $name)!");
+            throw new \RuntimeException("[javascript_content_tag] Not found javascript in asset pipeline (name: $name)!");
 
         if (is_array($tmpLst)) {
             $tmpData = "";

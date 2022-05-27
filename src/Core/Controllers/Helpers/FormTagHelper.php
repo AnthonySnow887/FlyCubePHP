@@ -61,6 +61,8 @@ class FormTagHelper extends BaseControllerHelper
      * - encrypt_type       - Set form encrypt type (default: empty)
      * - html_body          - Set form html body
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * - Example 1:
@@ -171,6 +173,8 @@ class FormTagHelper extends BaseControllerHelper
      * - for    - Set label for
      * - class  - Set label class
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * {{ label('Test text:', {'for': 'my-input'}) }}
@@ -214,6 +218,8 @@ class FormTagHelper extends BaseControllerHelper
      * - type       - Set input type (button/reset/submit) (default: button)
      * - disabled   - Set input disabled (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * {{ button_tag({'id': 'my-button-id', 'name': 'my-button', 'value': 'some button value', 'type': 'button'}) }}
@@ -242,7 +248,8 @@ class FormTagHelper extends BaseControllerHelper
      * @param array $options
      * @return string
      *
-     *  NOTE: this overload function -> see button_tag function
+     * NOTE: this overload function -> see button_tag function
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -268,6 +275,8 @@ class FormTagHelper extends BaseControllerHelper
      * - class      - Set input class
      * - accept     - Set to one or multiple mime-types, the user will be suggested a filter when choosing a file.
      * - multiple   - Set to true, *in most updated browsers* the user will be allowed to select multiple files (default: false)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -312,6 +321,8 @@ class FormTagHelper extends BaseControllerHelper
      * - name       - Set input name
      * - value      - Set input value
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * hidden_field({'id': 'my-hidden-id', 'name': 'my-hidden-obj', 'value': 'some hidden value'})
@@ -334,6 +345,8 @@ class FormTagHelper extends BaseControllerHelper
      * - class              - Set input class
      * - checked_value      - Set checked value (default: 1)
      * - unchecked_value    - Set unchecked value (default: 0)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -382,6 +395,8 @@ class FormTagHelper extends BaseControllerHelper
      * - name   - Set input name
      * - value  - Set input value (format: #rrggbb)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * color_field({'id': 'my-color-id', 'name': 'my-color', 'value': '#4c4c4c'})
@@ -404,6 +419,8 @@ class FormTagHelper extends BaseControllerHelper
      * - value  - Set input value (format: yyyy-MM-dd)
      * - min    - Set input min value (format: yyyy-MM-dd)
      * - max    - Set input max value (format: yyyy-MM-dd)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -428,6 +445,8 @@ class FormTagHelper extends BaseControllerHelper
      * - min    - Set input min value (format: yyyy-MM-ddThh:mm)
      * - max    - Set input max value (format: yyyy-MM-ddThh:mm)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * datetime_field({'id': 'my-datetime-id', 'name': 'my-datetime', 'value': '2021-10-18T15:10'})
@@ -444,6 +463,7 @@ class FormTagHelper extends BaseControllerHelper
      * @return string
      *
      * NOTE: this is alias for datetime_field function.
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -469,6 +489,8 @@ class FormTagHelper extends BaseControllerHelper
      * - minlength  - Set input minimum number of characters long the input can be and still be considered valid
      * - required   - Set input is required (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * email_field({'id': 'my-email-id', 'name': 'my-email', 'pattern': '.+@my\.com', 'size': 20, 'required': true})
@@ -491,6 +513,8 @@ class FormTagHelper extends BaseControllerHelper
      * - value  - Set input value (format: yyyy-MM)
      * - min    - Set input min value (format: yyyy-MM)
      * - max    - Set input max value (format: yyyy-MM)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -516,6 +540,8 @@ class FormTagHelper extends BaseControllerHelper
      * - max    - Set input max value
      * - step   - Set input stepping interval to use when using up and down arrows to adjust the value, as well as for validation
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * number_field({'id': 'my-number-id', 'name': 'my-number', 'value': 2021, 'min': 2000, 'max': 2500, 'step': 5})
@@ -539,6 +565,8 @@ class FormTagHelper extends BaseControllerHelper
      * - size       - Set input size
      * - value      - Set input value
      * - onchange   - Set input onchange handler
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -570,6 +598,8 @@ class FormTagHelper extends BaseControllerHelper
      * - minlength  - Set input minimum number of characters long the input can be and still be considered valid
      * - required   - Set input is required (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * telephone_field({'id': 'my-tel-id', 'name': 'my-tel', 'pattern': '[0-9]{3}-[0-9]{3}-[0-9]{4}', 'size': 10, 'required': true})
@@ -586,6 +616,7 @@ class FormTagHelper extends BaseControllerHelper
      * @return string
      *
      * NOTE: this is alias for telephone_field function.
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -607,6 +638,8 @@ class FormTagHelper extends BaseControllerHelper
      * - name       - Set input name
      * - value      - Set input value
      * - checked    - Set input is checked (default: false)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -635,6 +668,8 @@ class FormTagHelper extends BaseControllerHelper
      * - max    - Set input max value
      * - step   - Set input stepping interval to use when using up and down arrows to adjust the value, as well as for validation
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * range_field({'id': 'my-range-id', 'name': 'my-range', 'value': 5, 'min': 0, 'max': 10, 'step': 1})
@@ -658,6 +693,8 @@ class FormTagHelper extends BaseControllerHelper
      * - size       - Set input number indicating how many characters wide the input field should be
      * - maxlength  - Set input maximum number of characters the input should accept
      * - minlength  - Set input minimum number of characters long the input can be and still be considered valid
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -684,6 +721,8 @@ class FormTagHelper extends BaseControllerHelper
      * - class      - Set input class
      * - text_body  - Set input text body (auto escape enabled)
      * - disabled   - Set input disabled (default: false)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -717,6 +756,8 @@ class FormTagHelper extends BaseControllerHelper
      * - minlength  - Set input min length
      * - onchange   - Set input onchange handler
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * {% set jquery_content %}
@@ -747,6 +788,8 @@ class FormTagHelper extends BaseControllerHelper
      * - step       - Set input stepping interval to use when using up and down arrows to adjust the value, as well as for validation
      * - required   - Set input is required (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * time_field({'id': 'my-time-id', 'name': 'my-time', 'value': '17:16', 'min': '13:00', 'max': '18:00', 'required': true})
@@ -774,6 +817,8 @@ class FormTagHelper extends BaseControllerHelper
      * - minlength      - Set input min length
      * - required       - Set input is required (default: false)
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      * url_field({'id': 'my-url-id', 'name': 'my-url', 'placeholder': 'https://example.com', 'pattern': 'https://.*', 'size': 30, 'required': true})
@@ -798,6 +843,8 @@ class FormTagHelper extends BaseControllerHelper
      * - max        - Set input max value (format: yyyy-Wnn, where nn is a number with a leading zero)
      * - step       - Set input stepping interval to use when using up and down arrows to adjust the value, as well as for validation
      * - required   - Set input is required (default: false)
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *

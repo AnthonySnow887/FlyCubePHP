@@ -65,6 +65,8 @@ class AssetTagHelper extends BaseControllerHelper
      * @param string $name
      * @param array $options
      * @return string
+     *
+     * NOTE: options will be added as tag attributes.
      */
     public function stylesheet_link_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->stylesheetFilePath($name);
@@ -90,6 +92,8 @@ class AssetTagHelper extends BaseControllerHelper
      * @param string $name
      * @param array $options
      * @return string
+     *
+     * NOTE: options will be added as tag attributes.
      */
     public function javascript_include_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->javascriptFilePath($name);
@@ -125,6 +129,7 @@ class AssetTagHelper extends BaseControllerHelper
      * - action     - Specify the application controller action
      *
      * NOTE: 'href' and 'controller + action' are mutually exclusive arguments!
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -207,6 +212,8 @@ class AssetTagHelper extends BaseControllerHelper
      * - rel    - Specify the relation of this link, defaults to "shortcut icon"
      * - type   - Specify the type of this icon, defaults to "image/x-icon"
      *
+     * NOTE: other options will be added as tag attributes.
+     *
      * ==== Examples in Twig notations
      *
      *   favicon_link_tag()
@@ -255,6 +262,8 @@ class AssetTagHelper extends BaseControllerHelper
      * - type           - Override the auto-generated mime type, defaults to the mime type for +source+ extension.
      * - as             - Override the auto-generated value for as attribute, calculated using +source+ extension and mime type.
      * - crossorigin    - Specify the crossorigin attribute, required to load cross-origin resources.
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -323,6 +332,8 @@ class AssetTagHelper extends BaseControllerHelper
      * - height     - Set image height.
      * - width      - Set image width.
      * - class      - Set image class.
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -407,6 +418,7 @@ class AssetTagHelper extends BaseControllerHelper
      * - params         - Set additional URL params
      *
      * NOTE: 'href' and 'controller + action' are mutually exclusive arguments!
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -515,6 +527,7 @@ class AssetTagHelper extends BaseControllerHelper
      * @return string
      *
      * NOTE: Use only in twig block 'head'!
+     * NOTE: options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -539,6 +552,7 @@ class AssetTagHelper extends BaseControllerHelper
      * @return string
      *
      * NOTE: Use only in twig block 'head'!
+     * NOTE: options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *

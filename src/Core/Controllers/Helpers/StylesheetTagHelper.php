@@ -21,7 +21,7 @@ class StylesheetTagHelper extends BaseControllerHelper
 
     function __construct() {
         $this->appendSafeFunction("stylesheet_tag");
-        $this->appendSafeFunction("stylesheet_asset_tag");
+        $this->appendSafeFunction("stylesheet_content_tag");
     }
 
     /**
@@ -109,7 +109,7 @@ EOT;
      *
      * ==== Examples
      *
-     *   stylesheet_asset_tag("application")
+     *   stylesheet_content_tag("application")
      *   * => <script type="text/css">
      *        //<![CDATA[
      *        // Created by FlyCubePHP generator.
@@ -128,10 +128,10 @@ EOT;
      *        //]]>
      *        </script>
      */
-    public function stylesheet_asset_tag(string $name, array $options = []): string {
+    public function stylesheet_content_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->stylesheetFilePathReal($name);
         if (empty($tmpLst))
-            throw new \RuntimeException("[stylesheet_asset_tag] Not found stylesheet in asset pipeline (name: $name)!");
+            throw new \RuntimeException("[stylesheet_content_tag] Not found stylesheet in asset pipeline (name: $name)!");
 
         if (is_array($tmpLst)) {
             $tmpData = "";

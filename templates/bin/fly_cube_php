@@ -418,9 +418,15 @@ Options include:
     --actions=[VALUE(,VALUE...)]        Set new controller actions list
     
     --db-create                         Create all databases for current environment
-    --db-create-primary                 Create primary database for current environment
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-create-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Create primary database for current environment\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -434,9 +440,15 @@ EOT;
 
     --db-create-all                     Create all databases for all environments (development and production)
     --db-drop                           Drop all databases for current environment
-    --db-drop-primary                   Drop primary database for current environment
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-drop-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Drop primary database for current environment\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -450,9 +462,15 @@ EOT;
 
     --db-drop-all                       Drop all databases for all environments (development and production)
     --db-setup                          Init all databases for current environment
-    --db-setup-primary                  Init primary database for current environment
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-setup-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Init primary database for current environment\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -465,9 +483,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-reset                          Re-Init all databases for current environment
-    --db-reset-primary                  Re-Init primary database for current environment
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-reset-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Re-Init primary database for current environment\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -481,9 +505,15 @@ EOT;
 
     --db-seed                           Load database Seed.php file
     --db-migrate                        Start all database(s) migrations
-    --db-migrate-primary                Start primary database migrations
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start primary database migrations\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -496,9 +526,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-migrate-redo                   Start re-install last database migration
-    --db-migrate-redo-primary           Start re-install last primary database migration
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-redo-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start re-install last primary database migration\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -511,9 +547,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-migrate-status                 Select migrations status
-    --db-migrate-status-primary         Select migrations status for primary database
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-status-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Select migrations status for primary database\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -526,9 +568,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-rollback                       Start uninstall last database migration
-    --db-rollback-primary               Start uninstall last primary database migration
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-rollback-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start uninstall last primary database migration\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -542,9 +590,15 @@ EOT;
 
     --db-rollback-all                   Start uninstall all database(s) migrations
     --db-version                        Select database(s) migration version
-    --db-version-primary                Select migration version for primary database
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-version-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Select migration version for primary database\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -557,9 +611,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-schema-dump                    Create all databases schema dump for current environment
-    --db-schema-dump-primary            Create primary database schema dump for current environment
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-schema-dump-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Create primary database schema dump for current environment\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {
@@ -572,9 +632,15 @@ EOT;
     $HELP .= <<<EOT
 
     --db-schema-load                    Re-Create all databases and load their schema dumps
-    --db-schema-load-primary            Re-Create primary database and load schema dump
 
 EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-schema-load-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Re-Create primary database and load schema dump\n";
+    }
 
     $defWhitespaceNum = 36;
     foreach ($additionalDBs as $db) {

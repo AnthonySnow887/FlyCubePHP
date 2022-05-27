@@ -39,10 +39,11 @@
  *
  * Supported input arguments:
  *
- *   - [string] to         - The name of the controller and the action separated '#' (Test#show), or 'redirect' command
- *   - [string] controller - The name of the controller
- *   - [string] action     - The name of the controller action
- *   - [string] as         - Alias for quick access to the route (define is automatically generated)
+ *   - [string] to          - The name of the controller and the action separated '#' (Test#show), or 'redirect' command
+ *   - [string] controller  - The name of the controller
+ *   - [string] action      - The name of the controller action
+ *   - [string] as          - Alias for quick access to the route (define is automatically generated)
+ *   - [array]  constraints - Add constraints to use automatic regular expression validation for the dynamic segment
  *   - ...
  *   - Other arguments will be transferred as input parameters.
  *
@@ -68,6 +69,16 @@
  *         - Test  - The name of the controller class without expansion controller
  *         - show  - The name of the controller action (public method)
  *         - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * #> get('/photos/:id', [ 'to' => 'Photos#show', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ] );
+ *       where
+ *         - Photos      - The name of the controller class without expansion controller
+ *         - show        - The name of the controller action (public method)
+ *         - constraints - Constraints array with regular expression
+ *       example:
+ *         - /photos/A12345     - valid (200)
+ *         - /photos/A123456    - invalid (404)
+ *         - /photos/123456     - invalid (404)
  *
  * Redirect examples:
  *
