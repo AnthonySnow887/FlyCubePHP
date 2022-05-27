@@ -181,7 +181,7 @@ abstract class ActiveRecord
     }
 
     /**
-     * Имя базы данных для подключения
+     * Название ключа базы данных, указанного в разделе конфигурационного файла «*_secondary», с которой будет работать модель
      * @return string
      *
      * NOTE: If database name is empty - used primary database.
@@ -191,7 +191,7 @@ abstract class ActiveRecord
     }
 
     /**
-     * Задать имя базы данных для подключения
+     * Задать название ключа базы данных, указанного в разделе конфигурационного файла «*_secondary», с которой будет работать модель
      * @param string $database - имя базы данных для подключения
      *
      * NOTE: If database name is empty - used primary database.
