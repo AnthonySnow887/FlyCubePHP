@@ -603,19 +603,20 @@ class AssetPipeline
         if (strcmp($fType, "js") === 0) {
             $cType = "application/javascript";
             $supportCompression = true;
-        }
-        if (strcmp($fType, "css") === 0) {
+        } else if (strcmp($fType, "css") === 0) {
             $cType = "text/css";
             $supportCompression = true;
-        }
-        if (strcmp($fType, "png") === 0
+        } else if (strcmp($fType, "png") === 0
             || strcmp($fType, "jpg") === 0
             || strcmp($fType, "jpeg") === 0
-            || strcmp($fType, "gif") === 0)
+            || strcmp($fType, "gif") === 0) {
             $cType = "image/$fType";
-        if (strcmp($fType, "svg") === 0)
+        } else if (strcmp($fType, "svg") === 0) {
             $cType = "image/svg+xml";
-
+        } else if (strcmp($fType, "ico") === 0) {
+            $cType = "image/x-icon";
+        }
+        
         if (file_exists($realPath)) {
             if (!is_readable($realPath)) {
                 http_response_code(403);
