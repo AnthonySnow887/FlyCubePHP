@@ -147,37 +147,34 @@ class MigrationsCore
      * Получить текущую версию установленных миграций
      * @return int
      */
-    public function currentVersion(): int {
+    public function currentVersion(array $dbNames): int {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
         // --- select version ---
-        return $this->currentMigrationVersion();
+        return $this->currentMigrationVersion($dbNames);
     }
 
     /**
      * Метод инициализации миграции
-     * @param int $version
+     * @param array $dbNames
+     * @param int|null $version
      * @param bool $showOutput
      */
-    public function migrate(/* int|null */ $version, bool $showOutput = false) {
+    public function migrate(array $dbNames, /* int|null */ $version, bool $showOutput = false) {
         // --- check migrations list ---
         if (empty($this->_migrations)) {
             echo "MigrationsCore: Not found migration files\r\n";
+            return; // nothing
+        }
+        if (empty($dbNames)) {
+            echo "MigrationsCore: Database names array is Empty!\r\n";
             return; // nothing
         }
 
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
-
-        $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
 
         // --- processing ---
         if (!is_null($version))
@@ -189,7 +186,7 @@ class MigrationsCore
             $version = PHP_INT_MAX;
 
         // --- select current migration version from database ---
-        $currentVersion = $this->currentMigrationVersion();
+        $currentVersion = $this->currentMigrationVersion($dbNames);
 
         // --- check ---
         if ($currentVersion == $version) {
@@ -212,8 +209,39 @@ class MigrationsCore
         echo "MigrationsCore: Start migrate from $currentVersion\r\n";
         $newVersion = -1;
         foreach ($this->_migrations as $m) {
+            // --- configuration current migration ---
+            $m->configuration();
+            // --- select migration info ---
             $mVersion = $m->version();
             $mClassName = get_class($m);
+            $mDatabase = $m->database();
+            $mDatabaseTitle = $mDatabase;
+            if (empty($mDatabaseTitle))
+                $mDatabaseTitle = 'primary';
+
+            // --- select current adapter name ---
+            if (empty($mDatabase))
+                $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+            else
+                $adapterName = DatabaseFactory::instance()->secondaryAdapterName($mDatabase);
+
+            if (empty($adapterName)) {
+                echo "MigrationsCore: Invalid current database adapter name!\r\n";
+                return;
+            }
+
+            // --- select current migrator name ---
+            $migratorName = $this->selectMigratorClassName($adapterName);
+            if (empty($migratorName)) {
+                echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+                return;
+            }
+
+            // --- check database name ---
+            if (!in_array($mDatabase, $dbNames)) {
+//                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
+                continue;
+            }
             if (strcmp($mCommand, 'up') === 0
                 && $newVersion == $version) {
                 break;
@@ -222,14 +250,21 @@ class MigrationsCore
                 $newVersion = $version;
                 break;
             }
+
+            // --- select current migration database version ---
+            $currentDbVersion = $this->lastMigrationVersion($mDatabase);
+
+            // --- check skip ---
             if (strcmp($mCommand, 'up') === 0
-                && $currentVersion >= $mVersion) {
-                echo "[Skip] Migration ($mVersion - '$mClassName')\r\n";
+                && $currentVersion >= $mVersion
+                && $currentDbVersion >= $mVersion) {
+                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
                 continue;
             }
             if (strcmp($mCommand, 'down') === 0
-                && $currentVersion < $mVersion) {
-                echo "[Skip] Migration ($mVersion - '$mClassName')\r\n";
+                && $currentVersion < $mVersion
+                && $currentDbVersion < $mVersion) {
+                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
                 continue;
             }
 
@@ -237,7 +272,7 @@ class MigrationsCore
             if (strcmp($mCommand, 'down') === 0)
                 $msgAttr = "from";
 
-            echo "[". ucwords($mCommand)."] Migrate $msgAttr ($mVersion - '$mClassName')\r\n";
+            echo "[". ucwords($mCommand)."][DB: $mDatabaseTitle] Migrate $msgAttr ($mVersion - '$mClassName')\r\n";
             ob_start();
             if ($m->migrate($version, $migratorName, $showOutput, "\r\n") === false)
                 break;
@@ -246,45 +281,68 @@ class MigrationsCore
                 echo $outPut;
             $newVersion = $m->version();
             if (strcmp($mCommand, 'up') === 0)
-                $this->appendMigrationVersion($newVersion, $showOutput);
+                $this->appendMigrationVersion($mDatabase, $newVersion, $showOutput);
             elseif (strcmp($mCommand, 'down') === 0)
-                $this->removeMigrationVersion($newVersion, $showOutput);
+                $this->removeMigrationVersion($mDatabase, $newVersion, $showOutput);
         }
         echo "MigrationsCore: Finish migrate\r\n";
 
         // --- select current migration version from database ---
-        $currentVersion = $this->currentMigrationVersion();
+        $currentVersion = $this->currentMigrationVersion($dbNames);
         echo "MigrationsCore: Current migration version: $currentVersion\r\n";
     }
 
     /**
      * Запросить состояние миграций
+     * @param array $dbNames
      */
-    public function migrateStatus() {
-        $curV = $this->currentVersion();
-        $allV = $this->allInstallMigrationVersions();
+    public function migrateStatus(array $dbNames) {
+        $curV = $this->currentVersion($dbNames);
+        $allV = $this->allInstallMigrationVersions($dbNames);
         $tmpStateLst = [];
         foreach ($allV as $item) {
             $mClassName = "???";
             $stateStr = "File Not Found";
+            $databaseTitle = "???";
             if (array_key_exists($item, $this->_migrations)) {
                 $tmpM = $this->_migrations[$item];
+                // --- configuration current migration ---
+                $tmpM->configuration();
+                // --- select migration info ---
                 $mClassName = get_class($tmpM);
+                $mDatabase = $tmpM->database();
+                $databaseTitle = $mDatabase;
+                if (empty($databaseTitle))
+                    $databaseTitle = 'primary';
+                // --- check database name ---
+                if (!in_array($mDatabase, $dbNames))
+                    continue; // skip
                 $stateStr = "Not Installed";
-                if ($curV >= $item)
+                if ($this->lastMigrationVersion($tmpM->database()) >= $item)
                     $stateStr = "Installed";
             }
-            $tmpStateLst[$item] = "[$stateStr] Migration ($item - '$mClassName')";
+            $tmpStateLst[$item] = "[$stateStr][DB: $databaseTitle] Migration ($item - '$mClassName')";
         }
+        $size = 0;
         foreach ($this->_migrations as $key => $value) {
+            // --- configuration current migration ---
+            $value->configuration();
+            // --- select migration info ---
             $mClassName = get_class($value);
+            $mDatabase = $value->database();
+            $databaseTitle = $mDatabase;
+            if (empty($databaseTitle))
+                $databaseTitle = 'primary';
+            // --- check database name ---
+            if (!in_array($mDatabase, $dbNames))
+                continue; // skip
             $stateStr = "Not Installed";
-            if ($curV >= $key)
+            if ($this->lastMigrationVersion($value->database()) >= $key)
                 $stateStr = "Installed";
-            $tmpStateLst[$key] = "[$stateStr] Migration ($key - '$mClassName')";
+            $tmpStateLst[$key] = "[$stateStr][DB: $databaseTitle] Migration ($key - '$mClassName')";
+            $size = $size + 1;
         }
         ksort($tmpStateLst, SORT_NUMERIC);
-        $size = count($this->_migrations);
         $sizeInstall = count($allV);
         echo "MigrationsCore: Current database version: $curV\r\n";
         echo "MigrationsCore: Found migration files: $size\r\n";
@@ -295,43 +353,41 @@ class MigrationsCore
 
     /**
      * Метод перустановки миграции
+     * @param array $dbNames
      * @param int $step
      * @param bool $showOutput
      */
-    public function migrateRedo(/* int|null */ $step, bool $showOutput = false) {
-        $curV = $this->currentVersion();
+    public function migrateRedo(array $dbNames, /* int|null */ $step, bool $showOutput = false) {
+        $curV = $this->currentVersion($dbNames);
         if ($curV == 0) {
             echo "MigrationsCore: Migrations have not yet been installed!\r\n";
             return; // nothing
         }
-        $this->rollback($step, $showOutput);
+        $this->rollback($dbNames, $step, $showOutput);
         echo "\r\n";
-        $this->migrate($curV, $showOutput);
+        $this->migrate($dbNames, $curV, $showOutput);
     }
 
     /**
      * Метод отката миграции
+     * @param array $dbNames
      * @param int $step
      * @param bool $showOutput
      */
-    public function rollback(/* int|null */ $step, bool $showOutput = false) {
+    public function rollback(array $dbNames, /* int|null */ $step, bool $showOutput = false) {
         // --- check migrations list ---
         if (empty($this->_migrations)) {
             echo "MigrationsCore: Not found migration files\r\n";
+            return; // nothing
+        }
+        if (empty($dbNames)) {
+            echo "MigrationsCore: Database names array is Empty!\r\n";
             return; // nothing
         }
 
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
-
-        $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
 
         // --- processing ---
         if (!is_null($step))
@@ -347,7 +403,7 @@ class MigrationsCore
             $step = count($this->_migrations);
 
         // --- select current migration version from database ---
-        $currentVersion = $this->currentMigrationVersion();
+        $currentVersion = $this->currentMigrationVersion($dbNames);
 
         // --- check ---
         if ($currentVersion == 0) {
@@ -363,19 +419,54 @@ class MigrationsCore
         echo "MigrationsCore: Start rollback from $currentVersion\r\n";
         $newVersion = -1;
         foreach ($this->_migrations as $m) {
+            // --- configuration current migration ---
+            $m->configuration();
+            // --- select migration info ---
             $mVersion = $m->version();
             $mClassName = get_class($m);
+            $mDatabase = $m->database();
+            $mDatabaseTitle = $mDatabase;
+            if (empty($mDatabaseTitle))
+                $mDatabaseTitle = 'primary';
+
+            // --- select current adapter name ---
+            if (empty($mDatabase))
+                $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+            else
+                $adapterName = DatabaseFactory::instance()->secondaryAdapterName($mDatabase);
+
+            if (empty($adapterName)) {
+                echo "MigrationsCore: Invalid current database adapter name!\r\n";
+                return;
+            }
+
+            // --- select current migrator name ---
+            $migratorName = $this->selectMigratorClassName($adapterName);
+            if (empty($migratorName)) {
+                echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+                return;
+            }
+
+            // --- select current migration database version ---
+            $currentDbVersion = $this->lastMigrationVersion($mDatabase);
+
             // --- check steps ---
             if ($step == 0) {
                 $newVersion = $mVersion;
                 break;
             }
-            // --- check version ---
-            if ($currentVersion < $mVersion) {
-                echo "[Skip] Migration ($mVersion - '$mClassName')\r\n";
+            // --- check database name ---
+            if (!in_array($mDatabase, $dbNames)) {
+//                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
                 continue;
             }
-            echo "[Down] Migrate from ($mVersion - '$mClassName')\r\n";
+            // --- check version ---
+            if ($currentVersion < $mVersion
+                || $currentDbVersion < $mVersion) {
+                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
+                continue;
+            }
+            echo "[Down][DB: $mDatabaseTitle] Migrate from ($mVersion - '$mClassName')\r\n";
             ob_start();
             if ($m->migrate(($mVersion - 1), $migratorName, $showOutput, "\r\n") === false)
                 break;
@@ -383,42 +474,56 @@ class MigrationsCore
             if ($showOutput)
                 echo $outPut;
             $newVersion = $m->version();
-            $this->removeMigrationVersion($newVersion, $showOutput);
+            $this->removeMigrationVersion($mDatabase, $newVersion, $showOutput);
             $step = $step - 1;
         }
         echo "MigrationsCore: Finish rollback\r\n";
 
         // --- select current migration version from database ---
-        $currentVersion = $this->currentMigrationVersion();
+        $currentVersion = $this->currentMigrationVersion($dbNames);
         echo "MigrationsCore: Current migration version: $currentVersion\r\n";
     }
 
     /**
      * Выполнить дамп схемы базы данных
+     * @param string $db
      * @param bool $showOutput
      */
-    public function schemaDump(bool $showOutput = false) {
+    public function schemaDump(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->secondaryAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
-        $curV = $this->currentMigrationVersion();
+        $curV = $this->lastMigrationVersion($db);
         $dumpData = "";
         $dumper = new SchemaDumper();
-        $dumper->dump($curV, $migratorName, $showOutput, "\r\n", $dumpData);
+        $dumper->dump($curV, $migratorName, $showOutput, "\r\n", $db, $dumpData);
         unset($dumper);
 
         // --- write file ---
-        $resultFilePath = CoreHelper::buildPath("db", "Schema.php");
+        $fName = "Schema";
+        if (!empty($db))
+            $fName = "Schema-$db";
+
+        $fName = CoreHelper::camelcase($fName);
+        $resultFilePath = CoreHelper::buildPath("db", "$fName.php");
         if (false !== @file_put_contents($resultFilePath, $dumpData)) {
             @chmod($resultFilePath, 0644 & ~umask());
             echo "[Created] $resultFilePath\r\n";
@@ -428,41 +533,59 @@ class MigrationsCore
 
     /**
      * Пересоздать базу данных и установить дамп
+     * @param string $db
      * @param bool $showOutput
      */
-    public function schemaLoad(bool $showOutput = false) {
+    public function schemaLoad(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->secondaryAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
-        $schemaFilePath = CoreHelper::buildPath("db", "Schema.php");
+        $fName = "Schema";
+        if (!empty($db))
+            $fName = "Schema-$db";
+
+        $fName = CoreHelper::camelcase($fName);
+        $schemaFilePath = CoreHelper::buildPath("db", "$fName.php");
         if (!is_file($schemaFilePath) || !is_readable($schemaFilePath)) {
             echo "MigrationsCore: Not found schema dump file!\r\n";
             return;
         }
         include_once $schemaFilePath;
-        if (!class_exists('Schema')) {
-            echo "MigrationsCore: Not found schema dump class!\r\n";
+        if (!class_exists($fName)) {
+            echo "MigrationsCore: Not found schema dump class '$fName'!\r\n";
             return;
         }
 
         // --- re-create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "MigrationsCore: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "MigrationsCore: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
@@ -481,8 +604,8 @@ class MigrationsCore
         unset($migrator);
         unset($dbAdapter);
 
-        echo "MigrationsCore: Start load schema dump\r\n";
-        $tmpSchema = new \Schema();
+        echo "MigrationsCore: Start load schema dump '$fName'\r\n";
+        $tmpSchema = new $fName();
         $tmpV = $tmpSchema->version();
         if ($tmpV <= 0) {
             echo "MigrationsCore: Invalid schema dump version (version: $tmpV)!\r\n";
@@ -497,41 +620,54 @@ class MigrationsCore
         if ($showOutput)
             echo $outPut;
 
-        $this->appendMigrationVersion($tmpV, $showOutput);
+        $this->appendMigrationVersion($db, $tmpV, $showOutput);
         echo "MigrationsCore: Finish load schema dump\r\n";
 
         // --- select current migration version from database ---
-        $currentVersion = $this->currentMigrationVersion();
+        $currentVersion = $this->currentMigrationVersion([ $db ]);
         echo "MigrationsCore: Current migration version: $currentVersion\r\n";
     }
 
     /**
      * Создать базу данных для миграций
+     * @param string $db
      * @param bool $showOutput
      */
-    public function dbCreate(bool $showOutput = false) {
+    public function dbCreate(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->secondaryAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
 
         // --- create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "Migration: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "Migration: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
@@ -554,31 +690,44 @@ class MigrationsCore
 
     /**
      * Удалить базу данных для миграций
+     * @param string $db
      * @param bool $showOutput
      */
-    public function dbDrop(bool $showOutput = false) {
+    public function dbDrop(string $db, bool $showOutput = false) {
         // --- init database factory ---
         DatabaseFactory::instance()->loadExtensions();
         DatabaseFactory::instance()->loadConfig();
-        // --- select current adapter name ---
-        $adapterName = DatabaseFactory::instance()->currentAdapterName();
-        if (empty($adapterName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current database adapter name!);
+        // --- select adapter name ---
+        if (empty($db))
+            $adapterName = DatabaseFactory::instance()->primaryAdapterName();
+        else
+            $adapterName = DatabaseFactory::instance()->secondaryAdapterName($db);
+
+        if (empty($adapterName)) {
+            echo "MigrationsCore: Invalid current database adapter name!\r\n";
+            return;
+        }
 
         $migratorName = $this->selectMigratorClassName($adapterName);
-        if (empty($migratorName))
-            return; // TODO throw new \RuntimeException('MigrationsCore: invalid current migrator name for database adapter (name: $adapterName)!);
+        if (empty($migratorName)) {
+            echo "MigrationsCore: Invalid current migrator name for database adapter (name: $adapterName)!\r\n";
+            return;
+        }
 
         // --- processing ---
 
         // --- create database ---
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter(false);
-        if (is_null($dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db, 'auto-connect' => false ]);
+        if (is_null($dbAdapter)) {
+            echo "Migration: Invalid database adapter (NULL)!\r\n";
+            return;
+        }
 
         $migrator = new $migratorName($dbAdapter);
-        if (is_null($migrator))
-            return; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
+        if (is_null($migrator)) {
+            echo "Migration: Invalid database migrator (NULL)!\r\n";
+            return;
+        }
 
         $dbAdapter->setShowOutput($showOutput);
         $dbAdapter->setOutputDelimiter("\r\n");
@@ -630,13 +779,30 @@ class MigrationsCore
     }
 
     /**
-     * Проверка таблицы версий миграций
+     * Проверка таблицы версий миграций\
+     * @param array $dbNames
      * @return bool
      *
-     * Есчли таблица не найдена, то она создается.
+     * Если таблица не найдена, то она создается.
      */
-    private function checkMigrationTable() {
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+    private function checkMigrationTables(array $dbNames): bool {
+        // --- check ---
+        foreach ($dbNames as $dbName) {
+            if (!$this->checkMigrationTable($dbName))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * Проверка таблицы версий миграций для конкретной БД
+     * @param string $db
+     * @return bool
+     *
+     * Если таблица не найдена, то она создается.
+     */
+    private function checkMigrationTable(string $db = ''): bool {
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db ]);
         if (is_null($dbAdapter))
             return false;
         $tables = $dbAdapter->tables();
@@ -655,12 +821,38 @@ EOT;
 
     /**
      * Получить текущую версию установленных миграций
+     * @param array $dbNames
+     * @param bool $max - максимальная или минимальная
      * @return int
      */
-    private function currentMigrationVersion(): int {
-        if (!$this->checkMigrationTable())
+    private function currentMigrationVersion(array $dbNames, bool $max = true): int {
+        if (empty($dbNames) || !$this->checkMigrationTables($dbNames))
             return 0;
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+
+        // --- select ---
+        $tmpVersion = 0;
+        if (!$max)
+            $tmpVersion = PHP_INT_MAX;
+
+        foreach ($dbNames as $dbName) {
+            $tmpVersionS = $this->lastMigrationVersion($dbName);
+            if ($max && $tmpVersion < $tmpVersionS)
+                $tmpVersion = $tmpVersionS;
+            else if (!$max && $tmpVersion > $tmpVersionS)
+                $tmpVersion = $tmpVersionS;
+        }
+        return $tmpVersion;
+    }
+
+    /**
+     * Получить последнюю версию установленных миграций для конкретной БД
+     * @param string $db
+     * @return int
+     */
+    private function lastMigrationVersion(string $db = ''): int {
+        if (!$this->checkMigrationTable($db))
+            return 0;
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db ]);
         if (is_null($dbAdapter))
             return 0;
         $res = $dbAdapter->queryTransaction("SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;");
@@ -671,12 +863,33 @@ EOT;
 
     /**
      * Получить все версии установленных миграций
+     * @param array $dbNames
      * @return array
      */
-    private function allInstallMigrationVersions(): array {
-        if (!$this->checkMigrationTable())
+    private function allInstallMigrationVersions(array $dbNames): array {
+        if (empty($dbNames) || !$this->checkMigrationTables($dbNames))
             return [];
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+
+        // --- select ---
+        $tmpVersions = [];
+        foreach ($dbNames as $dbName)
+            $tmpVersions = array_merge($tmpVersions, $this->installMigrationVersions($dbName));
+
+        // --- sort ASC ---
+        if (!ksort($tmpVersions, SORT_NUMERIC))
+            return [];
+        return $tmpVersions;
+    }
+
+    /**
+     * Получить все версии установленных миграций для конкретной БД
+     * @param string $db
+     * @return array
+     */
+    private function installMigrationVersions(string $db = ''): array {
+        if (!$this->checkMigrationTable($db))
+            return [];
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db ]);
         if (is_null($dbAdapter))
             return [];
         $res = $dbAdapter->queryTransaction("SELECT version FROM schema_migrations ORDER BY version ASC;");
@@ -690,13 +903,14 @@ EOT;
 
     /**
      * Добавить версию миграции
+     * @param string $db
      * @param int $version
      * @param bool $showOutput
      */
-    private function appendMigrationVersion(int $version, bool $showOutput = false) {
-        if (!$this->checkMigrationTable())
+    private function appendMigrationVersion(string $db, int $version, bool $showOutput = false) {
+        if (!$this->checkMigrationTable($db))
             return;
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db ]);
         if (is_null($dbAdapter))
             return;
         $dbAdapter->setShowOutput($showOutput);
@@ -706,13 +920,14 @@ EOT;
 
     /**
      * Удалить версию миграции
+     * @param string $db
      * @param int $version
      * @param bool $showOutput
      */
-    private function removeMigrationVersion(int $version, bool $showOutput = false) {
-        if (!$this->checkMigrationTable())
+    private function removeMigrationVersion(string $db, int $version, bool $showOutput = false) {
+        if (!$this->checkMigrationTable($db))
             return;
-        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+        $dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $db ]);
         if (is_null($dbAdapter))
             return;
         $dbAdapter->setShowOutput($showOutput);
@@ -779,7 +994,7 @@ EOT;
      * @param string $dir - каталог с файлом игнор-листа
      * @return array
      */
-    private function loadPluginsIgnoreList(string $dir) {
+    private function loadPluginsIgnoreList(string $dir): array {
         if (!is_dir($dir))
             return [];
         if (!file_exists(CoreHelper::buildPath($dir, ComponentsManager::IGNORE_LIST_NAME)))

@@ -54,8 +54,10 @@ abstract class BaseActionController extends BaseController
     final public function render(string $action = "", array $options = [ 'layout_support' => true ]) {
         // --- check skip in options ---
         if (isset($options['skip_render'])
-            && $options['skip_render'] === true)
+            && $options['skip_render'] === true) {
+            $this->_isRendered = true;
             return;
+        }
         // --- check is already used ---
         if ($this->_isRendered === true)
             return;

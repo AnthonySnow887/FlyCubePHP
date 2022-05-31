@@ -253,6 +253,14 @@ abstract class BaseDatabaseAdapter
     abstract public function serverVersion(): string;
 
     /**
+     * Метод запроса списка расширений базы данных
+     * @return array|null
+     */
+    public function extensions()/*: array|null */ {
+        return [];
+    }
+
+    /**
      * Метод запроса списка таблиц базы данных
      * @return array|null
      */

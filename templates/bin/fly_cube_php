@@ -355,8 +355,8 @@ const URL_TWIG = "https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip"
 const DIR_TWIG = "Twig-2.12.5";
 const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip";
 const DIR_JSHRINK = "JShrink-1.4.0";
-const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.8.1.zip";
-const DIR_SCSS_PHP = "scssphp-1.8.1";
+const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.10.2.zip";
+const DIR_SCSS_PHP = "scssphp-1.10.2";
 const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip";
 const DIR_PSR_LOG = "log-1.1.4";
 const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
@@ -369,6 +369,21 @@ const URL_PATH_FLY_CUBE_PHP = "https://github.com/AnthonySnow887/FlyCubePHP/arch
  * @param string $app - название приложения
  */
 function printHelp(string $app) {
+    // --- select additional databases ---
+    $additionalDBs = [];
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Database/DatabaseFactory.php")) {
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Database/DatabaseFactory.php";
+        if (class_exists("\FlyCubePHP\Core\Database\DatabaseFactory")) {
+            // --- init database factory ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            // --- select additional databases ---
+            $additionalDBs = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+        }
+    }
+
+    // --- make help ---
     $HELP = <<<EOT
 
 Usage: $app [options]
@@ -402,21 +417,241 @@ Options include:
     --plugin-name=[VALUE]               Set plugin name
     --actions=[VALUE(,VALUE...)]        Set new controller actions list
     
-    --db-create                         Create database for current environment
-    --db-create-all                     Create databases for all environments (development and production)
-    --db-drop                           Drop database for current environment
-    --db-drop-all                       Drop databases for all environments (development and production)
-    --db-setup                          Init database for current environment
-    --db-reset                          Re-Init database for current environment
+    --db-create                         Create all databases for current environment
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-create-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Create primary database for current environment\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-create-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Create database '$db' for current environment\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-create-all                     Create all databases for all environments (development and production)
+    --db-drop                           Drop all databases for current environment
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-drop-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Drop primary database for current environment\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-drop-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Drop database '$db' for current environment\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-drop-all                       Drop all databases for all environments (development and production)
+    --db-setup                          Init all databases for current environment
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-setup-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Init primary database for current environment\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-setup-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Init database '$db' for current environment\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-reset                          Re-Init all databases for current environment
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-reset-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Re-Init primary database for current environment\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-reset-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Re-Init database '$db' for current environment\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
     --db-seed                           Load database Seed.php file
-    --db-migrate                        Start database migrations
+    --db-migrate                        Start all database(s) migrations
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start primary database migrations\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-migrate-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Start database '$db' migrations\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
     --db-migrate-redo                   Start re-install last database migration
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-redo-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start re-install last primary database migration\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-migrate-redo-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Start re-install last database '$db' migration\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
     --db-migrate-status                 Select migrations status
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-migrate-status-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Select migrations status for primary database\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-migrate-status-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Select migrations status for database '$db'\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
     --db-rollback                       Start uninstall last database migration
-    --db-rollback-all                   Start uninstall all database migrations
-    --db-version                        Select current database migration version
-    --db-schema-dump                    Create database schema dump
-    --db-schema-load                    Re-Create database and load schema dump     
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-rollback-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Start uninstall last primary database migration\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-rollback-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Start uninstall last database '$db' migration\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-rollback-all                   Start uninstall all database(s) migrations
+    --db-version                        Select database(s) migration version
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-version-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Select migration version for primary database\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-version-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Select migration version for database '$db'\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-schema-dump                    Create all databases schema dump for current environment
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-schema-dump-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Create primary database schema dump for current environment\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-schema-dump-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Create database '$db' schema dump\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
+    --db-schema-load                    Re-Create all databases and load their schema dumps
+
+EOT;
+
+    $defWhitespaceNum = 36;
+    if (!empty($additionalDBs)) {
+        $tmpName = "--db-schema-load-primary";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName" . $tmpWhitespace . "Re-Create primary database and load schema dump\n";
+    }
+
+    $defWhitespaceNum = 36;
+    foreach ($additionalDBs as $db) {
+        $tmpName = "--db-schema-load-$db";
+        $tmpWhitespace = str_repeat(" ", ($defWhitespaceNum - strlen($tmpName)));
+        $HELP .= "    $tmpName".$tmpWhitespace."Re-Create database '$db' and load schema dump\n";
+    }
+
+    $HELP = rtrim($HELP);
+    $HELP .= <<<EOT
+
     --to-version=[VALUE]                Set needed migration version (optional; if 0 - uninstall all migrations)
     --step=[VALUE]                      Set needed number of steps for uninstall (re-install) migrations (optional; default: 1)
     
@@ -1315,10 +1550,11 @@ function createNewProject(string $name,
 
 /**
  * Выполнить миграцию базы данных
+ * @param $db - БД
  * @param $version - необходимая версия миграции
  * @param $output - отображать дополнительный вывод
  */
-function dbMigrate($version, $output) {
+function dbMigrate($db, $version, $output) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1326,15 +1562,37 @@ function dbMigrate($version, $output) {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrate($version, $output);
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrate([ $db ], $version, $output);
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($db, $output);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- migrate ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrate(array_merge([ '' ], array_values($additionalDatabases)), $version, $output);
+
+        // --- dump primary ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump('', $output);
+
+        // --- dump additional ---
+        foreach ($additionalDatabases as $dbName)
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($dbName, $output);
+    }
 }
 
 /**
  * Запросить состояние миграций
+ * @param $db - БД
  */
-function dbMigrateStatus() {
+function dbMigrateStatus($db) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1342,16 +1600,31 @@ function dbMigrateStatus() {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateStatus();
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateStatus([ $db ]);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- migrate redo ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateStatus(array_merge([ '' ], array_values($additionalDatabases)));
+    }
 }
 
 /**
  * Выполнить переустановку миграции базы данных
+ * @param $db - БД
  * @param $step - необходимое число шагов
  * @param $output - отображать дополнительный вывод
  */
-function dbMigrateRedo($step, $output) {
+function dbMigrateRedo($db, $step, $output) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1359,16 +1632,31 @@ function dbMigrateRedo($step, $output) {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateRedo($step, $output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateRedo([ $db ], $step, $output);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- migrate redo ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->migrateRedo(array_merge([ '' ], array_values($additionalDatabases)), $step, $output);
+    }
 }
 
 /**
  * Выполнить откат базы данных
+ * @param $db - БД
  * @param $step - необходимое число шагов
  * @param $output - отображать дополнительный вывод
  */
-function dbRollback($step, $output) {
+function dbRollback($db, $step, $output) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1376,15 +1664,30 @@ function dbRollback($step, $output) {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->rollback($step, $output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->rollback([ $db ], $step, $output);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- migrate redo ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->rollback(array_merge([ '' ], array_values($additionalDatabases)), $step, $output);
+    }
 }
 
 /**
  * Запросить текущую версию миграции базы данных
+ * @param $db - БД
  * @return string
  */
-function currentDbMigrationVersion(): string {
+function currentDbMigrationVersion($db): string {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1392,15 +1695,30 @@ function currentDbMigrationVersion(): string {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return "?";
     }
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        return strval(\FlyCubePHP\Core\Migration\MigrationsCore::instance()->currentVersion([ $db ]));
+    }
+
+    // --- init database factory ---
+    \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+    \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+    $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+    // --- migrate redo ---
     \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    return strval(\FlyCubePHP\Core\Migration\MigrationsCore::instance()->currentVersion());
+    return strval(\FlyCubePHP\Core\Migration\MigrationsCore::instance()->currentVersion(array_merge([ '' ], array_values($additionalDatabases))));
 }
 
 /**
  * Выполнить дамп схемы базы данных
+ * @param $db
  * @param $output
  */
-function dbSchemaDump($output) {
+function dbSchemaDump($db, $output) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1408,15 +1726,34 @@ function dbSchemaDump($output) {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($db, $output);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- dump primary ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump('', $output);
+
+        // --- dump additional ---
+        foreach ($additionalDatabases as $dbName)
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaDump($dbName, $output);
+    }
 }
 
 /**
  * Пересоздать базу данных и установить дамп
+ * @param $db
  * @param $output
  */
-function dbSchemaLoad($output) {
+function dbSchemaLoad($db, $output) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1424,16 +1761,37 @@ function dbSchemaLoad($output) {
         echo "ERROR: Not found MigrationsCore!\r\n";
         return;
     }
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaLoad($output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaLoad($db, $output);
+    } else {
+        // --- init database factory ---
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+        $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+        // --- load primary ---
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
+        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaLoad('', $output);
+
+        // --- load additional ---
+        foreach ($additionalDatabases as $dbName) {
+            echo "\r\n";
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->schemaLoad($dbName, $output);
+        }
+    }
 }
 
 /**
  * Создать базу данных для текущего ENV
+ * @param $db
  * @param $output
  * @param bool $all
  */
-function dbCreate($output, bool $all = false) {
+function dbCreate($db, $output, bool $all = false) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1442,27 +1800,85 @@ function dbCreate($output, bool $all = false) {
         return;
     }
     \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    if ($all === true) {
-        // --- create for development ---
-        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
-        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        if ($all === true) {
+            // --- create for development ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($db, $output);
 
-        // --- create for production ---
-        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
-        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+            echo "\r\n";
+
+            // --- create for production ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($db, $output);
+        } else {
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($db, $output);
+        }
     } else {
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($output);
+        if ($all === true) {
+            // --- create for development ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- create primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate('', $output);
+
+            // --- create additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($dbName, $output);
+            }
+
+            echo "\r\n";
+
+            // --- create for production ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- create primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate('', $output);
+
+            // --- create additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($dbName, $output);
+            }
+        } else {
+            // --- init database factory ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- load primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate('', $output);
+
+            // --- load additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbCreate($dbName, $output);
+            }
+        }
     }
 }
 
 /**
  * Удалить базу данных для текущего ENV
+ * @param $db
  * @param $output
  * @param bool $all
  */
-function dbDrop($output, bool $all = false) {
+function dbDrop($db, $output, bool $all = false) {
     chdir(__DIR__."/../"); // go to app root
     if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php"))
         include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/Core/Migration/MigrationsCore.php";
@@ -1471,18 +1887,75 @@ function dbDrop($output, bool $all = false) {
         return;
     }
     \FlyCubePHP\Core\Migration\MigrationsCore::instance()->loadExtensions();
-    if ($all === true) {
-        // --- drop for development ---
-        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
-        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+    if (!empty($db)) {
+        // --- check is primary ---
+        if (strcmp($db, 'primary') === 0)
+            $db = '';
+        if ($all === true) {
+            // --- create for development ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($db, $output);
 
-        // --- drop for production ---
-        \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
-        \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+            echo "\r\n";
+
+            // --- create for production ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($db, $output);
+        } else {
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($db, $output);
+        }
     } else {
-        \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($output);
+        if ($all === true) {
+            // --- create for development ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "development");
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- create primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop('', $output);
+
+            // --- create additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($dbName, $output);
+            }
+
+            echo "\r\n";
+
+            // --- create for production ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->resetConfig();
+            \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENV_TYPE, "production");
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- create primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop('', $output);
+
+            // --- create additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($dbName, $output);
+            }
+        } else {
+            // --- init database factory ---
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadExtensions();
+            \FlyCubePHP\Core\Database\DatabaseFactory::instance()->loadConfig();
+            $additionalDatabases = \FlyCubePHP\Core\Database\DatabaseFactory::instance()->secondaryDatabases();
+
+            // --- load primary ---
+            \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop('', $output);
+
+            // --- load additional ---
+            foreach ($additionalDatabases as $dbName) {
+                echo "\r\n";
+                \FlyCubePHP\Core\Migration\MigrationsCore::instance()->dbDrop($dbName, $output);
+            }
+        }
     }
 }
 
@@ -1503,20 +1976,24 @@ function dbSeed() {
 
 /**
  * Выполнить настройку базы данных (создание схемы и запуск db/Seed.php)
+ * @param $db
  * @param $output
  */
-function dbSetup($output) {
-    dbSchemaLoad($output);
+function dbSetup($db, $output) {
+    dbSchemaLoad($db, $output);
+    echo "\r\n";
     dbSeed();
 }
 
 /**
  * Выполнить перенастройку базы данных (удаление базы данных, создание схемы и запуск db/Seed.php)
+ * @param $db
  * @param $output
  */
-function dbReset($output) {
-    dbDrop($output);
-    dbSetup($output);
+function dbReset($db, $output) {
+    dbDrop($db, $output);
+    echo "\r\n";
+    dbSetup($db, $output);
 }
 
 /**
@@ -2458,17 +2935,32 @@ function assetsPrecompile(bool $skipRendering = false) {
         if ($route->type() !== \FlyCubePHP\Core\Routes\RouteType::GET)
             continue;
 
+        $routeUri = $route->uri();
+        if ($route->hasRedirect()) {
+            $redirectTo = $route->redirectUri("");
+            fwrite($STDOUT_2, "[Render: $routeUri] Skip. Redirect to: $redirectTo.\r\n");
+            unset($tmpController);
+            continue;
+        }
+
         // --- set default route args ---
         $requestUri = $route->uri();
         $routeArgs = $route->uriArgs();
-        if (preg_match('/\:([a-zA-Z0-9_]*)/i', $route->uri())) {
+        if (preg_match('/\:([a-zA-Z0-9_]*)/i', $route->uri())
+            || preg_match('/\*([a-zA-Z0-9_]*)/i', $route->uri())) {
             $requestUri = "";
             $tmpArgs = [];
-            $localUriLst = explode('/', $route->uri());
+            $tmpRouteUri = $routeUri;
+            if (strcmp($tmpRouteUri[0], '/') === 0)
+                $tmpRouteUri = substr($tmpRouteUri, 1, strlen($tmpRouteUri) - 1);
+            $localUriLst = explode('/', $tmpRouteUri);
             for ($i = 0; $i < count($localUriLst); $i++) {
                 $localPath = $localUriLst[$i];
                 if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1) {
                     $tmpArgs[ltrim($localPath, ":")] = "";
+                    $requestUri .= "/";
+                } else if (strcmp($localPath[0], '*') === 0 && strlen($localPath) > 1) {
+                    $tmpArgs[ltrim($localPath, "*")] = "";
                     $requestUri .= "/";
                 } else {
                     $requestUri .= "/$localPath";
@@ -2490,11 +2982,11 @@ function assetsPrecompile(bool $skipRendering = false) {
             continue;
         }
         if (!$tmpController->hasView($tmpClassAct)) {
-            fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
+            fwrite($STDOUT_2, "[Render: $routeUri] $tmpClassName->$tmpClassAct: Skip. Not found view.\r\n");
             unset($tmpController);
             continue;
         }
-        fwrite($STDOUT_2, "[Render] $tmpClassName->$tmpClassAct: ");
+        fwrite($STDOUT_2, "[Render: $routeUri] $tmpClassName->$tmpClassAct: ");
         try {
             $tmpController->renderPrivate($tmpClassAct);
         } catch (\Throwable $e) {
@@ -2600,6 +3092,7 @@ function appRoutes() {
 
     $maxLen = 0;
     $maxLen2 = 0;
+    $maxLen3 = 0;
     foreach ($routes as $route) {
         // --- uri length ---
         $rURI = $route->uri();
@@ -2613,6 +3106,12 @@ function appRoutes() {
         $len = strlen("$rController#$rAction");
         if ($maxLen2 < $len)
             $maxLen2 = $len;
+
+        // --- as length ---
+        $rAs = $route->routeAs();
+        $len = strlen("as: $rAs");
+        if ($maxLen3 < $len)
+            $maxLen3 = $len;
     }
     foreach ($routes as $route) {
         $rType = \FlyCubePHP\Core\Routes\RouteType::intToString($route->type());
@@ -2620,9 +3119,15 @@ function appRoutes() {
         $rURI = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength($route->uri(), $maxLen + 2);
         $rController = $route->controller();
         $rAction = $route->action();
-        $rAs = $route->routeAs();
         $rClass = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("$rController#$rAction", $maxLen2 + 2);
-        echo "  $rType  $rURI  $rClass  as: $rAs\r\n";
+        $rAs = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("as: " . $route->routeAs(), $maxLen3 + 2);
+        $rRedirect = "";
+        if ($route->hasRedirect()) {
+            $rClass = \FlyCubePHP\HelperClasses\CoreHelper::makeEvenLength("---", $maxLen2 + 2);
+            $rRedirectStatus = $route->redirectStatus();
+            $rRedirect = "redirect to: ($rRedirectStatus) ". $route->redirectUri("");
+        }
+        echo "  $rType  $rURI  $rClass  $rAs  $rRedirect\r\n";
     }
 }
 
@@ -3139,88 +3644,241 @@ if (in_array('--new', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Migrate database ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbMigrate($version, $showOut);
+    dbMigrate('', $version, $showOut);
     echo "=== FlyCubePHP =====================\r\n";
-    exit();
 } else if (in_array('--db-migrate-status', $arguments)) {
     echo "=== FlyCubePHP: Migrate status ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbMigrateStatus();
+    dbMigrateStatus('');
     echo "=== FlyCubePHP ===================\r\n";
-    exit();
-} else if (in_array('--db-version', $arguments)) {
-    $vStr = currentDbMigrationVersion();
-    echo "=== FlyCubePHP: database version ===\r\n";
-    echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    echo "Database version: $vStr\r\n";
-    echo "=== FlyCubePHP =====================\r\n";
-    exit();
 } else if (in_array('--db-migrate-redo', $arguments)) {
     $step = argumentValue('--step', $arguments, 1);
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Re-Install database migration ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbMigrateRedo($step, $showOut);
+    dbMigrateRedo('', $step, $showOut);
     echo "=== FlyCubePHP ==================================\r\n";
+} else if (!empty(preg_grep('/^--db-migrate-status-(.*)$/', $arguments))) {
+    $tmpArr = preg_grep('/^--db-migrate-status-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-migrate-status-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Migrate status for database '$tmpDB' ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbMigrateStatus($tmpDB);
+        echo "=== FlyCubePHP ===================\r\n";
+    }
+} else if (!empty(preg_grep('/^--db-migrate-redo-(.*)$/', $arguments))) {
+    $step = argumentValue('--step', $arguments, 1);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-migrate-redo-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-migrate-redo-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Re-Install database '$tmpDB' migration ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbMigrateRedo($tmpDB, $step, $showOut);
+        echo "=== FlyCubePHP ==================================\r\n";
+    }
+} else if (!empty(preg_grep('/^--db-migrate-(.*)$/', $arguments))) {
+    $version = argumentValue('--to-version', $arguments);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-migrate-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-migrate-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Migrate database '$tmpDB' ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbMigrate($tmpDB, $version, $showOut);
+        echo "=== FlyCubePHP =====================\r\n";
+    }
+} else if (in_array('--db-version', $arguments)) {
+    $vStr = currentDbMigrationVersion('');
+    echo "=== FlyCubePHP: database version ===\r\n";
+    echo "\r\nApplication Env type: $envMode\r\n\n\n";
+    echo "Database version: $vStr\r\n";
+    echo "=== FlyCubePHP =====================\r\n";
+} else if (!empty(preg_grep('/^--db-version-(.*)$/', $arguments))) {
+    $tmpArr = preg_grep('/^--db-version-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-version-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        $vStr = currentDbMigrationVersion($tmpDB);
+        echo "=== FlyCubePHP: database '$tmpDB' version ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        echo "Database version: $vStr\r\n";
+        echo "=== FlyCubePHP =====================\r\n";
+    }
 } else if (in_array('--db-rollback', $arguments)) {
     $step = argumentValue('--step', $arguments, 1);
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Rollback database ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbRollback($step, $showOut);
+    dbRollback('', $step, $showOut);
     echo "=== FlyCubePHP ======================\r\n";
 } else if (in_array('--db-rollback-all', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Rollback all database ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbRollback(-1, $showOut);
+    dbRollback('', -1, $showOut);
     echo "=== FlyCubePHP ==========================\r\n";
+} else if (!empty(preg_grep('/^--db-rollback-(.*)$/', $arguments))) {
+    $step = argumentValue('--step', $arguments, 1);
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-rollback-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-rollback-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Rollback database ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbRollback($tmpDB, $step, $showOut);
+        echo "=== FlyCubePHP ======================\r\n";
+    }
 } else if (in_array('--db-schema-dump', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Create database schema dump ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbSchemaDump($showOut);
+    dbSchemaDump('', $showOut);
     echo "=== FlyCubePHP ================================\r\n";
+} else if (!empty(preg_grep('/^--db-schema-dump-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-schema-dump-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-schema-dump-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Create database '$tmpDB' schema dump ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbSchemaDump($tmpDB, $showOut);
+        echo "=== FlyCubePHP ================================\r\n";
+    }
 } else if (in_array('--db-schema-load', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Load database schema dump ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbSchemaLoad($showOut);
+    dbSchemaLoad('', $showOut);
     echo "=== FlyCubePHP ==============================\r\n";
+} else if (!empty(preg_grep('/^--db-schema-load-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-schema-load-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-schema-load-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Load database '$tmpDB' schema dump ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbSchemaLoad($tmpDB, $showOut);
+        echo "=== FlyCubePHP ==============================\r\n";
+    }
 } else if (in_array('--db-create', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Create database ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbCreate($showOut);
+    dbCreate('', $showOut);
     echo "=== FlyCubePHP ====================\r\n";
 } else if (in_array('--db-create-all', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Create all databases ===\r\n";
-    dbCreate($showOut, true);
+    dbCreate('', $showOut, true);
     echo "=== FlyCubePHP =========================\r\n";
+} else if (!empty(preg_grep('/^--db-create-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-create-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-create-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Create database '$tmpDB' ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbCreate($tmpDB, $showOut);
+        echo "=== FlyCubePHP ====================\r\n";
+    }
 } else if (in_array('--db-drop', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Drop database ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbDrop($showOut);
+    dbDrop('', $showOut);
     echo "=== FlyCubePHP ==================\r\n";
 } else if (in_array('--db-drop-all', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Drop all databases ===\r\n";
-    dbDrop($showOut, true);
+    dbDrop('', $showOut, true);
     echo "=== FlyCubePHP =======================\r\n";
+} else if (!empty(preg_grep('/^--db-drop-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-drop-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-drop-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Drop database '$tmpDB' ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbDrop($tmpDB, $showOut);
+        echo "=== FlyCubePHP ====================\r\n";
+    }
 } else if (in_array('--db-setup', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Database setup ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbSetup($showOut);
+    dbSetup('', $showOut);
     echo "=== FlyCubePHP ===================\r\n";
+} else if (!empty(preg_grep('/^--db-setup-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-setup-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-setup-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Database '$tmpDB' setup ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbSetup($tmpDB, $showOut);
+        echo "=== FlyCubePHP ===================\r\n";
+    }
 } else if (in_array('--db-reset', $arguments)) {
     $showOut = toBool(argumentValue('--output', $arguments, false));
     echo "=== FlyCubePHP: Database reset ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
-    dbReset($showOut);
+    dbReset('', $showOut);
     echo "=== FlyCubePHP ===================\r\n";
+} else if (!empty(preg_grep('/^--db-reset-(.*)$/', $arguments))) {
+    $showOut = toBool(argumentValue('--output', $arguments, false));
+    $tmpArr = preg_grep('/^--db-reset-(.*)$/', $arguments);
+    $tmpArr = array_shift($tmpArr);
+    preg_match('/^--db-reset-(.*)$/', $tmpArr, $tmp);
+    $tmpDB = $tmp[1];
+    if (empty($tmpDB)) {
+        echo "ERROR: Invalid database name!\r\n";
+    } else {
+        echo "=== FlyCubePHP: Database '$tmpDB' reset ===\r\n";
+        echo "\r\nApplication Env type: $envMode\r\n\n\n";
+        dbReset($tmpDB, $showOut);
+        echo "=== FlyCubePHP ===================\r\n";
+    }
 } else if (in_array('--db-seed', $arguments)) {
     echo "=== FlyCubePHP: Load database Seed.php ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
@@ -3232,33 +3890,27 @@ if (in_array('--new', $arguments)) {
     $skipRendering = toBool(argumentValue('--skip-rendering', $arguments, false));
     assetsPrecompile($skipRendering);
     echo "=== FlyCubePHP ======================\r\n";
-    exit();
 } else if (in_array('--clear-cache', $arguments)) {
     echo "=== FlyCubePHP: Clear application cache ===\r\n";
     clearAppCache();
     echo "=== FlyCubePHP ============================\r\n";
-    exit();
 } else if (in_array('--clear-logs', $arguments)) {
     echo "=== FlyCubePHP: Clear application logs ===\r\n";
     clearAppLogs();
     echo "=== FlyCubePHP ===========================\r\n";
-    exit();
 } else if (in_array('--routes', $arguments)) {
     echo "=== FlyCubePHP: Application routes ===\r\n";
     appRoutes();
     echo "=== FlyCubePHP =======================\r\n";
-    exit();
 } else if (in_array('--secret', $arguments)) {
     $secretLength = argumentValue('--secret-length', $arguments);
     echo "=== FlyCubePHP: Application secret ===\r\n";
     appSecret($secretLength);
     echo "=== FlyCubePHP =======================\r\n";
-    exit();
 } else if (in_array('--clear-php-sessions', $arguments)) {
     echo "=== FlyCubePHP: Clear php sessions ===\r\n";
     clearPhpSessions();
     echo "=== FlyCubePHP =======================\r\n";
-    exit();
 } else if (in_array('--latest-version', $arguments)
            || in_array('-lv', $arguments)) {
     $vStr = flyCubePhpLatestVersion();
@@ -3273,7 +3925,6 @@ if (in_array('--new', $arguments)) {
     echo "=== FlyCubePHP: Upgrade project ===\r\n";
     upgradeFlyCubePhpProject($projectPath, $downloadRequires, $force);
     echo "=== FlyCubePHP ====================\r\n";
-    exit();
 } else if (in_array('--check-project', $arguments)) {
     $projectPath = argumentValue('--path', $arguments, realpath(__DIR__."/../"));
     if (empty($projectPath))
@@ -3282,7 +3933,6 @@ if (in_array('--new', $arguments)) {
     echo "=== FlyCubePHP: Checking project catalogs & base files ===\r\n";
     checkingProjectCatalogsAndFiles($projectPath);
     echo "=== FlyCubePHP ==============================\r\n";
-    exit();
 } else if (in_array('--assets-list', $arguments)) {
     echo "=== FlyCubePHP: Assets list ===\r\n";
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
@@ -3291,7 +3941,6 @@ if (in_array('--new', $arguments)) {
     $images = toBool(argumentValue('--images', $arguments, true));
     assetsList($javascripts, $stylesheets, $images);
     echo "=== FlyCubePHP ================\r\n";
-    exit();
 } else {
     exit("Invalid arguments! Use --help!\r\n");
 }

@@ -16,6 +16,7 @@ use FlyCubePHP\Core\Database\DatabaseFactory;
 abstract class Migration
 {
     private $_version = -1;
+    private $_database = '';
     private $_dbAdapter = null;
     private $_migrator = null;
 
@@ -58,6 +59,14 @@ abstract class Migration
     }
 
     /**
+     * Используемая база данных
+     * @return string
+     */
+    final public function database(): string {
+        return $this->_database;
+    }
+
+    /**
      * Выполнить миграцию
      * @param int $version
      * @param string $migratorClassName
@@ -83,14 +92,17 @@ abstract class Migration
         if (empty($migratorClassName))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator class name!);
 
-        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+        // --- get adapter ---
+        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($this->_dbAdapter))
             return false; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
 
+        // --- make migrator ---
         $this->_migrator = new $migratorClassName($this->_dbAdapter);
         if (is_null($this->_migrator))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator (NULL)!);
 
+        // --- migrate ---
         $this->_dbAdapter->setShowOutput($showOutput);
         $this->_dbAdapter->setOutputDelimiter($outputDelimiter);
         $this->_dbAdapter->beginTransaction();
@@ -107,6 +119,12 @@ abstract class Migration
     }
 
     // --- protected ---
+
+    /**
+     * Метод конфигурирования миграции
+     */
+    public function configuration() {
+    }
 
     /**
      * Внесение изменений миграции
@@ -131,6 +149,36 @@ abstract class Migration
             return $this->_dbAdapter->name();
 
         return "";
+    }
+
+    /**
+     * Подключить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_not_exists - добавить флаг 'IF NOT EXISTS'
+     */
+    final protected function createExtension(string $name, array $props = []) {
+        if (is_null($this->_migrator))
+            return; // TODO throw new \RuntimeException('Migration -> createExtension: invalid database migrator (NULL)!');
+        $this->_migrator->createExtension($name, $props);
+    }
+
+    /**
+     * Удалить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_exists - добавить флаг 'IF EXISTS'
+     */
+    final protected function dropExtension(string $name, array $props = []) {
+        if (is_null($this->_migrator))
+            return; // TODO throw new \RuntimeException('Migration -> dropExtension: invalid database migrator (NULL)!');
+        $this->_migrator->dropExtension($name, $props);
     }
 
     /**
@@ -457,5 +505,13 @@ abstract class Migration
         if (is_null($this->_migrator))
             return; // TODO throw new \RuntimeException('Migration -> execute: invalid database migrator (NULL)!');
         $this->_migrator->execute($sql);
+    }
+
+    /**
+     * Задать название используемой базы данных
+     * @param string $database
+     */
+    final protected function setDatabase(string $database) {
+        $this->_database = $database;
     }
 }

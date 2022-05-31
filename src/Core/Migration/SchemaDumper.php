@@ -12,6 +12,7 @@ include_once __DIR__.'/../Database/DatabaseFactory.php';
 include_once 'BaseMigrator.php';
 
 use FlyCubePHP\Core\Database\DatabaseFactory;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class SchemaDumper
 {
@@ -29,6 +30,7 @@ class SchemaDumper
      * @param string $migratorClassName
      * @param bool $showOutput
      * @param string $outputDelimiter
+     * @param string $database
      * @param string $dumpData
      * @return bool
      */
@@ -36,6 +38,7 @@ class SchemaDumper
                                string $migratorClassName,
                                bool $showOutput,
                                string $outputDelimiter,
+                               string $database,
                                string &$dumpData): bool {
         // --- check caller function ---
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
@@ -49,7 +52,7 @@ class SchemaDumper
         if (empty($migratorClassName))
             return false; // TODO throw new \RuntimeException('Migration: invalid database migrator class name!);
 
-        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter();
+        $this->_dbAdapter = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $database ]);
         if (is_null($this->_dbAdapter))
             return false; // TODO throw new \RuntimeException('Migration: invalid database connector (NULL)!);
 
@@ -62,16 +65,18 @@ class SchemaDumper
         $this->_dbAdapter->beginTransaction();
 
         $dumpData = "";
-        $this->dumpHeader($dumpData);
-        $this->dumpVersion($currentVersion, $dumpData);
+        $this->dumpHeader($database, $dumpData);
+        $this->dumpVersionAndDb($currentVersion, $database, $dumpData);
         $this->dumpDataStart($dumpData);
 
         // --- dump extensions ---
-        // TODO extensions for PostgreSQL...
+        $dbExtensions = $this->_dbAdapter->extensions();
+        foreach ($dbExtensions as $extension)
+            $this->dumpExtension($extension, $dumpData);
 
+        // --- dump tables ---
         $schemaLst = [];
         $tables = $this->_dbAdapter->tables();
-        // --- dump tables ---
         foreach ($tables as $table) {
             if (strcmp($table, "public.schema_migrations") === 0
                 || strcmp($table, "schema_migrations") === 0)
@@ -101,9 +106,14 @@ class SchemaDumper
 
     /**
      * Добавить заголовок в дамп-файл
+     * @param string $database
      * @param string $stream
      */
-    private function dumpHeader(string &$stream) {
+    private function dumpHeader(string $database, string &$stream) {
+        $tmpClassName = "Schema";
+        if (!empty($database))
+            $tmpClassName = CoreHelper::camelcase("Schema-$database");
+
         $tmpData = <<<EOT
 <?php
 // This file is auto-generated from the current state of the database. Instead
@@ -119,7 +129,7 @@ class SchemaDumper
 //
 // It's strongly recommended that you check this file into your version control system.
 //
-class Schema extends \FlyCubePHP\Core\Migration\BaseSchema
+class $tmpClassName extends \FlyCubePHP\Core\Migration\BaseSchema
 {
 
 EOT;
@@ -129,12 +139,13 @@ EOT;
     /**
      * Добавить версию миграции в дамп-файл
      * @param int $version
+     * @param string $database
      * @param string $stream
      */
-    private function dumpVersion(int $version, string &$stream) {
+    private function dumpVersionAndDb(int $version, string $database, string &$stream) {
         $tmpData = <<<EOT
     public function __construct() {
-        parent::__construct($version);
+        parent::__construct($version, '$database');
     }
 
 
@@ -164,7 +175,16 @@ EOT;
     }
 
     /**
-     * Добавить методо создания схемы базы данных в дамп-файл
+     * Добавить метод создания расширения базы данных в дамп-файл
+     * @param string $name
+     * @param string $stream
+     */
+    private function dumpExtension(string $name, string &$stream) {
+        $stream .= "\r\n        \$this->createExtension('$name', [ 'if_not_exists' => true ]);";
+    }
+
+    /**
+     * Добавить метод создания схемы базы данных в дамп-файл
      * @param string $name
      * @param string $stream
      */

@@ -291,6 +291,56 @@ class CoreHelper
     }
 
     /**
+     * Обрезать символ вначале
+     * @param string $str - строка
+     * @param string $symbol - удаляемый символ
+     * @return string
+     *
+     * echo spliceSymbolFirst("/tmp/app1/", "/");
+     *   => "tmp/app1/"
+     */
+    static public function spliceSymbolFirst(string $str, string $symbol): string {
+        if (empty($str) || empty($symbol))
+            return $str;
+        if (strlen($symbol) > 1)
+            $symbol = $symbol[0];
+        if (strcmp($str[0], $symbol) === 0) {
+            if (strlen($str) > 1) {
+                $str = ltrim($str, $symbol);
+                $str = CoreHelper::spliceSymbolFirst($str, $symbol);
+            } else {
+                $str = "";
+            }
+        }
+        return $str;
+    }
+
+    /**
+     * Обрезать символ вконце
+     * @param string $str - строка
+     * @param string $symbol - удаляемый символ
+     * @return string
+     *
+     * echo spliceSymbolLast("/tmp/app1/", "/");
+     *   => "/tmp/app1"
+     */
+    static public function spliceSymbolLast(string $str, string $symbol): string {
+        if (empty($str) || empty($symbol))
+            return $str;
+        if (strlen($symbol) > 1)
+            $symbol = $symbol[0];
+        if (strcmp($str[strlen($str) - 1], $symbol) === 0) {
+            if (strlen($str) > 1) {
+                $str = substr($str, 0, -1);
+                $str = CoreHelper::spliceSymbolLast($str, $symbol);
+            } else {
+                $str = "";
+            }
+        }
+        return $str;
+    }
+
+    /**
      * Обрезать путь вначале (исключить '/')
      * @param string $path - путь
      * @return string
@@ -299,17 +349,7 @@ class CoreHelper
      *   => "tmp/app1/"
      */
     static public function splicePathFirst(string $path): string {
-        if (empty($path))
-            return $path;
-        if (strcmp($path[0], DIRECTORY_SEPARATOR) === 0) {
-            if (strlen($path) > 1) {
-                $path = ltrim($path, DIRECTORY_SEPARATOR);
-                $path = CoreHelper::splicePathFirst($path);
-            } else {
-                $path = "";
-            }
-        }
-        return $path;
+        return self::spliceSymbolFirst($path, DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -321,17 +361,7 @@ class CoreHelper
      *   => "/tmp/app1"
      */
     static public function splicePathLast(string $path): string {
-        if (empty($path))
-            return $path;
-        if (strcmp($path[strlen($path) - 1], DIRECTORY_SEPARATOR) === 0) {
-            if (strlen($path) > 1) {
-                $path = substr($path, 0, -1);
-                $path = CoreHelper::splicePathLast($path);
-            } else {
-                $path = "";
-            }
-        }
-        return $path;
+        return self::spliceSymbolLast($path, DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -383,7 +413,7 @@ class CoreHelper
      *   => "app1/"
      */
     static public function spliceUrlFirst(string $uri): string {
-        return RouteCollector::spliceUrlFirst($uri);
+        return self::spliceSymbolFirst($uri, "/");
     }
 
     /**
@@ -395,7 +425,7 @@ class CoreHelper
      *   => "/app1"
      */
     static public function spliceUrlLast(string $uri): string {
-        return RouteCollector::spliceUrlLast($uri);
+        return self::spliceSymbolLast($uri, "/");
     }
 
     /**

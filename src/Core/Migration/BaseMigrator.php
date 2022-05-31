@@ -48,6 +48,36 @@ abstract class BaseMigrator
     }
 
     /**
+     * Подключить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_not_exists - добавить флаг 'IF NOT EXISTS'
+     *
+     * NOTE: override this method for correct implementation.
+     */
+    public function createExtension(string $name, array $props = []) {
+        return;
+    }
+
+    /**
+     * Удалить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_exists - добавить флаг 'IF EXISTS'
+     *
+     * NOTE: override this method for correct implementation.
+     */
+    public function dropExtension(string $name, array $props = []) {
+        return;
+    }
+
+    /**
      * Создать новую схему данных
      * @param string $name - имя
      * @param array $props - свойства

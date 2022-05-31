@@ -1,3 +1,224 @@
+# 1.8.0 (31.05.2022)
+
+ * Update Development Guide RUS
+ * Update FlyCubePHP requires: SCSS-PHP -> v1.10.2
+ * Add support for multiple databases
+ * Fix BaseActionController (fix render if set arg 'skip_render')
+ * Update RouteCollector:
+   * add constraints to use automatic regular expression validation for the dynamic segment. Example:
+     ```php
+     get('/photos/:id', [ 'to' => 'Photos#show', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ] );
+     ```
+   
+   * add redirect to routes to use automatic redirect without calling a controller method. Examples:
+     ```php
+     get("/stories", [ 'to' => redirect("/articles") ] );
+     // --- or ---
+     get("/stories/:name", [ 'to' => redirect("/articles/%{name}") ] );
+     // --- or ---
+     get("/stories/:name", [ 'to' => redirect("/articles/%{name}", /*status*/ 302) ] );
+     ```
+ 
+   * add route globbing and wildcard segments.
+   
+     Route globbing is a way to specify that a particular parameter should be matched to all the remaining parts of a route. For example:
+     ```php
+     get('photos/*other', [ 'to' => 'Photos#unknown' ]);
+     ```
+     
+     This route would match ```photos/12``` or ```/photos/long/path/to/12```, setting ```_params['other'] to "12" or "long/path/to/12"```. 
+   
+     The segments prefixed with a star are called "wildcard segments". Wildcard segments can occur anywhere in a route. For example:
+     ```php
+     get('books/*section/:title', [ 'to' => 'Books#show' ]);
+     ```
+     
+     would match ```books/some/section/last-words-a-memoir``` with ```_params['section'] equals 'some/section'```, and ```_params['title'] equals 'last-words-a-memoir'```.
+     
+     Technically, a route can have even more than one wildcard segment. The matcher assigns segments to parameters in an intuitive way. For example:
+     ```php
+     get('*a/foo/*b', [ 'to' => 'Test#index' ]);
+     ```
+     
+     would match ```zoo/woo/foo/bar/baz``` with ```_params['a'] equals 'zoo/woo'```, and ```_params['b'] equals 'bar/baz'```.
+   
+ * Update AssetPipeline/CSSBuilder:
+   * add flag FLY_CUBE_PHP_ENABLE_SCSS_LOGGING
+   * add SCSSLogger
+ * Update AssetPipeline:
+   * add support *.ico
+   * add javascriptFilePathReal
+     ```php
+     /**
+     * Получить физический путь (список путей) для JS файлов
+     * @param string $name
+     * @return array|string
+     * @throws
+     *
+     * === Example
+     *
+     *   javascriptFilePathReal('application')
+     *   * => app/assets/javascripts/application.js
+     */
+     public function javascriptFilePathReal(string $name)/*: string|array*/ {...}
+     ```
+     
+   * add stylesheetFilePathReal
+     ```php
+     /**
+     * Получить физический путь (список путей) для CSS файлов
+     * @param string $name
+     * @return array|string
+     * @throws
+     *
+     * === Example
+     *
+     *   stylesheetFilePathReal('application')
+     *   * => app/assets/stylesheets/application.css
+     */
+     public function stylesheetFilePathReal(string $name)/*: string|array*/ {...}
+     ```
+     
+   * add imageFilePathReal
+     ```php
+     /**
+     * Поиск физического пути до image файла по имени
+     * @param string $name
+     * @return string
+     * @throws
+     *
+     * === Example
+     *
+     *   imageFilePathReal("configure.svg")
+     *   * => app/assets/images/configure.svg
+     */
+     public function imageFilePathReal(string $name): string {...}
+     ```
+     
+ * Update templates/bin/fly_cube_php
+   * update assetsPrecompile with checking route redirects 
+   * update appRoutes with checking route redirects
+
+ * Update HelperClasses/CoreHelper:
+   * add spliceSymbolFirst
+     ```php
+     /**
+      * Обрезать символ вначале
+      * @param string $str - строка
+      * @param string $symbol - удаляемый символ
+      * @return string
+      *
+      * echo spliceSymbolFirst("/tmp/app1/", "/");
+      *   => "tmp/app1/"
+      */
+     static public function spliceSymbolFirst(string $str, string $symbol): string {...}
+     ```
+     
+   * add spliceSymbolLast
+     ```php
+     /**
+      * Обрезать символ вконце
+      * @param string $str - строка
+      * @param string $symbol - удаляемый символ
+      * @return string
+      *
+      * echo spliceSymbolLast("/tmp/app1/", "/");
+      *   => "/tmp/app1"
+      */
+     static public function spliceSymbolLast(string $str, string $symbol): string {...}
+     ```
+     
+ * Update controllers helpers:
+   * refactoring (other options will be added as tag attributes)
+   * update JavascriptTagHelper (add javascript_asset_tag)
+     ```php
+     /**
+      * Добавить тэг скрипта с содержимым файла
+      * @param string $name
+      * @param array $options
+      * @return string
+      *
+      * ==== Options
+      *
+      * - type   - Set script type
+      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
+      *
+      * NOTE: other options will be added as tag attributes.
+      * NOTE: for use nonce - enable CSP Protection.
+      * NOTE: this is overload function for 'javascript_tag(...)'.
+      * NOTE: all dependent scripts are also built into the body of the block.
+      *
+      * ==== Examples
+      *
+      *   javascript_content_tag("application")
+      *   * => <script>
+      *        //<![CDATA[
+      *        //
+      *        // Created by FlyCubePHP generator.
+      *        //
+      *        //
+      *        // This is a manifest file that'll be compiled into application.js, which will include all the files
+      *        // listed below.
+      *        //
+      *        // Any JavaScript/JavaScript.PHP file within this directory, lib/assets/javascripts, or any plugin's
+      *        // vendor/assets/javascripts directory can be referenced here using a relative path.
+      *        //
+      *        // Supported require_* commands:
+      *        // require [name]       - load file (search by name without extension)
+      *        // require_tree [path]  - load all files from path
+      *        //
+      *        //]]>
+      *        </script>
+      */
+     public function javascript_content_tag(string $name, array $options = []): string {...} 
+     ```
+       
+   * update StylesheetTagHelper (add stylesheet_asset_tag)
+     ```php
+     /**
+      * Добавить тэг скрипта с содержимым файла стилей
+      * @param string $name
+      * @param array $options
+      * @return string
+      *
+      * ==== Options
+      *
+      * - nonce  - Enable/Disable nonce tag for script (only true/false) (default: false)
+      *
+      * NOTE: other options will be added as tag attributes.
+      * NOTE: for use nonce - enable CSP Protection.
+      * NOTE: this is overload function for 'stylesheet_tag(...)'.
+      * NOTE: all dependent scripts are also built into the body of the block.
+      *
+      * ==== Examples
+      *
+      *   stylesheet_content_tag("application")
+      *   * => <script type="text/css">
+      *        //<![CDATA[
+      *        // Created by FlyCubePHP generator.
+      *        //
+      *        // This is a manifest file that'll be compiled into application.css, which will include all the files
+      *        // listed below.
+      *        //
+      *        // Any CSS and SCSS file within this directory, lib/assets/stylesheets, or any plugin's
+      *        // vendor/assets/stylesheets directory can be referenced here using a relative path.
+      *        //
+      *        // Supported require_* commands:
+      *        //
+      *        // require [name]       - load file (search by name without extension)
+      *        // require_tree [path]  - load all files from path
+      *        //
+      *        //]]>
+      *        </script>
+      */
+     public function stylesheet_content_tag(string $name, array $options = []): string {...}
+     ```
+       
+ * Code refactoring
+ * Fix comments
+
+
+
 # 1.7.1 (27.04.2022)
 
  * Update Development Guide RUS

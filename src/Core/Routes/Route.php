@@ -9,70 +9,33 @@
 namespace FlyCubePHP\Core\Routes;
 
 use FlyCubePHP\HelperClasses\CoreHelper;
+use GuiCore\MenuBar\ActionBase;
 
-include_once __DIR__.'/../../HelperClasses/Enum.php';
-
-class RouteType extends \FlyCubePHP\HelperClasses\Enum {
-    const GET       = 0;
-    const POST      = 1;
-    const PUT       = 2;
-    const PATCH     = 3;
-    const DELETE    = 4;
-
-    static public function intToString(int $val): string {
-        switch ($val) {
-            case RouteType::GET:
-                return "GET";
-            case RouteType::POST:
-                return "POST";
-            case RouteType::PUT:
-                return "PUT";
-            case RouteType::PATCH:
-                return "PATCH";
-            case RouteType::DELETE:
-                return "DELETE";
-            default:
-                break;
-        }
-        return "???";
-    }
-
-    static public function stringToInt(string $val): int {
-        if (empty($val))
-            return -1;
-        $tmpVal = strtolower($val);
-        if (strcmp($tmpVal, "get") === 0 || strcmp($tmpVal, "head") === 0)
-            return RouteType::GET;
-        elseif (strcmp($tmpVal, "post") === 0)
-            return RouteType::POST;
-        elseif (strcmp($tmpVal, "put") === 0)
-            return RouteType::PUT;
-        elseif (strcmp($tmpVal, "patch") === 0)
-            return RouteType::PATCH;
-        elseif (strcmp($tmpVal, "delete") === 0)
-            return RouteType::DELETE;
-        return -1;
-    }
-}
+include_once 'RouteType.php';
+include_once 'RouteRedirect.php';
 
 /**
  * Класс маршрута
  */
 class Route
 {
-    private $_type;         /**< тип маршрута (get/post/put/patch/delete) */
-    private $_uri;          /**< url маршрута */
-    private $_uriArgs = []; /**< статические аргументы маршрута */
-    private $_controller;   /**< название класса контроллера */
-    private $_action;       /**< название метода контроллера */
-    private $_as;           /**< псевдоним для быстрого доступа к маршруту */
+    private $_type;             /**< тип маршрута (get/post/put/patch/delete) */
+    private $_uri;              /**< url маршрута */
+    private $_uriArgs = [];     /**< статические аргументы маршрута */
+    private $_controller;       /**< название класса контроллера */
+    private $_action;           /**< название метода контроллера */
+    private $_as;               /**< псевдоним для быстрого доступа к маршруту */
+    private $_constraints = []; /**< constraints для проверки параметров в динамической части маршрута (Пример маршрута: /ROUTE/:id) */
+    private $_redirect = null;  /**< объект с сописанием перенаправления маршрута */
 
     function __construct(int $type,
                          string $uri,
                          array $uriArgs,
                          string $controller,
                          string $action,
-                         string $as = "") {
+                         string $as,
+                         array $constraints,
+                         /*RouteRedirect*/ $redirect = null) {
         $this->_type = $type;
         $this->_uri = $uri;
         if (count(explode('?', $this->_uri)) > 1)
@@ -83,10 +46,16 @@ class Route
         if (empty($as)) {
             $tmpUrl = str_replace('/', ' ', $this->uri());
             $tmpUrl = str_replace(':', ' ', $tmpUrl);
+            $tmpUrl = str_replace('*', ' ', $tmpUrl);
             $tmpUrl = strtolower(RouteType::intToString($type)) . " $tmpUrl";
             $as = CoreHelper::underscore(CoreHelper::camelcase($tmpUrl));
         }
         $this->_as = $as;
+        $this->_constraints = $constraints;
+
+        if (!is_null($redirect) && !$redirect instanceof RouteRedirect)
+            trigger_error("[Route] Append route redirect failed! Invalid redirect class!", E_USER_ERROR);
+        $this->_redirect = $redirect;
     }
 
     /**
@@ -123,24 +92,89 @@ class Route
      * @return bool
      */
     public function isRouteMatch(string $uri): bool {
-        $localUri = $this->uri();
+        $uri = $this->prepareUri($uri);
+        $localUri = $this->prepareUri($this->uri());
         if (strcmp($localUri, $uri) === 0)
             return true;
-        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri))
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri)
+            && !preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri))
             return false;
         // --- check ---
         $localUriLst = explode('/', $localUri);
         $uriLst = explode('/', $uri);
-        if (count($localUriLst) != count($uriLst))
-            return false;
-        for ($i = 0; $i < count($localUriLst); $i++) {
-            $localPath = $localUriLst[$i];
-            $uriPath = $uriLst[$i];
-            if (empty($localPath) && empty($uriPath))
-                continue;
-            if (strcmp($localPath[0], ':') === 0)
-                continue; // skip
-            if (strcmp($localPath, $uriPath) !== 0)
+        if (!preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri)) {
+            if (count($localUriLst) != count($uriLst))
+                return false;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$i];
+                if (empty($localPath) && empty($uriPath))
+                    continue;
+                if (strcmp($localPath[0], ':') === 0) {
+                    $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
+                    if (!empty($constraint) && !preg_match($constraint, $uriPath))
+                        return false;
+                    continue; // skip
+                }
+                if (strcmp($localPath, $uriPath) !== 0)
+                    return false;
+            }
+        } else {
+            if (count($localUriLst) > count($uriLst))
+                return false;
+            $uriPathCount = 0;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                // --- check uri-path-count ---
+                if ($uriPathCount >= count($uriLst))
+                    return false;
+                // --- check ---
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$uriPathCount];
+                if (empty($localPath) && empty($uriPath)) {
+                    $uriPathCount += 1;
+                    continue;
+                }
+                if (strcmp($localPath[0], ':') === 0) {
+                    $constraint = $this->prepareConstraint($this->_constraints[substr($localPath, 1, strlen($localPath))] ?? "");
+                    if (!empty($constraint) && !preg_match($constraint, $uriPath))
+                        return false;
+                    $uriPathCount += 1;
+                    continue; // skip
+                }
+                if (strcmp($localPath[0], '*') === 0) {
+                    $isSuccess = false;
+                    if ($i + 1 < count($localUriLst)) {
+                        $localPathNext = $localUriLst[$i + 1];
+                        if (strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1) {
+                            $uriPathCount = count($uriLst) - (count($localUriLst) - $i);
+                            $isSuccess = true;
+                        } else {
+                            for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                                $uriPath = $uriLst[$j];
+                                if (strcmp($localPathNext, $uriPath) === 0) {
+                                    $uriPathCount = $j - 1;
+                                    $isSuccess = true;
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        $uriPathCount = count($uriLst) - 1;
+                        $isSuccess = true;
+                    }
+                    if (!$isSuccess)
+                        return false;
+
+                    $uriPathCount += 1;
+                    continue; // skip
+                }
+                if (strcmp($localPath, $uriPath) !== 0)
+                    return false;
+
+                $uriPathCount += 1;
+            }
+            // --- check uri-path-count ---
+            if ($uriPathCount < count($uriLst))
                 return false;
         }
         return true;
@@ -152,22 +186,77 @@ class Route
      * @return array
      */
     public function routeArgsFromUri(string $uri): array {
-        $localUri = $this->uri();
-        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri))
+        $uri = $this->prepareUri($uri);
+        $localUri = $this->prepareUri($this->uri());
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $localUri)
+            && !preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri))
             return [];
         // --- select ---
         $tmpArgs = [];
         $localUriLst = explode('/', $localUri);
         $uriLst = explode('/', $uri);
-        if (count($localUriLst) != count($uriLst))
-            return [];
-        for ($i = 0; $i < count($localUriLst); $i++) {
-            $localPath = $localUriLst[$i];
-            $uriPath = $uriLst[$i];
-            if (empty($localPath) && empty($uriPath))
-                continue;
-            if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1)
-                $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+        if (!preg_match('/\*([a-zA-Z0-9_]*)/i', $localUri)) {
+            if (count($localUriLst) != count($uriLst))
+                return [];
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$i];
+                if (empty($localPath) && empty($uriPath))
+                    continue;
+                if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1)
+                    $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+            }
+        } else {
+            if (count($localUriLst) > count($uriLst))
+                return [];
+            $uriPathCount = 0;
+            for ($i = 0; $i < count($localUriLst); $i++) {
+                // --- check uri-path-count ---
+                if ($uriPathCount >= count($uriLst))
+                    return [];
+                // --- make args ---
+                $localPath = $localUriLst[$i];
+                $uriPath = $uriLst[$uriPathCount];
+                if (empty($localPath) && empty($uriPath)) {
+                    $uriPathCount += 1;
+                    continue;
+                }
+                if (strcmp($localPath[0], ':') === 0 && strlen($localPath) > 1) {
+                    $tmpArgs[ltrim($localPath, ":")] = $uriPath;
+                } else if (strcmp($localPath[0], '*') === 0) {
+                    $tmpUriPath = $uriPath;
+                    if ($i + 1 < count($localUriLst)) {
+                        $localPathNext = $localUriLst[$i + 1];
+                        $uriLstCount = count($uriLst);
+                        if (strcmp($localPathNext[0], ':') === 0 && strlen($localPathNext) > 1)
+                            $uriLstCount = count($uriLst) - (count($localUriLst) - $i - 1);
+
+                        for ($j = $uriPathCount + 1; $j < $uriLstCount; $j++) {
+                            $uriPath = $uriLst[$j];
+                            if (strcmp($localPathNext, $uriPath) === 0) {
+                                $uriPathCount = $j - 1;
+                                break;
+                            } else if (empty($tmpUriPath)) {
+                                $tmpUriPath .= $uriPath;
+                            } else {
+                                $tmpUriPath .= "/$uriPath";
+                            }
+                            $uriPathCount = $j;
+                        }
+                    } else {
+                        for ($j = $uriPathCount + 1; $j < count($uriLst); $j++) {
+                            $uriPath = $uriLst[$j];
+                            $tmpUriPath .= "/$uriPath";
+                        }
+                        $uriPathCount = count($uriLst) - 1;
+                    }
+                    $tmpArgs[ltrim($localPath, "*")] = $tmpUriPath;
+                }
+                $uriPathCount += 1;
+            }
+            // --- check uri-path-count ---
+            if ($uriPathCount < count($uriLst))
+                return [];
         }
         return $tmpArgs;
     }
@@ -177,7 +266,9 @@ class Route
      * @return bool
      */
     public function hasUriArgs(): bool {
-        return (!empty($this->_uriArgs) || preg_match('/\:([a-zA-Z0-9_]*)/i', $this->uri()));
+        return (!empty($this->_uriArgs)
+                || preg_match('/\:([a-zA-Z0-9_]*)/i', $this->uri())
+                || preg_match('/\*([a-zA-Z0-9_]*)/i', $this->uri()));
     }
 
     /**
@@ -213,6 +304,43 @@ class Route
     }
 
     /**
+     * Constraints для проверки параметров в динамической части маршрута (Пример маршрута: /ROUTE/:id)
+     * @return array
+     */
+    public function constraints(): array {
+        return $this->_constraints;
+    }
+
+    /**
+     * Задано ли перенаправление маршрута?
+     * @return bool
+     */
+    public function hasRedirect(): bool {
+        return !is_null($this->_redirect);
+    }
+
+    /**
+     * Маршрут перенаправления
+     * @param string $currentUri - текущий маршрут с параметрами
+     * @return string
+     */
+    public function redirectUri(string $currentUri): string {
+        if (is_null($this->_redirect))
+            return "";
+        return $this->makeRedirectUri($currentUri);
+    }
+
+    /**
+     * HTTP статус перенаправления
+     * @return int
+     */
+    public function redirectStatus(): int {
+        if (is_null($this->_redirect))
+            return -1;
+        return $this->_redirect->status();
+    }
+
+    /**
      * Метод разбора аргументов
      */
     private function parseArgs() {
@@ -245,5 +373,69 @@ class Route
                 }
             }
         }
+    }
+
+    /**
+     * Подготовить корректный constraint
+     * @param string $constraint
+     * @return string
+     */
+    private function prepareConstraint(string $constraint): string {
+        if (empty($constraint))
+            return '';
+
+        $tmpConstraintStart = "";
+        $tmpConstraint = trim($constraint);
+        $tmpConstraintEnd = "";
+
+        preg_match('/(\/?)(.*)(\/\w*)/', $tmpConstraint, $matches, PREG_OFFSET_CAPTURE);
+        if (!empty($matches)) {
+            $tmpConstraintStart = $matches[1][0];
+            $tmpConstraint = $matches[2][0];
+            $tmpConstraintEnd = $matches[3][0];
+        }
+        if (empty($tmpConstraintStart))
+            $tmpConstraintStart = "/";
+        if (empty($tmpConstraintEnd))
+            $tmpConstraintEnd = "/";
+
+        if (strcmp($tmpConstraint[0], '^') !== 0)
+            $tmpConstraint = '^' . $tmpConstraint;
+        if (strcmp($tmpConstraint[strlen($tmpConstraint) - 1], '$') !== 0)
+            $tmpConstraint = $tmpConstraint . '$';
+        return $tmpConstraintStart . $tmpConstraint . $tmpConstraintEnd;
+    }
+
+    /**
+     * Создать корректный маршрут перенаправления
+     * @param string $currentUri
+     * @return string
+     */
+    private function makeRedirectUri(string $currentUri): string {
+        if (is_null($this->_redirect))
+            return "";
+        $tmpUri = $this->_redirect->uri();
+        if ($this->_redirect->hasUriArgs()) {
+            $tmpArgs = $this->routeArgsFromUri($currentUri);
+            foreach ($tmpArgs as $key => $value) {
+                $argName = "%{".$key."}";
+                if (strpos($tmpUri, $argName) !== false)
+                    $tmpUri = str_replace($argName, $value, $tmpUri);
+            }
+        }
+        return $tmpUri;
+    }
+
+    /**
+     * Подготовить URI
+     * @param string $uri
+     * @return string
+     */
+    private function prepareUri(string $uri): string {
+        if (empty($uri))
+            return "";
+        if (strcmp($uri[0], '/') === 0)
+            $uri = substr($uri, 1, strlen($uri) - 1);
+        return $uri;
     }
 }

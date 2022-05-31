@@ -30,6 +30,8 @@ abstract class ActiveRecord
     private $_callbacks = [];
     private $_readOnly = false;
 
+    private $_database = "";
+
     /**
      * ActiveRecord constructor.
      * @throws ErrorActiveRecord
@@ -176,6 +178,26 @@ abstract class ActiveRecord
      */
     final protected function setReadOnly(bool $value) {
         $this->_readOnly = $value;
+    }
+
+    /**
+     * Название ключа базы данных, указанного в разделе конфигурационного файла «*_secondary», с которой будет работать модель
+     * @return string
+     *
+     * NOTE: If database name is empty - used primary database.
+     */
+    final protected function database(): string {
+        return $this->_database;
+    }
+
+    /**
+     * Задать название ключа базы данных, указанного в разделе конфигурационного файла «*_secondary», с которой будет работать модель
+     * @param string $database - имя базы данных для подключения
+     *
+     * NOTE: If database name is empty - used primary database.
+     */
+    final protected function setDatabase(string $database) {
+        $this->_database = $database;
     }
 
     /**
@@ -350,19 +372,21 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function all(): array {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
+        $dbName = $aRec->database();
         unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        // --- exec query ---
         try {
             $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName).";", [], static::class);
         } catch (ErrorDatabase $ex) {
@@ -384,19 +408,21 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function destroyAll() {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
+        $dbName = $aRec->database();
         unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        // --- exec query ---
         try {
             $db->query("DELETE FROM ".$db->quoteTableName($tName).";");
         } catch (ErrorDatabase $ex) {
@@ -439,19 +465,21 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function limit(int $num)/*: array|null*/ {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
+        $dbName = $aRec->database();
         unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        // --- exec query ---
         try {
             $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." LIMIT $num", [], static::class);
         } catch (ErrorDatabase $ex) {
@@ -474,19 +502,21 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function count(): int {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
+        $dbName = $aRec->database();
         unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        // --- exec query ---
         try {
             $res = $db->query("SELECT COUNT(*) AS count FROM ".$db->quoteTableName($tName).";");
         } catch (ErrorDatabase $ex) {
@@ -514,6 +544,7 @@ abstract class ActiveRecord
         $aRec = new $aClassName();
         $tPK = $aRec->primaryKey();
         unset($aRec);
+        // --- exec query ---
         try {
             $res = self::where([ $tPK => $pkVal ]);
         } catch (ErrorActiveRecord $ex) {
@@ -561,15 +592,20 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function findBySql(string $sql, array $params = []) {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $aClassName = static::class;
+        $aRec = new $aClassName();
+        $dbName = $aRec->database();
+        unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => static::class,
                 'active-r-method' => __FUNCTION__
             ]);
-
+        // --- exec query ---
         try {
             $res = $db->query($sql, $params, static::class);
         } catch (ErrorDatabase $ex) {
@@ -597,19 +633,22 @@ abstract class ActiveRecord
      *
      */
     final public static function where(array $args, bool $prepareNames = true) {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $aClassName = static::class;
+        $aRec = new $aClassName();
+        $tName = $aRec->tableName();
+        $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
+        unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => static::class,
                 'active-r-method' => __FUNCTION__
             ]);
 
-        $aClassName = static::class;
-        $aRec = new $aClassName();
-        $tName = $aRec->tableName();
-        unset($aRec);
         $tmpWhere = "";
         $tmpWhereVal = array();
         foreach ($args as $key => $val) {
@@ -617,8 +656,10 @@ abstract class ActiveRecord
             if (!empty($tmpWhere))
                 $tmpWhere .= " AND";
             $tmpColumn = $key;
+            if (array_key_exists($key, $columnMappings))
+                $tmpColumn = $columnMappings[$key];
             if ($prepareNames === true)
-                $tmpColumn = CoreHelper::underscore($key);
+                $tmpColumn = CoreHelper::underscore($tmpColumn);
             $tmpWhere .= " ".$db->quoteTableName("$tName.$tmpColumn")." = :key_$tmpKey";
             $tmpWhereVal[":key_".$tmpKey] = $val;
         }
@@ -646,20 +687,22 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function exists($pkVal): bool {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
         $aClassName = static::class;
         $aRec = new $aClassName();
         $tName = $aRec->tableName();
         $tPK = $aRec->primaryKey();
+        $dbName = $aRec->database();
         unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        // --- exec query ---
         try {
             $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :f_value LIMIT 1;", [ ":f_value" => $pkVal ]);
         } catch (ErrorDatabase $ex) {
@@ -687,19 +730,22 @@ abstract class ActiveRecord
      * Вернет true если из набора значений в БД есть хотя бы одно.
      */
     final public static function existsSome(string $column, array $values, bool $prepareNames = true): bool {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $aClassName = static::class;
+        $aRec = new $aClassName();
+        $tName = $aRec->tableName();
+        $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
+        unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => static::class,
                 'active-r-method' => __FUNCTION__
             ]);
 
-        $aClassName = static::class;
-        $aRec = new $aClassName();
-        $tName = $aRec->tableName();
-        unset($aRec);
         $tmpWhere = "";
         $tmpWhereVal = array();
         foreach ($values as $key => $val) {
@@ -711,8 +757,10 @@ abstract class ActiveRecord
         }
         $tmpWhere = trim($tmpWhere);
         $tmpColumn = $column;
+        if (array_key_exists($column, $columnMappings))
+            $tmpColumn = $columnMappings[$column];
         if ($prepareNames === true)
-            $tmpColumn = CoreHelper::underscore($column);
+            $tmpColumn = CoreHelper::underscore($tmpColumn);
         try {
             $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tmpColumn")." IN ($tmpWhere) LIMIT 1;", $tmpWhereVal);
         } catch (ErrorDatabase $ex) {
@@ -737,26 +785,31 @@ abstract class ActiveRecord
      * @throws
      */
     final public static function selectSome(array $columns, bool $prepareNames = true) {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $aClassName = static::class;
+        $aRec = new $aClassName();
+        $tName = $aRec->tableName();
+        $dbName = $aRec->database();
+        $columnMappings = $aRec->columnMappings();
+        unset($aRec);
+        // --- get adapter ---
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => static::class,
                 'active-r-method' => __FUNCTION__
             ]);
 
-        $aClassName = static::class;
-        $aRec = new $aClassName();
-        $tName = $aRec->tableName();
-        unset($aRec);
         $tmpColumns = "";
         foreach ($columns as $key => $val) {
             if (!empty($tmpColumns))
                 $tmpColumns .= ",";
             $tmpVal = $val;
+            if (array_key_exists($val, $columnMappings))
+                $tmpVal = $columnMappings[$val];
             if ($prepareNames === true)
-                $tmpVal = CoreHelper::underscore($val);
+                $tmpVal = CoreHelper::underscore($tmpVal);
             $tmpColumns .= " ".$db->quoteTableName($tmpVal);
         }
         $tmpColumns = trim($tmpColumns);
@@ -823,11 +876,11 @@ abstract class ActiveRecord
      */
     final private function insert() {
         $this->processingCallbacks('before-insert');
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);
@@ -863,11 +916,11 @@ abstract class ActiveRecord
      */
     final private function update() {
         $this->processingCallbacks('before-update');
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);
@@ -900,11 +953,11 @@ abstract class ActiveRecord
      * @throws
      */
     final private function delete() {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter();
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
-                'message' => 'Database connector is NULL!',
+                'message' => 'Database adapter is NULL!',
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);

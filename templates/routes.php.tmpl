@@ -29,14 +29,21 @@
  * 6. Append application delete URL:
  *    #> delete(string $uri, array $args = [])
  *
+ * 7. Append application URL with redirect (set redirect for get/post/put/patch/delete routes)
+ *    #> redirect(string $uri, int $status = 303)
+ *
+ * 7.1. HTTP status codes for GET: 301, 302, 303
+ * 7.2. HTTP status codes for POST/PUT/PATCH/DELETE: 307, 308
+ *
  * NOTE: the controller name is written without ending 'Controller'!
  *
  * Supported input arguments:
  *
- *   - [string] to         - The name of the controller and the action separated '#' (Test#show)
- *   - [string] controller - The name of the controller
- *   - [string] action     - The name of the controller action
- *   - [string] as         - Alias for quick access to the route (define is automatically generated)
+ *   - [string] to          - The name of the controller and the action separated '#' (Test#show), or 'redirect' command
+ *   - [string] controller  - The name of the controller
+ *   - [string] action      - The name of the controller action
+ *   - [string] as          - Alias for quick access to the route (define is automatically generated)
+ *   - [array]  constraints - Add constraints to use automatic regular expression validation for the dynamic segment
  *   - ...
  *   - Other arguments will be transferred as input parameters.
  *
@@ -62,6 +69,26 @@
  *         - Test  - The name of the controller class without expansion controller
  *         - show  - The name of the controller action (public method)
  *         - test  - Alias for quick access to url (use define 'test_url')
+ *
+ * #> get('/photos/:id', [ 'to' => 'Photos#show', 'constraints' => [ 'id' => '/[A-Z]\d{5}/' ] ] );
+ *       where
+ *         - Photos      - The name of the controller class without expansion controller
+ *         - show        - The name of the controller action (public method)
+ *         - constraints - Constraints array with regular expression
+ *       example:
+ *         - /photos/A12345     - valid (200)
+ *         - /photos/A123456    - invalid (404)
+ *         - /photos/123456     - invalid (404)
+ *
+ * Redirect examples:
+ *
+ * For GET:
+ * #> get('/test1/:id', [ 'to' => 'Test#test_1']);
+ * #> get('/test2/:id', [ 'to' => redirect('/test1/%{id}', 301) ]);
+ *
+ * For POST:
+ * #> post('/test1/:id', [ 'to' => 'Test#test_1']);
+ * #> post('/test2/:id', [ 'to' => redirect('/test1/%{id}', 308) ]);
  *
  */
 

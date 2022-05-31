@@ -125,7 +125,7 @@ class ImageBuilder
         $tmpImages = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpImages as $img) {
             $tmpName = CoreHelper::buildAppPath($img);
-            if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif)$/", $tmpName))
+            if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif|\.ico)$/", $tmpName))
                 continue;
             $pos = strpos($tmpName, "images/");
             if ($pos === false) {

@@ -20,6 +20,7 @@ use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Controllers\BaseController;
 use FlyCubePHP\Core\Controllers\BaseActionController;
 use FlyCubePHP\Core\Logger\Logger;
+use FlyCubePHP\HelperClasses\CoreHelper;
 
 class RouteCollector
 {
@@ -186,7 +187,7 @@ class RouteCollector
 
     /**
      * Получить объект маршрута для текущего запроса
-     * @return Route|Route
+     * @return Route|null
      */
     public function currentRoute()/*: Route|null*/ {
         $tmpURI = RouteCollector::currentRouteUri();
@@ -236,6 +237,24 @@ class RouteCollector
         $tmpCurRoute = $this->currentRoute();
         if (is_null($tmpCurRoute))
             $tmpCurRoute = $this->processingFailed("Not found route: [$httpM] $httpUrl", 404);
+
+        // --- check redirect ---
+        if ($tmpCurRoute->hasRedirect()) {
+            // --- clear all buffers ---
+            while (ob_get_level() !== 0)
+                ob_end_clean();
+            // --- send redirect ---
+            $redirectUri = $tmpCurRoute->redirectUri(self::currentRouteUri());
+            if (!preg_match("/^(http:\/\/|https:\/\/).*/", $redirectUri)) {
+                $redirectUri = self::makeValidUrl($redirectUri);
+                $redirectUri = self::currentHostUri() . $redirectUri;
+            }
+            $redirectStatus = $tmpCurRoute->redirectStatus();
+            http_response_code($redirectStatus);
+            header("Location: $redirectUri", true, $redirectStatus);
+            Logger::info("REDIRECT TO: [status: $redirectStatus] $redirectUri");
+            die();
+        }
 
         // --- processing controller ---
         $tmpClassName = $tmpCurRoute->controller();

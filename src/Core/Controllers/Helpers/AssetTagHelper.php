@@ -9,15 +9,20 @@
 namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
+include_once 'Extensions/TagBuilder.php';
+include_once __DIR__.'/../../../HelperClasses/MimeTypes.php';
 
 use FlyCubePHP\ComponentsCore\ComponentsManager;
 use FlyCubePHP\Core\Routes\RouteType;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
+use FlyCubePHP\HelperClasses\MimeTypes;
 
 class AssetTagHelper extends BaseControllerHelper
 {
+    use Extensions\TagBuilder;
+
     function __construct() {
         $this->appendSafeFunction("stylesheet_link_tag");
         $this->appendSafeFunction("javascript_include_tag");
@@ -60,29 +65,26 @@ class AssetTagHelper extends BaseControllerHelper
      * @param string $name
      * @param array $options
      * @return string
+     *
+     * NOTE: options will be added as tag attributes.
      */
     public function stylesheet_link_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->stylesheetFilePath($name);
         if (empty($tmpLst))
             throw new \RuntimeException("[stylesheet_link_tag] Not found stylesheet in asset pipeline (name: $name)!");
 
-        if (isset($options["rel"]))
-            unset($options["rel"]);
-        if (isset($options["href"]))
-            unset($options["href"]);
-
         if (is_array($tmpLst)) {
             $tmpData = "";
             foreach ($tmpLst as $key => $value) {
                 $tmpOptions = [ "rel" => "stylesheet", "href" => $value ];
-                $tmpOptions = array_unique(array_merge($tmpOptions, $options));
-                $tmpData .= $this->makeTag("link", $tmpOptions) . "\r\n";
+                $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+                $tmpData .= $this->makeTag('link', '', $tmpOptions) . "\r\n";
             }
             return $tmpData;
         }
         $tmpOptions = [ "rel" => "stylesheet", "href" => $tmpLst ];
-        $tmpOptions = array_unique(array_merge($tmpOptions, $options));
-        return $this->makeTag("link", $tmpOptions) . "\r\n";
+        $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+        return $this->makeTag('link', '', $tmpOptions) . "\r\n";
     }
 
     /**
@@ -90,27 +92,26 @@ class AssetTagHelper extends BaseControllerHelper
      * @param string $name
      * @param array $options
      * @return string
+     *
+     * NOTE: options will be added as tag attributes.
      */
     public function javascript_include_tag(string $name, array $options = []): string {
         $tmpLst = AssetPipeline::instance()->javascriptFilePath($name);
         if (empty($tmpLst))
             throw new \RuntimeException("[javascript_include_tag] Not found javascript in asset pipeline (name: $name)!");
 
-        if (isset($options["src"]))
-            unset($options["src"]);
-
         if (is_array($tmpLst)) {
             $tmpData = "";
             foreach ($tmpLst as $key => $value) {
                 $tmpOptions = [ "src" => $value ];
-                $tmpOptions = array_unique(array_merge($tmpOptions, $options));
-                $tmpData .= $this->makeTag("script", $tmpOptions, true) . "\r\n";
+                $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+                $tmpData .= $this->makeTag('script', '', $tmpOptions, true) . "\r\n";
             }
             return $tmpData;
         }
         $tmpOptions = [ "src" => $tmpLst ];
-        $tmpOptions = array_unique(array_merge($tmpOptions, $options));
-        return $this->makeTag("script", $tmpOptions, true) . "\r\n";
+        $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+        return $this->makeTag('script', '', $tmpOptions, true) . "\r\n";
     }
 
     /**
@@ -128,6 +129,7 @@ class AssetTagHelper extends BaseControllerHelper
      * - action     - Specify the application controller action
      *
      * NOTE: 'href' and 'controller + action' are mutually exclusive arguments!
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -194,12 +196,9 @@ class AssetTagHelper extends BaseControllerHelper
             $val = $route->uri();
             $attrHref = CoreHelper::makeValidUrl($val);
         }
-        return $this->makeTag("link", [
-            "rel" => $attrRel,
-            "type" => $attrType,
-            "title" => $attrTitle,
-            "href" => $attrHref
-        ]);
+        $tmpOptions = [ "rel" => $attrRel, "type" => $attrType, "title" => $attrTitle, "href" => $attrHref ];
+        $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+        return $this->makeTag('link', '', $tmpOptions);
     }
 
     /**
@@ -212,6 +211,8 @@ class AssetTagHelper extends BaseControllerHelper
      *
      * - rel    - Specify the relation of this link, defaults to "shortcut icon"
      * - type   - Specify the type of this icon, defaults to "image/x-icon"
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -232,7 +233,7 @@ class AssetTagHelper extends BaseControllerHelper
     public function favicon_link_tag(string $source = "favicon.ico", array $options = []): string {
         if (empty($source))
             throw new \RuntimeException("[favicon_link_tag] Invalid source (value: $source)!");
-        $sPath = $this->image_path($source);
+        $sPath = AssetPipeline::instance()->imageFilePath($source);
         if (empty($sPath))
             throw new \RuntimeException("[favicon_link_tag] Not found source in asset pipeline (name: $source)!");
 
@@ -244,11 +245,9 @@ class AssetTagHelper extends BaseControllerHelper
         if (isset($options['type']))
             $attrType = strval($options['type']);
 
-        return $this->makeTag("link", [
-            "href" => $sPath,
-            "rel" => $attrRel,
-            "type" => $attrType
-        ]);
+        $tmpOptions = [ "href" => $sPath, "rel" => $attrRel, "type" => $attrType ];
+        $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+        return $this->makeTag('link', '', $tmpOptions);
     }
 
     /**
@@ -263,6 +262,8 @@ class AssetTagHelper extends BaseControllerHelper
      * - type           - Override the auto-generated mime type, defaults to the mime type for +source+ extension.
      * - as             - Override the auto-generated value for as attribute, calculated using +source+ extension and mime type.
      * - crossorigin    - Specify the crossorigin attribute, required to load cross-origin resources.
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -288,7 +289,7 @@ class AssetTagHelper extends BaseControllerHelper
             $sPath = $source;
 
         $sourceExt = pathinfo($sPath, PATHINFO_EXTENSION);
-        $sourceMimeType = $this->resolveMimeType($sourceExt);
+        $sourceMimeType = MimeTypes::mimeType($sourceExt) ?? "";
         $attrType = $sourceMimeType;
         if (isset($options['type']))
             $attrType = strval($options['type']);
@@ -313,7 +314,8 @@ class AssetTagHelper extends BaseControllerHelper
         if (!empty($attrCrossorigin))
             $props[ "crossorigin" ] = $attrCrossorigin;
 
-        return $this->makeTag("link", $props);
+        $props = $this->prepareTagAttributes($props, $options);
+        return $this->makeTag("link", "", $props);
     }
 
     /**
@@ -330,6 +332,8 @@ class AssetTagHelper extends BaseControllerHelper
      * - height     - Set image height.
      * - width      - Set image width.
      * - class      - Set image class.
+     *
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -355,7 +359,7 @@ class AssetTagHelper extends BaseControllerHelper
             throw new \RuntimeException("[image_tag] Not found image in asset pipeline (name: $name)!");
 
         if (empty($options))
-            return $this->makeTag("img", [ "src" => $fPath ]);
+            return $this->makeTag("img", "", [ "src" => $fPath ]);
 
         $props = [ "src" => $fPath ];
 
@@ -391,7 +395,8 @@ class AssetTagHelper extends BaseControllerHelper
             $val = strval($options["alt"]);
             $props[ "alt" ] = $val;
         }
-        return $this->makeTag("img", $props);
+        $props = $this->prepareTagAttributes($props, $options);
+        return $this->makeTag("img", "", $props);
     }
 
     /**
@@ -413,6 +418,7 @@ class AssetTagHelper extends BaseControllerHelper
      * - params         - Set additional URL params
      *
      * NOTE: 'href' and 'controller + action' are mutually exclusive arguments!
+     * NOTE: other options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -449,7 +455,7 @@ class AssetTagHelper extends BaseControllerHelper
         if (empty($name))
             throw new \RuntimeException("[link_to] Invalid name (empty)!");
         if (empty($options))
-            return "<a href=\"\">$name</a>";
+            return $this->makeTag('a', $name, [ 'href' => '' ]);//"<a href=\"\">$name</a>";
 
         $urlParams = [];
         if (array_key_exists("params", $options))
@@ -457,13 +463,11 @@ class AssetTagHelper extends BaseControllerHelper
         if (!is_array($urlParams))
             throw new \RuntimeException("[link_to] Invalid params argument (not array)!");
 
-        $tmpOptions = "";
+        $tmpOptions = [];
         if (array_key_exists("href", $options)
             && !array_key_exists("controller", $options)
             && !array_key_exists("action", $options)) {
-            $val = strval($options["href"]);
-            $val = CoreHelper::makeValidUrl($val);
-            $tmpOptions .= " href=\"$val\"";
+            $tmpOptions["href"] = CoreHelper::makeValidUrl(strval($options["href"]));
         }
         if (!array_key_exists("href", $options)
             && array_key_exists("controller", $options)
@@ -480,9 +484,9 @@ class AssetTagHelper extends BaseControllerHelper
             if ($route->type() !== RouteType::GET)
                 $method = strtolower(RouteType::intToString($route->type()));
 
-            $tmpOptions .= " href=\"$val\"";
+            $tmpOptions["href"] = $val;
             if (!empty($method))
-                $tmpOptions .= " data-method=\"$method\"";
+                $tmpOptions["data-method"] = $method;
         }
         if (array_key_exists("method", $options)
             && !array_key_exists("controller", $options)
@@ -492,41 +496,38 @@ class AssetTagHelper extends BaseControllerHelper
                 || strcmp($val, "put") === 0
                 || strcmp($val, "patch") === 0
                 || strcmp($val, "delete") === 0) {
-                $tmpOptions .= " data-method=\"$val\"";
+                $tmpOptions["data-method"] = $val;
             }
         }
-        if (array_key_exists("class", $options)) {
-            $val = strval($options["class"]);
-            $tmpOptions .= " class=\"$val\"";
-        }
-        if (array_key_exists("id", $options)) {
-            $val = strval($options["id"]);
-            $tmpOptions .= " id=\"$val\"";
-        }
+        if (array_key_exists("class", $options))
+            $tmpOptions["class"] = strval($options["class"]);
+        if (array_key_exists("id", $options))
+            $tmpOptions["id"] = strval($options["id"]);
         if (array_key_exists("target", $options)) {
             $val = strval($options["target"]);
             if (strcmp($val, "_blank") === 0
                 || strcmp($val, "_self") === 0
                 || strcmp($val, "_parent") === 0
                 || strcmp($val, "_top") === 0) {
-                $tmpOptions .= " target=\"$val\"";
+                $tmpOptions["target"] = $val;
             }
         }
-        if (array_key_exists("rel", $options)) {
-            $val = strval($options["rel"]);
-            $tmpOptions .= " rel=\"$val\"";
-        }
-        $tmpOptions = trim($tmpOptions);
-        return "<a $tmpOptions>$name</a>";
+        if (array_key_exists("rel", $options))
+            $tmpOptions["rel"] = strval($options["rel"]);
+
+        $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
+        return $this->makeTag('a', $name, $tmpOptions);//"<a $tmpOptions>$name</a>";
     }
 
     /**
      * Добавить для загрузки необходимый js скрипт в раздел html->head
      * @param $context
      * @param string $name
+     * @param array $options
      * @return string
      *
      * NOTE: Use only in twig block 'head'!
+     * NOTE: options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -535,21 +536,23 @@ class AssetTagHelper extends BaseControllerHelper
      * {% endblock %}
      *
      */
-    public function add_view_javascripts($context, string $name): string {
+    public function add_view_javascripts($context, string $name, array $options = []): string {
         if (!isset($context['display_head'])
             || CoreHelper::toBool($context['display_head']) !== true)
             return "";
 
-        return $this->javascript_include_tag($name);
+        return $this->javascript_include_tag($name, $options);
     }
 
     /**
      * Добавить для загрузки необходимый css/scss скрипт в раздел html->head
      * @param $context
      * @param string $name
+     * @param array $options
      * @return string
      *
      * NOTE: Use only in twig block 'head'!
+     * NOTE: options will be added as tag attributes.
      *
      * ==== Examples in Twig notations
      *
@@ -558,12 +561,12 @@ class AssetTagHelper extends BaseControllerHelper
      * {% endblock %}
      *
      */
-    public function add_view_stylesheets($context, string $name): string {
+    public function add_view_stylesheets($context, string $name, array $options = []): string {
         if (!isset($context['display_head'])
             || CoreHelper::toBool($context['display_head']) !== true)
             return "";
 
-        return $this->stylesheet_link_tag($name);
+        return $this->stylesheet_link_tag($name, $options);
     }
 
     /**
@@ -718,14 +721,6 @@ class AssetTagHelper extends BaseControllerHelper
         return "";
     }
 
-    private function resolveMimeType(string $ext): string {
-        if (empty($this->_mimeTypes))
-            $this->_mimeTypes = $this->systemExtensionMimeTypes();
-
-        $ext = strtolower(trim($ext));
-        return isset($this->_mimeTypes[$ext]) ? $this->_mimeTypes[$ext] : "";
-    }
-
     private function assetPath(string $name, bool $skipError = false): string {
         $fPath = AssetPipeline::instance()->javascriptFilePath($name);
         if (!empty($fPath))
@@ -734,50 +729,10 @@ class AssetTagHelper extends BaseControllerHelper
         if (!empty($fPath))
             return $fPath;
         $fPath = AssetPipeline::instance()->imageFilePath($name);
-        if (!empty($fPath))
-            return $fPath;
         if (empty($fPath) && $skipError !== true)
             throw new \RuntimeException("[assetPath] Not found source in asset pipeline (name: $name)!");
 
         return $fPath;
-    }
-
-    private function systemExtensionMimeTypes(): array {
-        # Returns the system MIME type mapping of extensions to MIME types, as defined in /etc/mime.types.
-        $out = array();
-        $file = fopen('/etc/mime.types', 'r');
-        while (($line = fgets($file)) !== false) {
-            $line = trim(preg_replace('/#.*/', '', $line));
-            if (!$line)
-                continue;
-            $parts = preg_split('/\s+/', $line);
-            if (count($parts) == 1)
-                continue;
-            $type = array_shift($parts);
-            foreach ($parts as $part)
-                $out[$part] = $type;
-        }
-        fclose($file);
-        return $out;
-    }
-
-    private function makeTag(string $tagName, array $attributes = [], bool $addTail = false): string {
-        $tagName = trim($tagName);
-        $tmpTag = "";
-        foreach ($attributes as $key => $value) {
-            $tmpAttr = $value;
-            if (is_string($key))
-                $tmpAttr = "$key=\"$value\"";
-
-            if (empty($tmpTag))
-                $tmpTag = $tmpAttr;
-            else
-                $tmpTag .= " $tmpAttr";
-        }
-        if ($addTail === true)
-            return "<$tagName $tmpTag></$tagName>";
-
-        return "<$tagName $tmpTag />";
     }
 
     private function makeHrefWithParams(string $url, array $params): string {

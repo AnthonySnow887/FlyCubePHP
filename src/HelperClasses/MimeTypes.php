@@ -35,7 +35,7 @@ class MimeTypes
             $this->_mimeTypes = $this->systemExtensionMimeTypes();
 
         $ext = strtolower(trim($ext));
-        return isset($this->_mimeTypes[$ext]) ? $this->_mimeTypes[$ext] : null;
+        return $this->_mimeTypes[$ext] ?? null;
     }
 
     /**

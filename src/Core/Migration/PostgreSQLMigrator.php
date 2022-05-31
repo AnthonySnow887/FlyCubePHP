@@ -85,6 +85,51 @@ class PostgreSQLMigrator extends BaseMigrator
     }
 
     /**
+     * Подключить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_not_exists - добавить флаг 'IF NOT EXISTS'
+     *
+     * NOTE: override this method for correct implementation.
+     */
+    public function createExtension(string $name, array $props = []) {
+        if (empty($name))
+            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid extension name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid database connector (NULL)!');
+        $ifNotExists = "";
+        if (isset($props['if_not_exists']) && $props['if_not_exists'] === true)
+            $ifNotExists = "IF NOT EXISTS";
+
+        $this->_dbAdapter->query("CREATE EXTENSION $ifNotExists \"$name\";");
+    }
+
+    /**
+     * Удалить расширение базы данных
+     * @param string $name - имя
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] if_exists - добавить флаг 'IF EXISTS'
+     *
+     * NOTE: override this method for correct implementation.
+     */
+    public function dropExtension(string $name, array $props = []) {
+        if (empty($name))
+            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid extension name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid database connector (NULL)!');
+        $if_exists = "";
+        if (isset($props['if_exists']) && $props['if_exists'] === true)
+            $if_exists .= "IF EXISTS";
+        $this->_dbAdapter->query("DROP EXTENSION $if_exists \"$name\" CASCADE;");
+    }
+
+    /**
      * Создать новую схему данных
      * @param string $name - имя
      * @param array $props - свойства
