@@ -1,4 +1,4 @@
-# 1.8.0 (??.??.2022)
+# 1.8.0 (31.05.2022)
 
  * Update Development Guide RUS
  * Update FlyCubePHP requires: SCSS-PHP -> v1.10.2
@@ -103,28 +103,28 @@
    * add spliceSymbolFirst
      ```php
      /**
-     * Обрезать символ вначале
-     * @param string $str - строка
-     * @param string $symbol - удаляемый символ
-     * @return string
-     *
-     * echo spliceSymbolFirst("/tmp/app1/", "/");
-     *   => "tmp/app1/"
-     */
+      * Обрезать символ вначале
+      * @param string $str - строка
+      * @param string $symbol - удаляемый символ
+      * @return string
+      *
+      * echo spliceSymbolFirst("/tmp/app1/", "/");
+      *   => "tmp/app1/"
+      */
      static public function spliceSymbolFirst(string $str, string $symbol): string {...}
      ```
      
    * add spliceSymbolLast
      ```php
      /**
-     * Обрезать символ вконце
-     * @param string $str - строка
-     * @param string $symbol - удаляемый символ
-     * @return string
-     *
-     * echo spliceSymbolLast("/tmp/app1/", "/");
-     *   => "/tmp/app1"
-     */
+      * Обрезать символ вконце
+      * @param string $str - строка
+      * @param string $symbol - удаляемый символ
+      * @return string
+      *
+      * echo spliceSymbolLast("/tmp/app1/", "/");
+      *   => "/tmp/app1"
+      */
      static public function spliceSymbolLast(string $str, string $symbol): string {...}
      ```
      
