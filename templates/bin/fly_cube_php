@@ -65,7 +65,7 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
             $errorBody .= $this->makeTrace('Code:', $errFileContent, $errLine);
             $errorBody .= $this->makeTrace('Backtrace:', $backtrace);
             $this->renderError($errorTitle, $errorTitle2, $errorBody);
-            die();
+            die(1);
         }
 
         /**
@@ -231,7 +231,7 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
                 $errorBody .= $this->makeTrace('Backtrace:', $ex->getTraceAsString());
 
             $this->renderError($errorTitle, $errorTitle2, $errorBody);
-            die();
+            die(1);
         }
 
         final private function renderError(string $title,
