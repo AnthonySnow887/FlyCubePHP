@@ -77,14 +77,16 @@ class Session
 
     /**
      * Инициализировать сессию
+     * @param bool $readOnly - открыть сессию в режиме "только чтение"
      * @return bool
      */
-    public function init(): bool {
+    public function init(bool $readOnly = false): bool {
         if (!isset($_SERVER['SERVER_ADDR']))
             return false;
         if ($this->_isInit === true)
             return true;
-        $this->_isInit = session_start();
+        if ($readOnly !== true)
+            $this->_isInit = session_start();
         // --- init read-only ---
         if ($this->_isInit === false
             && isset($_COOKIE[session_name()])

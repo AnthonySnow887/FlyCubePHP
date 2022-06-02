@@ -736,7 +736,7 @@ class WSWorker
         $_COOKIE = $connectionInfo['cookie'];
 
         // --- init session ---
-        Session::instance()->init();
+        Session::instance()->init(true);
     }
 
     /**
