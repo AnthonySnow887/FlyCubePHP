@@ -104,7 +104,7 @@ class TemplateCompiler
      */
     private function parseHelpFunctions(string &$data, int $lineNum): bool
     {
-        preg_match_all("/\{([\{\#])\s*([\w]+)\s*\(\s*([A-Za-z0-9_\ \-\,\.\'\"\{\}\[\]\:]*)\s*\)\s*([\}\#])\}/", $data, $matches);
+        preg_match_all("/\{([\{\#])\s*([\w]+)\s*\(\s*([A-Za-z0-9_\ \-\,\.\'\"\{\}\[\]\:\/]*)\s*\)\s*([\}\#])\}/", $data, $matches);
         if (count($matches) < 5)
             return false;
         $size = count($matches[0]);
