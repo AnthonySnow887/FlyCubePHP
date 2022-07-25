@@ -12,7 +12,6 @@ include_once 'FlyCubePHPVersion.php';
 include_once 'FlyCubePHPAutoLoader.php';
 include_once 'FlyCubePHPErrorHandling.php';
 include_once 'FlyCubePHPEnvLoader.php';
-include_once __DIR__.'/Core/Logger/Logger.php';
 include_once __DIR__.'/Core/AssetPipeline/AssetPipeline.php';
 
 use FlyCubePHP\Core\Routes\RouteCollector;

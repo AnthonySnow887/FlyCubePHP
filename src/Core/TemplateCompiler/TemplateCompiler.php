@@ -9,6 +9,7 @@ use FlyCubePHP\Core\Error\Error;
 class TemplateCompiler
 {
     private $_helpers = [];
+    private $_params = [];
 
     /**
      * Добавить вспомогательную функцию
@@ -25,8 +26,37 @@ class TemplateCompiler
     }
 
     /**
-     * "Собрать" данные, проверяя вхождение вспомогательных функций
-     * @param string $data
+     * Добавить вспомогательный параметр
+     * @param string $key Ключ (Название) параметра
+     * @param mixed $value Значение параметра
+     */
+    public function appendHelpParam(string $key, $value)
+    {
+        if (empty($key))
+            trigger_error("Invalid help param key (Empty)!", E_USER_ERROR);
+        if (isset($this->_params[$key]))
+            trigger_error("Help param already added (name: '$key')!", E_USER_ERROR);
+        // --- add ---
+        $this->_params[$key] = $value;
+    }
+
+    /**
+     * Добавить массив вспомогательных параметров
+     * @param array $params
+     *
+     * NOTE: This method does not check the array of already added parameters and performs a simple array merging.
+     */
+    public function appendHelpParams(array $params)
+    {
+        if (empty($params))
+            trigger_error("Invalid help params array (Empty)!", E_USER_ERROR);
+        // --- add ---
+        $this->_params = array_merge($this->_params, $params);
+    }
+
+    /**
+     * "Собрать" данные, проверяя вхождение вспомогательных функций и параметров
+     * @param string $data Данные для разбора
      * @return string
      * @throws Error
      */
@@ -42,9 +72,9 @@ class TemplateCompiler
     }
 
     /**
-     * "Собрать" данные одной строки, проверяя вхождение вспомогательных функций
-     * @param string $data
-     * @param int $lineNum
+     * "Собрать" данные одной строки, проверяя вхождение вспомогательных функций и параметров
+     * @param string $data Строка для разбора
+     * @param int $lineNum Номер строки
      * @return string
      * @throws Error
      */
@@ -52,16 +82,40 @@ class TemplateCompiler
     {
         if (strlen(trim($data)) === 0)
             return $data;
-        preg_match_all("/\{([\{\#])\s{0,}([\w]+)\s{0,}\(\s{0,}(.*)\s{0,}\)\s{0,}([\}\#])\}/", $data, $matches);
-        if (count($matches) < 5)
+        // --- check functions ---
+        if ($this->parseHelpFunctions($data, $lineNum))
             return $data;
+        // --- check params ---
+        if ($this->parseHelpParams($data, $lineNum))
+            return $data;
+        // --- no changed ---
+        return $data;
+    }
+
+    /**
+     * Разбор строки со вспомогательными функциями
+     * @param string $data Строка для разбора
+     * @param int $lineNum Номер строки
+     * @return bool
+     * @throws Error
+     *
+     * === Example
+     * ![This is Lu and Bryu!]( {{ image_path ('configure.svg') }} "Lu and Bryu")
+     */
+    private function parseHelpFunctions(string &$data, int $lineNum): bool
+    {
+        preg_match_all("/\{([\{\#])\s*([\w]+)\s*\(\s*([A-Za-z0-9_\ \-\,\.\'\"\{\}\[\]\:\/]*)\s*\)\s*([\}\#])\}/", $data, $matches);
+        if (count($matches) < 5)
+            return false;
         $size = count($matches[0]);
+        if ($size <= 0)
+            return false;
         for ($i = 0; $i < $size; $i++) {
-            $replaceStr   = $matches[0][$i];
-            $tagOpen      = $matches[1][$i];
-            $helpFunc     = $matches[2][$i];
+            $replaceStr = $matches[0][$i];
+            $tagOpen = $matches[1][$i];
+            $helpFunc = $matches[2][$i];
             $helpFuncArgs = $this->parseHelpFunctionArgs($matches[3][$i]);
-            $tagClose     = $matches[4][$i];
+            $tagClose = $matches[4][$i];
             // --- check ---
             if (strcmp($tagOpen, '{') === 0 && strcmp($tagClose, '}') !== 0)
                 throw Error::makeError([
@@ -70,7 +124,7 @@ class TemplateCompiler
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'line' => $lineNum,
-                    'additional-data' => [ 'error-line-data' => $data ]
+                    'additional-data' => ['error-line-data' => $data]
                 ]);
             else if (strcmp($tagOpen, '#') === 0 && strcmp($tagClose, '#') !== 0)
                 throw Error::makeError([
@@ -79,7 +133,7 @@ class TemplateCompiler
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'line' => $lineNum,
-                    'additional-data' => [ 'error-line-data' => $data ]
+                    'additional-data' => ['error-line-data' => $data]
                 ]);
             else if (!$this->hasSupportedHelpFunction($helpFunc))
                 throw Error::makeError([
@@ -88,7 +142,7 @@ class TemplateCompiler
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'line' => $lineNum,
-                    'additional-data' => [ 'error-line-data' => $data ]
+                    'additional-data' => ['error-line-data' => $data]
                 ]);
 
             // --- skip help function ---
@@ -106,13 +160,89 @@ class TemplateCompiler
                         'class-method' => __FUNCTION__,
                         'previous' => $ex,
                         'line' => $lineNum,
-                        'additional-data' => [ 'error-line-data' => $data ]
+                        'additional-data' => ['error-line-data' => $data]
                     ]);
                 }
             }
             $data = str_replace($replaceStr, $replaceValue, $data);
         }
-        return $data;
+        return true;
+    }
+
+    /**
+     * Разбор строки со вспомогательными параметрами
+     * @param string $data Строка для разбора
+     * @param int $lineNum Номер строки
+     * @return bool
+     * @throws Error
+     *
+     * === Example
+     * Key: {{ my_key }}
+     */
+    private function parseHelpParams(string &$data, int $lineNum): bool
+    {
+        preg_match_all("/\{([\{\#])\s{0,}([\w]+)\s{0,}([\}\#])\}/", $data, $matches);
+        if (count($matches) < 4)
+            return false;
+        $size = count($matches[0]);
+        if ($size <= 0)
+            return false;
+        for ($i = 0; $i < $size; $i++) {
+            $replaceStr = $matches[0][$i];
+            $tagOpen = $matches[1][$i];
+            $helpParam = $matches[2][$i];
+            $tagClose = $matches[3][$i];
+            // --- check ---
+            if (strcmp($tagOpen, '{') === 0 && strcmp($tagClose, '}') !== 0)
+                throw Error::makeError([
+                    'tag' => 'template-compiler',
+                    'message' => 'Invalid closed symbol (not \'}\')!',
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__,
+                    'line' => $lineNum,
+                    'additional-data' => ['error-line-data' => $data]
+                ]);
+            else if (strcmp($tagOpen, '#') === 0 && strcmp($tagClose, '#') !== 0)
+                throw Error::makeError([
+                    'tag' => 'template-compiler',
+                    'message' => 'Invalid closed symbol (not \'#\')!',
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__,
+                    'line' => $lineNum,
+                    'additional-data' => ['error-line-data' => $data]
+                ]);
+            else if (!$this->hasSupportedHelpParam($helpParam))
+                throw Error::makeError([
+                    'tag' => 'template-compiler',
+                    'message' => "Unsupported help parameter (name: '$helpParam')!",
+                    'class-name' => __CLASS__,
+                    'class-method' => __FUNCTION__,
+                    'line' => $lineNum,
+                    'additional-data' => ['error-line-data' => $data]
+                ]);
+
+            // --- skip help function ---
+            if (strcmp($tagOpen, '#') === 0) {
+                $replaceValue = "";
+            } else {
+                // --- eval help param ---
+                try {
+                    $replaceValue = $this->helpParam($helpParam);
+                } catch (\Throwable $ex) {
+                    throw Error::makeError([
+                        'tag' => 'template-compiler',
+                        'message' => $ex->getMessage(),
+                        'class-name' => __CLASS__,
+                        'class-method' => __FUNCTION__,
+                        'previous' => $ex,
+                        'line' => $lineNum,
+                        'additional-data' => ['error-line-data' => $data]
+                    ]);
+                }
+            }
+            $data = str_replace($replaceStr, $replaceValue, $data);
+        }
+        return true;
     }
 
     /**
@@ -213,6 +343,16 @@ class TemplateCompiler
     }
 
     /**
+     * Проверить наличие требуемого вспомогательного параметра
+     * @param string $paramName Название
+     * @return bool
+     */
+    private function hasSupportedHelpParam(string $paramName): bool
+    {
+        return isset($this->_params[$paramName]);
+    }
+
+    /**
      * Выполнить требуемую вспомогательную функцию
      * @param string $funcName Название
      * @param array $args Аргументы
@@ -229,5 +369,23 @@ class TemplateCompiler
                 'class-method' => __FUNCTION__
             ]);
         return $this->_helpers[$funcName]->evalFunction($args);
+    }
+
+    /**
+     * Получить значение параметра
+     * @param string $paramName Название
+     * @return string
+     * @throws Error
+     */
+    private function helpParam(string $paramName): string
+    {
+        if (!$this->hasSupportedHelpParam($paramName))
+            throw Error::makeError([
+                'tag' => 'template-compiler',
+                'message' => "Unsupported help parameter (name: '$paramName')!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        return strval($this->_params[$paramName]);
     }
 }

@@ -145,7 +145,7 @@ class ApiDocObject
             } catch (Error $ex) {
                 throw Error::makeError([
                     'tag' => 'api-doc',
-                    'message' => "Parse API-Doc file failed! " . $ex->getMessage(),
+                    'message' => "Parse API-Doc file failed (path: $path)! " . $ex->getMessage(),
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'file' => $path,

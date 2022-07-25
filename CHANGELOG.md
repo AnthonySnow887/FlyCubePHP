@@ -1,3 +1,40 @@
+# 1.8.1 (25.07.2022)
+
+ * Update Development Guide RUS
+ * Update Session (append input param '$readOnly' in init method)
+   ```php
+   public function init(bool $readOnly = false) {...}
+   ```
+
+ * Update TemplateCompiler:
+   * add parse params:
+     ```php
+     /**
+      * "Собрать" данные, проверяя вхождение вспомогательных функций
+      * @param string $data
+      * Добавить вспомогательный параметр
+      * @param string $key Ключ (Название) параметра
+      * @param mixed $value Значение параметра
+      */
+     public function appendHelpParam(string $key, $value) {...}
+     
+     /**
+      * Добавить массив вспомогательных параметров
+      * @param array $params
+      *
+      * NOTE: This method does not check the array of already added parameters and performs a simple array merging.
+      */
+     public function appendHelpParams(array $params) {...}
+     ```
+   
+   * fix invalid parse functions.
+   
+ * Fix error deleting sessions file in Web Sockets in Astra Linux 1.6 (all sessions are now read-only)
+ * Fix ApiDoc/ApiDocObject.php (add error information)
+ * Fix BaseActionController.php (fix error output)
+ * Code refactoring
+ * Fix comments
+
 # 1.8.0 (31.05.2022)
 
  * Update Development Guide RUS
@@ -217,8 +254,6 @@
  * Code refactoring
  * Fix comments
 
-
-
 # 1.7.1 (27.04.2022)
 
  * Update Development Guide RUS
@@ -322,7 +357,6 @@
      ```
 
  * Code refactoring
-
 
 # 1.7.0 (25.03.2022)
 

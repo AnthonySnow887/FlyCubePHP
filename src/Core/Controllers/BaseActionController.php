@@ -237,7 +237,7 @@ abstract class BaseActionController extends BaseController
                 $additionalData["Twig source name"] = $source->getName();
             }
             $prevEx = $e->getPrevious();
-            if (is_subclass_of($prevEx, "\FlyCubePHP\Core\Error\Error")) {
+            if (is_a($prevEx, "\FlyCubePHP\Core\Error\Error")) {
                 $additionalData = array_merge($additionalData, $prevEx->additionalData());
                 if ($prevEx->type() == \FlyCubePHP\Core\Error\ErrorType::ASSET_PIPELINE) {
                     if ($prevEx->hasAssetCode()) {
@@ -245,6 +245,9 @@ abstract class BaseActionController extends BaseController
                         $additionalData["Asset Pipeline error line"] = $prevEx->getLine();
                     }
                     $additionalData["Asset name"] = $prevEx->assetName();
+                } else {
+                    $additionalData["Additional error file"] = $prevEx->getFile();
+                    $additionalData["Additional error line"] = $prevEx->getLine();
                 }
             }
             throw ErrorController::makeError([
@@ -270,7 +273,7 @@ abstract class BaseActionController extends BaseController
                 $additionalData["Twig source name"] = $source->getName();
             }
             $prevEx = $e->getPrevious();
-            if (is_subclass_of($prevEx, "\FlyCubePHP\Core\Error\Error")) {
+            if (is_a($prevEx, "\FlyCubePHP\Core\Error\Error")) {
                 $additionalData = array_merge($additionalData, $prevEx->additionalData());
                 if ($prevEx->type() == \FlyCubePHP\Core\Error\ErrorType::ASSET_PIPELINE) {
                     if ($prevEx->hasAssetCode()) {
@@ -278,6 +281,9 @@ abstract class BaseActionController extends BaseController
                         $additionalData["Asset Pipeline error line"] = $prevEx->getLine();
                     }
                     $additionalData["Asset name"] = $prevEx->assetName();
+                } else {
+                    $additionalData["Additional error file"] = $prevEx->getFile();
+                    $additionalData["Additional error line"] = $prevEx->getLine();
                 }
             }
             throw ErrorController::makeError([
@@ -303,7 +309,7 @@ abstract class BaseActionController extends BaseController
                 $additionalData["Twig source name"] = $source->getName();
             }
             $prevEx = $e->getPrevious();
-            if (is_subclass_of($prevEx, "\FlyCubePHP\Core\Error\Error")) {
+            if (is_a($prevEx, "\FlyCubePHP\Core\Error\Error")) {
                 $additionalData = array_merge($additionalData, $prevEx->additionalData());
                 if ($prevEx->type() == \FlyCubePHP\Core\Error\ErrorType::ASSET_PIPELINE) {
                     if ($prevEx->hasAssetCode()) {
@@ -311,6 +317,9 @@ abstract class BaseActionController extends BaseController
                         $additionalData["Asset Pipeline error line"] = $prevEx->getLine();
                     }
                     $additionalData["Asset name"] = $prevEx->assetName();
+                } else {
+                    $additionalData["Additional error file"] = $prevEx->getFile();
+                    $additionalData["Additional error line"] = $prevEx->getLine();
                 }
             }
             throw ErrorController::makeError([
