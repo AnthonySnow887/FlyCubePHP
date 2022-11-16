@@ -743,6 +743,8 @@ class AssetTagHelper extends BaseControllerHelper
 
     private function makeHrefWithParams(string $url, array $params): string {
         if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $url)) {
+            if (empty($params))
+                return $url;
             $sep = '?';
             if (preg_match('/\?(.*)/i', $url))
                 $sep = '&';
