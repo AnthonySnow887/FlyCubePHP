@@ -425,8 +425,14 @@ class AssetTagHelper extends BaseControllerHelper
      *   link_to("Test Link", {"controller": "AppCore", "action": "test"}), where AppCore::test -> GET
      *   * => <a href="/test">Test Link</a>
      *
+     *   link_to("Test Link", {"controller": "AppCore", "action": "test_with_id", "params": {"id":123} }), where AppCore::test_with_id -> GET
+     *   * => <a href="/test?id=123">Test Link</a>
+     *
      *   link_to("Test Link", {"controller": "AppCore", "action": "test_with_id", "params": {"id":123} }), where AppCore::test_with_id -> GET (url with params: /test/:id)
      *   * => <a href="/test/123">Test Link</a>
+     *
+     *   link_to("Test Link", {"controller": "AppCore", "action": "test_with_id", "params": {"id":123, "name":"test"} }), where AppCore::test_with_id -> GET (url with params: /test/:id)
+     *   * => <a href="/test/123?name=test">Test Link</a>
      *
      *   link_to("Test Link", {"controller": "AppCore", "action": "test"}), where AppCore::test -> POST/PUT/PATCH/DELETE
      *   * => <a href="/test" data-method="post/put/patch/delete">Test Link</a>
@@ -736,10 +742,22 @@ class AssetTagHelper extends BaseControllerHelper
     }
 
     private function makeHrefWithParams(string $url, array $params): string {
-        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $url))
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $url)) {
+            $sep = '?';
+            if (preg_match('/\?(.*)/i', $url))
+                $sep = '&';
+            $url .= $sep . http_build_query($params);
             return $url;
-        foreach ($params as $key => $val)
-            $url = str_replace(":$key", $val, $url);
-        return $url;
+        }
+        $tmpParams = [];
+        foreach ($params as $key => $val) {
+            $count = 0;
+            $url = str_replace(":$key", $val, $url, $count);
+            if ($count == 0)
+                $tmpParams[] = [ $key => $val ];
+        }
+        if (empty($tmpParams))
+            return $url;
+        return $this->makeHrefWithParams($url, $tmpParams);
     }
 }
