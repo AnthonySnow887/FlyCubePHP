@@ -6,10 +6,10 @@
  * Time: 11:53
  */
 
-namespace FlyCubePHP\Core\AssetPipeline;
+namespace FlyCubePHP\Core\AssetPipeline\ImageBuilder;
 
-include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
-include_once __DIR__.'/../Cache/APCu.php';
+include_once __DIR__.'/../../../HelperClasses/CoreHelper.php';
+include_once __DIR__.'/../../Cache/APCu.php';
 
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;

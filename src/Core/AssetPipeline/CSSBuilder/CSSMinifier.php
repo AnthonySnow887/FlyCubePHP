@@ -1,6 +1,6 @@
 <?php
 
-namespace FlyCubePHP\Core\AssetPipeline;
+namespace FlyCubePHP\Core\AssetPipeline\CSSBuilder;
 
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 

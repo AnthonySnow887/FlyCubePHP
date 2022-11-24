@@ -12,9 +12,9 @@ include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Routes/RouteCollector.php';
 include_once __DIR__.'/../Error/ErrorAssetPipeline.php';
 include_once __DIR__.'/../Cache/APCu.php';
-include_once 'JSBuilder.php';
-include_once 'CSSBuilder.php';
-include_once 'ImageBuilder.php';
+include_once 'JSBuilder/JSBuilder.php';
+include_once 'CSSBuilder/CSSBuilder.php';
+include_once 'ImageBuilder/ImageBuilder.php';
 
 use Exception;
 use FlyCubePHP\Core\Config\Config;
@@ -96,7 +96,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $this->_jsBuilder = new JSBuilder();
+        $this->_jsBuilder = new JSBuilder\JSBuilder();
         $this->_jsBuilder->setCacheDir($cacheDir);
         $this->_jsBuilder->setRebuildCache($use_rebuildCache);
         $this->_jsBuilder->setPrepareRequireList($prepareRequireList);
@@ -112,7 +112,7 @@ class AssetPipeline
                 'class-method' => __FUNCTION__
             ]);
 
-        $this->_cssBuilder = new CSSBuilder();
+        $this->_cssBuilder = new CSSBuilder\CSSBuilder();
         $this->_cssBuilder->setCacheDir($cacheDir);
         $this->_cssBuilder->setRebuildCache($use_rebuildCache);
         $this->_cssBuilder->setPrepareRequireList($prepareRequireList);
@@ -120,7 +120,7 @@ class AssetPipeline
         $this->_cssBuilder->loadExtensions();
 
         // --- create image-builder ---
-        $this->_imageBuilder = new ImageBuilder();
+        $this->_imageBuilder = new ImageBuilder\ImageBuilder();
         $this->_imageBuilder->setRebuildCache($use_rebuildCache);
 
         // --- append FlyCubePHP assets ---

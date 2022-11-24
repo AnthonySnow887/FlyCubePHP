@@ -33,6 +33,7 @@ class DefaultErrorPage extends BaseErrorHandler
                                     string $errFileContent,
                                     string $backtrace): bool {
         $message = $errStr;
+        $message = str_replace("\n", "<br>", $message);
         $file = CoreHelper::buildAppPath($errFile);
         $line = $errLine;
         $type = $this->errorTypeByValue($errCode);
@@ -63,6 +64,7 @@ EOT;
         $isAddedBacktrace = false;
 
         $message = $this->splitStr($ex->getMessage(), "/", 100);
+        $message = str_replace("\n", "<br>", $message);
         $file = CoreHelper::buildAppPath($ex->getFile());
         $line = $ex->getLine();
 
@@ -73,6 +75,7 @@ EOT;
         if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
             && $ex->hasAdditionalMessage() === true) {
             $additionalMessage = $this->splitStr($ex->additionalMessage(), "/", 100);
+            $additionalMessage = str_replace("\n", "<br>", $additionalMessage);
             $errorBody .= "<br><br><i style=\"font-size: 12pt\">$additionalMessage</i>";
         }
         $errorBody .= "<br><br><i style=\"font-size: 10pt\">File: $file (line: $line)</i>";
