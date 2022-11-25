@@ -155,7 +155,8 @@ class HelpDoc
             return;
         $tmpHelpDocLst = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpHelpDocLst as $doc) {
-            $tmpName = CoreHelper::buildAppPath($doc);
+            $doc = CoreHelper::buildAppPath($doc);
+            $tmpName = $doc;
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.md)$/", $tmpName))
                 continue;
             $tmpName = basename($tmpName);
@@ -304,7 +305,7 @@ class HelpDoc
         if ($lastModified <= 0)
             $lastModified = time();
         $hash = hash('sha256', basename($name) . $lastModified);
-        $fDir = CoreHelper::buildPath(CoreHelper::rootDir(), HelpDoc::SETTINGS_DIR, $hash[0].$hash[1]);
+        $fDir = CoreHelper::buildPath(HelpDoc::SETTINGS_DIR, $hash[0].$hash[1]);
         $fPath = CoreHelper::buildPath($fDir, basename($name)."_$hash.md");
         return array("f-dir" => $fDir, "f-path" => $fPath);
     }

@@ -13,8 +13,6 @@ abstract class BaseJSCompiler
     private $_buildDir = "";
 
     public function __construct(string $buildDir) {
-        if (!is_dir($buildDir))
-            return;
         $this->_buildDir = $buildDir;
     }
 
@@ -39,6 +37,19 @@ abstract class BaseJSCompiler
             return "";
         if (!file_exists($filePath))
             return "";
+        // get file last modified
+        $fileLastModified = filemtime($filePath);
+        if ($fileLastModified === false)
+            $fileLastModified = time();
+        // get build file last modified
+        $fPath = $this->filePathForSave($filePath);
+        $buildLastModified = filemtime($fPath);
+        if ($buildLastModified === false)
+            $buildLastModified = -1;
+        // check last modified
+        if ($buildLastModified > $fileLastModified)
+            return $fPath;
+        // compile...
         $compilerName = $this->compilerName();
         $sqlStartMS = microtime(true);
         $tmpJS = $this->compile($filePath);
@@ -48,19 +59,17 @@ abstract class BaseJSCompiler
         $buildDate = date('d.m.y');
         $buildTime = date('H:i');
         $buildPrefix = <<<EOT
-/*
-File compiled with FlyCubePHP-$compilerName.
-      Date: $buildDate
-      Time: $buildTime
-Build time: $sqlMS sec
-*/
+//
+// File compiled with FlyCubePHP-$compilerName.
+//       Date: $buildDate
+//       Time: $buildTime
+// Build time: $sqlMS sec
+//
 EOT;
         $tmpJS = $buildPrefix . "\n" . $tmpJS;
 
         // --- write file ---
-        $fName = $this->prepareFileName($filePath);
         $fDir = $this->buildDir();
-        $fPath = $fDir.DIRECTORY_SEPARATOR.basename($fName);
         if (!CoreHelper::makeDir($fDir, 0777, true))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
@@ -70,7 +79,7 @@ EOT;
                 'asset-name' => $filePath
             ]);
 
-        $tmpFile = tempnam($fDir, basename($fName));
+        $tmpFile = tempnam($fDir, basename($fPath));
         if (false !== @file_put_contents($tmpFile, $tmpJS) && @rename($tmpFile, $fPath)) {
             @chmod($fPath, 0666 & ~umask());
             return $fPath;
@@ -79,12 +88,22 @@ EOT;
     }
 
     /**
+     * Путь для сохранения собранного файла
+     * @param string $filePath
+     * @return string
+     */
+    final protected function filePathForSave(string $filePath): string {
+        $fName = $this->prepareFileName($filePath);
+        return CoreHelper::buildPath($this->buildDir(), basename($fName));
+    }
+
+    /**
      * Подготовить имя для собранного файла
      * @param string $filePath Путь до файла
      *
      * NOTE: override this method for correct implementation.
      */
-    protected function prepareFileName(string $filePath) {
+    protected function prepareFileName(string $filePath): string {
         $fExt = pathinfo($filePath, PATHINFO_EXTENSION);
         $fName = basename($filePath);
         return substr($fName, 0, strlen($fName) - (strlen($fExt) + 1)); // example: .php => strlen: 4
@@ -94,7 +113,7 @@ EOT;
      * Название компилятора
      * @return string
      */
-    abstract protected function compilerName(): string;
+    abstract static public function compilerName(): string;
 
     /**
      * Метод компиляции JS файла

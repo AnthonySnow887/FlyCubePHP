@@ -15,6 +15,7 @@ include_once 'Compilers/JsPhpCompiler.php';
 include_once 'Compilers/BabelJSCompiler.php';
 
 use FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BaseJSCompiler;
+use FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\JsPhpCompiler;
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
@@ -27,6 +28,7 @@ class JSBuilder
     private $_jsList = array();
     private $_cacheList = array();
     private $_compilers = array();
+    private $_defCompilerNames = array();
     private $_cacheDir = "";
     private $_rebuildCache = false;
     private $_prepareRequireList = false;
@@ -42,9 +44,16 @@ class JSBuilder
     public function __construct() {
         $this->loadCacheList();
 
+        // get compiler for JS from config file
+        $jsCompilerName = Config::instance()->arg(Config::TAG_JS_COMPILER, "");
+
+        // set default compiler names
+        $this->setDefCompilerName('php', JsPhpCompiler::compilerName());
+        $this->setDefCompilerName('js', $jsCompilerName);
+
         // append compilers
         $this->appendCompiler('php', 'FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\JsPhpCompiler');
-        $this->appendCompiler('js', 'FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BabelJSCompiler'); // TODO enable or disable from config
+        $this->appendCompiler('js', 'FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BabelJSCompiler');
     }
 
     /**
@@ -176,7 +185,8 @@ class JSBuilder
             return;
         $tmpJS = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpJS as $js) {
-            $tmpName = CoreHelper::buildAppPath($js);
+            $js = CoreHelper::buildAppPath($js);
+            $tmpName = $js;
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $tmpName))
                 continue;
             $pos = strpos($tmpName, "javascripts/");
@@ -223,16 +233,12 @@ class JSBuilder
 
             $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
             if (empty($tmpFList) || count($tmpFList) === 1) {
-//                $fExt = pathinfo($fPath, PATHINFO_EXTENSION);
-//                if (strtolower($fExt) === "php")
-                    $fPath = $this->preBuildFile($fPath);
+                $fPath = $this->preBuildFile($fPath);
                 return CoreHelper::buildAppPath($fPath);
             }
             $tmpJSLst = array();
             foreach ($tmpFList as $key => $item) {
-//                $fExt = pathinfo($item, PATHINFO_EXTENSION);
-//                if (strtolower($fExt) === "php")
-                    $item = $this->preBuildFile($item);
+                $item = $this->preBuildFile($item);
                 $tmpJSLst[$key] = CoreHelper::buildAppPath($item);
             }
             return $tmpJSLst;
@@ -472,9 +478,7 @@ class JSBuilder
         $lastModified = -1;
         $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
         foreach ($tmpFList as $item) {
-            $fExt = pathinfo($item, PATHINFO_EXTENSION);
-            if (strtolower($fExt) === "php")
-                $item = $this->preBuildFile($item);
+            $item = $this->preBuildFile($item);
 
             // --- get last modified and check ---
             $fLastModified = filemtime($item);
@@ -483,8 +487,8 @@ class JSBuilder
             if ($lastModified < $fLastModified)
                 $lastModified = $fLastModified;
 
-            // --- get javascript data ---
-            $tmpFileData .= file_get_contents($item) . "\n";
+            // --- append javascript data ---
+            $tmpFileData = $this->appendJsContent($tmpFileData, file_get_contents($item));
         }
 
         // --- build min.js ---
@@ -564,18 +568,45 @@ class JSBuilder
      * @throws
      */
     private function preBuildFile(string $path): string {
-        // skip all min.js files and all files from vendor/assets/javascripts/
-        $vendorPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'assets', 'javascripts');
-        if (strpos($path, $vendorPrefix) === 0
-            || preg_match("/^.*\.min\.js$/", $path) === 1)
+        // skip:
+        // - all min.js files
+        // - all *.js files from vendor/FlyCubePHP/
+        // - all *.js files from vendor/assets/javascripts/
+        $FLCPrefix = CoreHelper::buildPath('vendor', 'FlyCubePHP');
+        $vendorPrefix = CoreHelper::buildPath('vendor', 'assets', 'javascripts');
+        if (preg_match("/^.*\.min\.js$/", $path) === 1
+            || (preg_match("/^.*\.js$/", $path) === 1
+                && strpos($path, $FLCPrefix) === 0)
+            || (preg_match("/^.*\.js$/", $path) === 1
+                && strpos($path, $vendorPrefix) === 0))
             return $path;
+        // get compiler
         $fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $jsCompiler = $this->findCompiler($fExt);
         if (is_null($jsCompiler))
             return $path;
-        elseif (strtolower($fExt) === "js")
+        elseif ($fExt === "js")
             return $jsCompiler->compileFile($path);
         return $this->preBuildFile($jsCompiler->compileFile($path));
+    }
+
+    /**
+     * Добавить данные файла с учетом проверки уже имеющихся глобальных функций
+     * @param string $data
+     * @param string $appendedData
+     * @return string
+     *
+     * NOTE: The global function must be written on one line without line breaks.
+     */
+    private function appendJsContent(string $data, string $appendedData): string {
+        $appendedDataLst = explode("\n", $appendedData);
+        foreach ($appendedDataLst as $row) {
+            if (preg_match("/^function\s+([A-Za-z0-9_]+\s*\([A-Za-z0-9_,.\s]*\)\s*\{.*\})$/", $row) !== 1)
+                $data .= "$row\n";
+            elseif (strpos($data, $row) === false)
+                $data .= "$row\n";
+        }
+        return $data;
     }
 
     /**
@@ -584,15 +615,20 @@ class JSBuilder
      * @param string $className Имя класса (с namespace; наследник класса BaseJSCompiler)
      */
     private function appendCompiler(string $fileExt, string $className) {
-        $fileExt = trim($fileExt);
+        $fileExt = strtolower(trim($fileExt));
+        $compilerName = strtolower(trim($className::compilerName()));
         $className = trim($className);
-        if (empty($fileExt) || empty($className))
+        if (empty($fileExt)
+            || empty($compilerName)
+            || empty($className))
             return;
-        if (array_key_exists($fileExt, $this->_compilers))
+        if (isset($this->_compilers[$fileExt][$compilerName]))
             return;
         $this->_compilers[$fileExt] = [
-            'className' => $className,
-            'classObject' => null
+            $compilerName => [
+                'className' => $className,
+                'classObject' => null
+            ]
         ];
     }
 
@@ -603,16 +639,40 @@ class JSBuilder
      */
     private function findCompiler(string $fileExt) /*: BaseJSCompiler|null */{
         $fileExt = trim($fileExt);
-        if (array_key_exists($fileExt, $this->_compilers)) {
-            $className = $this->_compilers[$fileExt]['className'];
-            $classObject = $this->_compilers[$fileExt]['classObject'];
+        $compilerName = $this->defCompilerName($fileExt);
+        if (isset($this->_compilers[$fileExt][$compilerName])) {
+            $className = $this->_compilers[$fileExt][$compilerName]['className'];
+            $classObject = $this->_compilers[$fileExt][$compilerName]['classObject'];
             if (is_null($classObject)) {
                 $classObject = new $className($this->_cacheDir.JSBuilder::PRE_BUILD_DIR);
-                $this->_compilers[$fileExt]['classObject'] = $classObject;
+                $this->_compilers[$fileExt][$compilerName]['classObject'] = $classObject;
             }
             return $classObject;
         }
         return null;
+    }
+
+    /**
+     * Задать имя базового компилятора для файлов в определенным расширением
+     * @param string $fileExt
+     * @param string $compilerName
+     */
+    private function setDefCompilerName(string $fileExt, string $compilerName) {
+        $fileExt = strtolower(trim($fileExt));
+        $compilerName = strtolower(trim($compilerName));
+        $this->_defCompilerNames[$fileExt] = $compilerName;
+    }
+
+    /**
+     * Получить имя базового компилятора для файлов в определенным расширением
+     * @param string $fileExt
+     * @return string
+     */
+    private function defCompilerName(string $fileExt): string {
+        $fileExt = strtolower(trim($fileExt));
+        if (array_key_exists($fileExt, $this->_defCompilerNames))
+            return $this->_defCompilerNames[$fileExt];
+        return "";
     }
 
     /**
@@ -699,9 +759,9 @@ class JSBuilder
     private function prepareRequireList(array $requireList): array {
         if (!$this->_prepareRequireList)
             return $requireList;
-        $FLCPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'FlyCubePHP');
-        $vendorPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'assets', 'javascripts');
-        $libPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'lib', 'assets', 'javascripts');
+        $FLCPrefix = CoreHelper::buildPath('vendor', 'FlyCubePHP');
+        $vendorPrefix = CoreHelper::buildPath('vendor', 'assets', 'javascripts');
+        $libPrefix = CoreHelper::buildPath('lib', 'assets', 'javascripts');
         $tmpArray = [];
         $pos = 0;
         foreach ($requireList as $key => $value) {

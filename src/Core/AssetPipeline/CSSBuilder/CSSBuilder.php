@@ -188,7 +188,8 @@ class CSSBuilder
             return;
         $tmpCss = CoreHelper::scanDir($dir, [ 'recursive' => true ]);
         foreach ($tmpCss as $css) {
-            $tmpName = CoreHelper::buildAppPath($css);
+            $css = CoreHelper::buildAppPath($css);
+            $tmpName = $css;
             if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $tmpName))
                 continue;
             $pos = strpos($tmpName, "stylesheets/");
@@ -783,9 +784,9 @@ class CSSBuilder
     private function prepareRequireList(array $requireList): array {
         if (!$this->_prepareRequireList)
             return $requireList;
-        $FLCPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'FlyCubePHP');
-        $vendorPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'vendor', 'assets', 'stylesheets');
-        $libPrefix = CoreHelper::buildPath(CoreHelper::rootDir(), 'lib', 'assets', 'stylesheets');
+        $FLCPrefix = CoreHelper::buildPath('vendor', 'FlyCubePHP');
+        $vendorPrefix = CoreHelper::buildPath('vendor', 'assets', 'stylesheets');
+        $libPrefix = CoreHelper::buildPath('lib', 'assets', 'stylesheets');
         $tmpArray = [];
         $pos = 0;
         foreach ($requireList as $key => $value) {

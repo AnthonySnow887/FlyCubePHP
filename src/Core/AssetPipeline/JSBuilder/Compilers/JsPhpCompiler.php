@@ -16,8 +16,8 @@ class JsPhpCompiler extends BaseJSCompiler
      * Название компилятора
      * @return string
      */
-    protected function compilerName(): string {
-        return 'JsPhpCompiler';
+    static public function compilerName(): string {
+        return 'JsPhp';
     }
 
     /**
@@ -83,7 +83,7 @@ class JsPhpCompiler extends BaseJSCompiler
                             $errLine = $currentLine - $tmpDiff;
                             throw ErrorAssetPipeline::makeError([
                                 'tag' => 'asset-pipeline',
-                                'message' => "[JsPhpCompiler] Pre-Build js.php file failed! Error: " . $e->getMessage(),
+                                'message' => "[JsPhp] Pre-Build js.php file failed! Error: " . $e->getMessage(),
                                 'class-name' => __CLASS__,
                                 'class-method' => __FUNCTION__,
                                 'asset-name' => $filePath,
@@ -99,7 +99,7 @@ class JsPhpCompiler extends BaseJSCompiler
                             $errLine = $currentLine - $tmpDiff;
                             throw ErrorAssetPipeline::makeError([
                                 'tag' => 'asset-pipeline',
-                                'message' => "[JsPhpCompiler] Pre-Build js.php file failed! Error: " . $e->getMessage(),
+                                'message' => "[JsPhp] Pre-Build js.php file failed! Error: " . $e->getMessage(),
                                 'class-name' => __CLASS__,
                                 'class-method' => __FUNCTION__,
                                 'asset-name' => $filePath,

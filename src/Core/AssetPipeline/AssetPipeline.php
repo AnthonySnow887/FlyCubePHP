@@ -581,9 +581,9 @@ class AssetPipeline
 
         // --- update cache settings ---
         $this->_cacheList[$assetPath] =  [
-            'path' => realpath($path),
+            'path' => CoreHelper::buildAppPath(realpath($path)),
             'etag' => hash('sha256', basename($path) . $lastModified),
-            $this->_compressionType => $compressFilePath
+            $this->_compressionType => CoreHelper::buildAppPath($compressFilePath)
         ];
         $this->updateCacheList();
         return RouteCollector::makeValidUrl($assetPath);

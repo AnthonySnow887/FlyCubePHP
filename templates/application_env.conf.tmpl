@@ -182,6 +182,9 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #  - gzip
 #  - deflate
 #
+# Supported JS Compilers:
+#  - babeljs
+#
 # In production mode:
 #  - enable compression             - default true (enable/disable assets compression)
 #  - compression type               - default gzip (set assets compression type)
@@ -190,6 +193,7 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #                                                   of dependencies libraries located in 'lib/assets' and 'vendor/assets'.
 #                                                   The dependency tree does not break.)
 #  - enable scss logging            - default false (enable/disable scss logging for functions: @debug, @warn)
+#  - js compiler                    - default empty (set compiler for *.js files)
 #
 # In development mode:
 #  - enable compression             - default false (enable/disable assets compression)
@@ -199,12 +203,14 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 #                                                   of dependencies libraries located in 'lib/assets' and 'vendor/assets'.
 #                                                   The dependency tree does not break.)
 #  - enable scss logging            - default true (enable/disable scss logging for functions: @debug, @warn)
+#  - js compiler                    - default empty (set compiler for *.js files)
 #
 #FLY_CUBE_PHP_ENABLE_ASSETS_COMPRESSION: true
 #FLY_CUBE_PHP_ASSETS_COMPRESSION_TYPE: gzip
 #FLY_CUBE_PHP_ASSETS_CACHE_MAX_AGE_SEC: 31536000
 #FLY_CUBE_PHP_PREPARE_ASSETS_REQUIRES_LIST: true
 #FLY_CUBE_PHP_ENABLE_SCSS_LOGGING: true
+#FLY_CUBE_PHP_JS_COMPILER: "babeljs"
 
 #
 # --- action cable settings ---

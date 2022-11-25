@@ -17,8 +17,8 @@ class BabelJSCompiler extends BaseJSCompiler
      * Название компилятора
      * @return string
      */
-    protected function compilerName(): string {
-        return 'BabelJSCompiler';
+    static public function compilerName(): string {
+        return 'BabelJS';
     }
 
     /**
@@ -29,24 +29,24 @@ class BabelJSCompiler extends BaseJSCompiler
      */
     protected function compile(string $filePath): string
     {
-        $compilerName = $this->compilerName();
         $babelConfig = CoreHelper::buildPath(CoreHelper::rootDir(), 'babel.config.json');
         if (!file_exists($babelConfig))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "[$compilerName] Not found BabelJS config file! Search path: $babelConfig",
+                'message' => "[BabelJS] Not found BabelJS config file! Search path: $babelConfig",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath
             ]);
 
-        $buildResult = shell_exec("npx babel --config-file $babelConfig $filePath 2>&1");
-        preg_match('/\{\s+Error\:\s+([\d\s\w\n\t\r\'\@\/\-\.\(\)\:\<\>\#]*)\s+\}/', $buildResult, $matches, PREG_OFFSET_CAPTURE);
-        if (!empty($matches)) {
-            $error = $matches[1][0];
+        $output=null;
+        $retVal=null;
+        exec("/bin/sh npx babel --config-file $babelConfig $filePath 2>&1", $output, $retVal);
+        $buildResult = implode("\n", $output);
+        if ($retVal !== 0) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "[BabelJSCompiler] Pre-Build js file failed! Error: $error",
+                'message' => "[BabelJS] Pre-Build js file failed! Error: $buildResult",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath,
@@ -62,7 +62,8 @@ class BabelJSCompiler extends BaseJSCompiler
      * Подготовить имя для собранного файла
      * @param string $filePath Путь до файла
      */
-    protected function prepareFileName(string $filePath) {
-        return basename($filePath);
+    protected function prepareFileName(string $filePath): string {
+        $tmpName = parent::prepareFileName($filePath);
+        return "$tmpName.compiled.js";
     }
 }

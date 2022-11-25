@@ -128,7 +128,7 @@ class ComponentsManager
                 continue;
             $ctrlCName = CoreHelper::fileName($controller, true);
             $ctrlName = CoreHelper::fileName($controller);
-            $ctrlPath = $controller;
+            $ctrlPath = CoreHelper::buildAppPath($controller);
             $controllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
         }
         return array_merge($controllers, $this->pluginsControllers());
@@ -184,7 +184,7 @@ class ComponentsManager
 
             // --- get plugin dir and load plugin models and controllers ---
             $plDir = CoreHelper::buildPath($tmpPathLst);
-            $plDirFull = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::PLUGINS_DIR, $plDir);
+            $plDirFull = CoreHelper::buildPath(ComponentsManager::PLUGINS_DIR, $plDir);
             $plDirModels = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::MODELS_DIR);
             $plDirControllers = CoreHelper::buildPath($plDirFull, "app", ComponentsManager::CONTROLLERS_DIR);
 
@@ -196,37 +196,37 @@ class ComponentsManager
                     continue;
                 $ctrlCName = CoreHelper::fileName($controller, true);
                 $ctrlName = substr($ctrlCName, 0, strlen($ctrlCName) - 10);
-                $ctrlPath = $controller;
+                $ctrlPath = CoreHelper::buildAppPath($controller);
                 $plControllers[] = array("class_name" => $ctrlCName, "name" => $ctrlName, "path" => $ctrlPath);
             }
 
             // --- plugin routes ---
-            $pl_routes = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_routes = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 ComponentsManager::CONFIG_DIR,
                 ComponentsManager::PLUGIN_ROUTES_FILE);
 
             // --- plugin js files ---
-            $pl_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_js_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "app", "assets", "javascripts");
 
             // --- plugin css|scss files ---
-            $pl_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_css_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "app", "assets", "stylesheets");
 
             // --- plugin images ---
-            $pl_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_image_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "app", "assets", "images");
 
             // --- plugin views ---
-            $pl_views_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_views_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "app", "views");
@@ -235,35 +235,35 @@ class ComponentsManager
             foreach ($pl_views_dir_lst as $vDir) {
                 if (!is_dir($vDir))
                     continue;
-                $pl_views_dirs[] = $vDir;
+                $pl_views_dirs[] = CoreHelper::buildAppPath($vDir);
             }
 
             // --- plugin lib/js files ---
-            $pl_lib_js_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_lib_js_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "lib", "assets", "javascripts");
 
             // --- plugin lib/css|scss files ---
-            $pl_lib_css_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_lib_css_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "lib", "assets", "stylesheets");
 
             // --- plugin lib/images ---
-            $pl_lib_image_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_lib_image_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "lib", "assets", "images");
 
             // --- plugin api-doc files ---
-            $pl_api_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_api_doc_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "doc", "api");
 
             // --- plugin help-doc files ---
-            $pl_help_doc_dir = CoreHelper::buildPath(CoreHelper::rootDir(),
+            $pl_help_doc_dir = CoreHelper::buildPath(
                 ComponentsManager::PLUGINS_DIR,
                 $plDir,
                 "doc", "help");
@@ -347,7 +347,7 @@ class ComponentsManager
                     continue;
                 if (in_array($chDir, $this->_ignore_list))
                     continue;
-                $tmpInitFile = CoreHelper::buildPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
+                $tmpInitFile = CoreHelper::buildAppPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
                 $this->loadPluginInitFile($tmpInitFile);
             }
         }
