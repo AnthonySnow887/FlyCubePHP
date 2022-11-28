@@ -41,7 +41,7 @@ class BabelJSCompiler extends BaseJSCompiler
 
         $output=null;
         $retVal=null;
-        exec("/bin/sh npx babel --config-file $babelConfig $filePath 2>&1", $output, $retVal);
+        exec("npx babel --config-file $babelConfig $filePath 2>&1", $output, $retVal);
         $buildResult = implode("\n", $output);
         if ($retVal !== 0) {
             throw ErrorAssetPipeline::makeError([

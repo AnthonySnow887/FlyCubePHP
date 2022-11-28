@@ -524,9 +524,10 @@ class CSSBuilder
             ]);
 
         // --- update cache settings ---
-        $this->_cacheList[$name] = $cacheSettings["f-path"];
+        $fPathApp = CoreHelper::buildAppPath($cacheSettings["f-path"]);
+        $this->_cacheList[$name] = $fPathApp;
         $this->updateCacheList();
-        return $cacheSettings["f-path"];
+        return $fPathApp;
     }
 
     /**

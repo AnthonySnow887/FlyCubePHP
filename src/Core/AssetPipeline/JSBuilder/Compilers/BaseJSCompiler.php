@@ -43,7 +43,10 @@ abstract class BaseJSCompiler
             $fileLastModified = time();
         // get build file last modified
         $fPath = $this->filePathForSave($filePath);
-        $buildLastModified = filemtime($fPath);
+        if (!file_exists($fPath))
+            $buildLastModified = -1;
+        else
+            $buildLastModified = filemtime($fPath);
         if ($buildLastModified === false)
             $buildLastModified = -1;
         // check last modified
