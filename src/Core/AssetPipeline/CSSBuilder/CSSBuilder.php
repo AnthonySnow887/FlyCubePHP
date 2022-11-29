@@ -9,16 +9,16 @@
 namespace FlyCubePHP\Core\AssetPipeline\CSSBuilder;
 
 include_once 'CSSMinifier.php';
-include_once 'SCSSLogger.php';
+include_once 'Compilers/SassCompiler.php';
 include_once __DIR__.'/../../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../../Cache/APCu.php';
 
-use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
+use FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\BaseStylesheetCompiler;
+use FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\SassCompiler;
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use FlyCubePHP\Core\Cache\APCu;
-use ScssPhp\ScssPhp\OutputStyle;
 
 class CSSBuilder
 {
@@ -27,9 +27,10 @@ class CSSBuilder
     private $_cssList = array();
     private $_cacheList = array();
     private $_cacheDir = "";
+    private $_compilers = array();
+    private $_defCompilerNames = array();
     private $_rebuildCache = false;
     private $_prepareRequireList = false;
-    private $_enableScssLogging = false;
 
     const PRE_BUILD_DIR = "pre_build";
     const SETTINGS_DIR = "tmp/cache/FlyCubePHP/css_builder/";
@@ -41,6 +42,12 @@ class CSSBuilder
      */
     public function __construct() {
         $this->loadCacheList();
+
+        // set default compiler names
+        $this->setDefCompilerName('scss', SassCompiler::compilerName());
+
+        // append compilers
+        $this->appendCompiler('scss', 'FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\SassCompiler');
     }
 
     /**
@@ -96,22 +103,6 @@ class CSSBuilder
      */
     public function hasPrepareRequireList(): bool {
         return $this->_prepareRequireList;
-    }
-
-    /**
-     * Выставить флаг логирования SCSS для функций: @debug, @warn
-     * @param bool $value
-     */
-    public function setEnableScssLogging(bool $value) {
-        $this->_enableScssLogging = $value;
-    }
-
-    /**
-     * Флаг логирования SCSS для функций: @debug, @warn
-     * @return bool
-     */
-    public function hasEnableScssLogging(): bool {
-        return $this->_enableScssLogging;
     }
 
     /**
@@ -227,7 +218,7 @@ class CSSBuilder
             if (empty($fPath))
                 throw ErrorAssetPipeline::makeError([
                     'tag' => 'asset-pipeline',
-                    'message' => "Not found needed css/scss file: $name",
+                    'message' => "Not found needed stylesheet file: $name",
                     'class-name' => __CLASS__,
                     'class-method' => __FUNCTION__,
                     'asset-name' => $name,
@@ -361,7 +352,7 @@ class CSSBuilder
                 else
                     throw ErrorAssetPipeline::makeError([
                         'tag' => 'asset-pipeline',
-                        'message' => "Not found needed css/scss file: $line",
+                        'message' => "Not found needed stylesheet file: $line",
                         'class-name' => __CLASS__,
                         'class-method' => __FUNCTION__,
                         'asset-name' => $path,
@@ -471,7 +462,7 @@ class CSSBuilder
         if (empty($fPath))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Not found needed css/scss file: $name",
+                'message' => "Not found needed stylesheet file: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
@@ -482,9 +473,7 @@ class CSSBuilder
         $lastModified = -1;
         $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
         foreach ($tmpFList as $item) {
-            $fExt = pathinfo($item, PATHINFO_EXTENSION);
-            if (strtolower($fExt) === "scss")
-                $item = $this->preBuildFile($item);
+            $item = $this->preBuildFile($item);
 
             // --- get last modified and check ---
             $fLastModified = filemtime($item);
@@ -506,7 +495,7 @@ class CSSBuilder
         if (empty($cacheSettings["f-dir"]) || empty($cacheSettings["f-path"]))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Invalid cache settings for css/scss file! Name: $name",
+                'message' => "Invalid cache settings for stylesheet file! Name: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
@@ -516,7 +505,7 @@ class CSSBuilder
         if (!$this->writeCacheFile($cacheSettings["f-dir"], $cacheSettings["f-path"], $tmpFileData))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Write cache css/scss file failed! Name: $name",
+                'message' => "Write cache stylesheet file failed! Name: $name",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $name,
@@ -546,7 +535,7 @@ class CSSBuilder
         if (!CoreHelper::makeDir($dirPath, 0777, true))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Make dir for cache css/scss file failed! Path: $dirPath",
+                'message' => "Make dir for cache stylesheet file failed! Path: $dirPath",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath
@@ -561,144 +550,86 @@ class CSSBuilder
     }
 
     /**
-     * "Сборка" *.scss файла в *.css
+     * "Сборка" stylesheet файла
      * @param string $path
      * @return string
      * @throws
      */
     private function preBuildFile(string $path): string {
-        if (empty($path))
-            return "";
-        if (is_dir($path))
-            return "";
-        if (!file_exists($path))
-            return "";
-        // --- load file data ---
-        $tmpCss = file_get_contents($path);
-
-        // --- compile scss ---
-        $compiler = new \ScssPhp\ScssPhp\Compiler();
-        if ($this->_enableScssLogging === true)
-            $compiler->setLogger(new SCSSLogger($path));
-        foreach ($this->_cssDirs as $dir)
-            $compiler->addImportPath(CoreHelper::buildAppPath($dir));
-
-        // --- append helper functions ---
-        $this->appendHelperFunctions($compiler);
-
-        try {
-            if (Config::instance()->isProduction() === true)
-                $compiler->setOutputStyle(OutputStyle::COMPRESSED);
-
-            $tmpCss = $compiler->compileString($tmpCss)->getCss();
-        } catch (\ScssPhp\ScssPhp\Exception\SassException $e) {
-            unset($compiler);
-            $errMessage = str_replace("(unknown file)", "(".basename($path).")", $e->getMessage());
-            $errFile = $path;
-            $errLine = -1;
-            preg_match('/.*line: ([0-9]{1,}).*/', $e->getMessage(), $matches, PREG_OFFSET_CAPTURE);
-            if (count($matches) >= 2)
-                $errLine = intval(trim($matches[1][0]));
-
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Pre-Build scss file failed! Error: $errMessage",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__,
-                'asset-name' => $path,
-                'file' => $errFile,
-                'line' => $errLine,
-                'has-asset-code' => true
-            ]);
-        }
-        unset($compiler);
-
-        // --- write file ---
-        $fName = basename($path);
-        $fName = substr($fName, 0, strlen($fName) - 5) . ".css"; // delete .scss and add .css
-        $fDir = $this->_cacheDir.CSSBuilder::PRE_BUILD_DIR;
-        $fPath = $fDir.DIRECTORY_SEPARATOR.basename($fName);
-        if (!CoreHelper::makeDir($fDir, 0777, true))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Make dir for css file failed! Dir: $fDir",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__,
-                'asset-name' => $path
-            ]);
-
-        $tmpFile = tempnam($fDir, basename($fName));
-        if (false !== @file_put_contents($tmpFile, $tmpCss) && @rename($tmpFile, $fPath)) {
-            @chmod($fPath, 0666 & ~umask());
-            return $fPath;
-        }
-        return "";
+        // get compiler
+        $fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $cssCompiler = $this->findCompiler($fExt);
+        if (is_null($cssCompiler))
+            return $path;
+        elseif ($fExt === "css")
+            return $cssCompiler->compileFile($path);
+        return $this->preBuildFile($cssCompiler->compileFile($path));
     }
 
     /**
-     * @param \ScssPhp\ScssPhp\Compiler $compiler
-     * @throws \FlyCubePHP\Core\Error\ErrorAssetPipeline
+     * Добавить компилятор CSS файлов и его описание
+     * @param string $fileExt Расширение файла
+     * @param string $className Имя класса (с namespace; наследник класса BaseStylesheetCompiler)
      */
-    private function appendHelperFunctions(\ScssPhp\ScssPhp\Compiler &$compiler) {
-        if (is_null($compiler))
-            throw ErrorAssetPipeline::makeError([
-                'tag' => 'asset-pipeline',
-                'message' => "Append helper functions failed! Compiler is NULL!",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__
-            ]);
+    private function appendCompiler(string $fileExt, string $className) {
+        $fileExt = strtolower(trim($fileExt));
+        $compilerName = strtolower(trim($className::compilerName()));
+        $className = trim($className);
+        if (empty($fileExt)
+            || empty($compilerName)
+            || empty($className))
+            return;
+        if (isset($this->_compilers[$fileExt][$compilerName]))
+            return;
+        $this->_compilers[$fileExt] = [
+            $compilerName => [
+                'className' => $className,
+                'classObject' => null
+            ]
+        ];
+    }
 
-        // --- asset_path ---
-        $compiler->registerFunction(
-            'asset_path',
-            function($args) use ($compiler) {
-                $pathArray = $compiler->assertString($args[0], 'path');
-                if (count($pathArray) !== 3
-                    || !is_array($pathArray[2])
-                    || empty($pathArray[2]))
-                    throw $compiler->error('%s Invalid arguments!', '[asset_path]');
+    /**
+     * Поиск компилятора CSS файлов по расширению
+     * @param string $fileExt
+     * @return BaseStylesheetCompiler|null
+     */
+    private function findCompiler(string $fileExt) /*: BaseStylesheetCompiler|null */{
+        $fileExt = trim($fileExt);
+        $compilerName = $this->defCompilerName($fileExt);
+        if (isset($this->_compilers[$fileExt][$compilerName])) {
+            $className = $this->_compilers[$fileExt][$compilerName]['className'];
+            $classObject = $this->_compilers[$fileExt][$compilerName]['classObject'];
+            if (is_null($classObject)) {
+                $classObject = new $className($this->_cacheDir.CSSBuilder::PRE_BUILD_DIR, $this->_cssDirs);
+                $this->_compilers[$fileExt][$compilerName]['classObject'] = $classObject;
+            }
+            return $classObject;
+        }
+        return null;
+    }
 
-                $path = $pathArray[2][0];
-                try {
-                    $fPath = AssetPipeline::instance()->imageFilePath($path);
-                } catch (ErrorAssetPipeline $ex) {
-                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_path]', $path);
-                }
-                if (empty($fPath))
-                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_path]', $path);
+    /**
+     * Задать имя базового компилятора для файлов в определенным расширением
+     * @param string $fileExt
+     * @param string $compilerName
+     */
+    private function setDefCompilerName(string $fileExt, string $compilerName) {
+        $fileExt = strtolower(trim($fileExt));
+        $compilerName = strtolower(trim($compilerName));
+        $this->_defCompilerNames[$fileExt] = $compilerName;
+    }
 
-                // NOTE: use for convert from php value to sass value
-                // return \ScssPhp\ScssPhp\ValueConverter::fromPhp($fPath);
-                return [\ScssPhp\ScssPhp\Type::T_STRING, '"', [$fPath]];
-            },
-            ['path']
-        );
-
-        // --- asset_url ---
-        $compiler->registerFunction(
-            'asset_url',
-            function($args) use ($compiler) {
-                $pathArray = $compiler->assertString($args[0], 'path');
-                if (count($pathArray) !== 3
-                    || !is_array($pathArray[2])
-                    || empty($pathArray[2]))
-                    throw $compiler->error('%s Invalid arguments!', '[asset_url]');
-
-                $path = $pathArray[2][0];
-                try {
-                    $fPath = AssetPipeline::instance()->imageFilePath($path);
-                } catch (ErrorAssetPipeline $ex) {
-                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_url]', $path);
-                }
-                if (empty($fPath))
-                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_url]', $path);
-
-                // NOTE: use for convert from php value to sass value
-                // return \ScssPhp\ScssPhp\ValueConverter::fromPhp("url($fPath)");
-                return [\ScssPhp\ScssPhp\Type::T_STRING, '', ["url($fPath)"]];
-            },
-            ['path']
-        );
+    /**
+     * Получить имя базового компилятора для файлов в определенным расширением
+     * @param string $fileExt
+     * @return string
+     */
+    private function defCompilerName(string $fileExt): string {
+        $fileExt = strtolower(trim($fileExt));
+        if (array_key_exists($fileExt, $this->_defCompilerNames))
+            return $this->_defCompilerNames[$fileExt];
+        return "";
     }
 
     /**

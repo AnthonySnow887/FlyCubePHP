@@ -8,7 +8,7 @@ include_once __DIR__.'/../../../../HelperClasses/CoreHelper.php';
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
-abstract class BaseJSCompiler
+abstract class BaseJavaScriptCompiler
 {
     private $_buildDir = "";
 

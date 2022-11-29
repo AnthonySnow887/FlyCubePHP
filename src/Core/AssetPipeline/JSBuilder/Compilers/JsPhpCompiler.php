@@ -2,11 +2,11 @@
 
 namespace FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers;
 
-include_once 'BaseJSCompiler.php';
+include_once 'BaseJavaScriptCompiler.php';
 
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 
-class JsPhpCompiler extends BaseJSCompiler
+class JsPhpCompiler extends BaseJavaScriptCompiler
 {
     public function __construct(string $buildDir) {
         parent::__construct($buildDir);

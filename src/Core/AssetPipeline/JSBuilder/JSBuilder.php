@@ -14,7 +14,7 @@ include_once __DIR__.'/../../Cache/APCu.php';
 include_once 'Compilers/JsPhpCompiler.php';
 include_once 'Compilers/BabelJSCompiler.php';
 
-use FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BaseJSCompiler;
+use FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BaseJavaScriptCompiler;
 use FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\JsPhpCompiler;
 use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;
@@ -613,7 +613,7 @@ class JSBuilder
     /**
      * Добавить компилятор JS файлов и его описание
      * @param string $fileExt Расширение файла
-     * @param string $className Имя класса (с namespace; наследник класса BaseJSCompiler)
+     * @param string $className Имя класса (с namespace; наследник класса BaseJavaScriptCompiler)
      */
     private function appendCompiler(string $fileExt, string $className) {
         $fileExt = strtolower(trim($fileExt));
@@ -636,9 +636,9 @@ class JSBuilder
     /**
      * Поиск компилятора JS файлов по расширению
      * @param string $fileExt
-     * @return BaseJSCompiler|null
+     * @return BaseJavaScriptCompiler|null
      */
-    private function findCompiler(string $fileExt) /*: BaseJSCompiler|null */{
+    private function findCompiler(string $fileExt) /*: BaseJavaScriptCompiler|null */{
         $fileExt = trim($fileExt);
         $compilerName = $this->defCompilerName($fileExt);
         if (isset($this->_compilers[$fileExt][$compilerName])) {

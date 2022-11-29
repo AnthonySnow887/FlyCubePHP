@@ -64,7 +64,6 @@ class AssetPipeline
         $use_rebuildCache = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_REBUILD_CACHE, $defVal));
 
         $prepareRequireList = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_PREPARE_ASSETS_REQUIRES_LIST, true));
-        $enableScssLogging = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_SCSS_LOGGING, $defVal));
 
         $defVal = Config::instance()->isProduction();
         $this->_useCompression = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSETS_COMPRESSION, $defVal));
@@ -116,7 +115,6 @@ class AssetPipeline
         $this->_cssBuilder->setCacheDir($cacheDir);
         $this->_cssBuilder->setRebuildCache($use_rebuildCache);
         $this->_cssBuilder->setPrepareRequireList($prepareRequireList);
-        $this->_cssBuilder->setEnableScssLogging($enableScssLogging);
         $this->_cssBuilder->loadExtensions();
 
         // --- create image-builder ---

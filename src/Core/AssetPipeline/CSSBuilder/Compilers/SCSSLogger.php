@@ -1,6 +1,6 @@
 <?php
 
-namespace FlyCubePHP\Core\AssetPipeline\CSSBuilder;
+namespace FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers;
 
 use FlyCubePHP\Core\Error\Error;
 use FlyCubePHP\Core\Logger\Logger;
