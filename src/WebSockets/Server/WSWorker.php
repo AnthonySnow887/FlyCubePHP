@@ -1012,6 +1012,12 @@ class WSWorker
      * @param $type
      */
     protected function onMessage($connectionId, $packet, $type) {
+        // check is close message
+        if (strcmp($type, 'close') === 0) {
+            $this->close($connectionId);
+            return;
+        }
+        // check is text message
         if (strcmp($type, 'text') !== 0) {
             $this->log(Logger::ERROR, "Invalid incoming message type (id: $connectionId, type: $type)!");
             return;
