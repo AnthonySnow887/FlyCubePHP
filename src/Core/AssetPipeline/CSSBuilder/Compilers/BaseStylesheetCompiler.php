@@ -129,6 +129,14 @@ EOT;
     abstract static public function compilerName(): string;
 
     /**
+     * Расширение файла для компиляции
+     * @return string
+     *
+     * Example: "scss"
+     */
+    abstract static public function fileExtension(): string;
+
+    /**
      * Метод компиляции JS файла
      * @param string $filePath Путь до файла
      * @return string Путь до собранного файла

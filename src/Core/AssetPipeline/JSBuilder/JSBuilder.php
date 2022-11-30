@@ -26,6 +26,7 @@ class JSBuilder
     private $_isLoaded = false;
     private $_jsDirs = array();
     private $_jsList = array();
+    private $_jsRequireList = array();
     private $_cacheList = array();
     private $_compilers = array();
     private $_defCompilerNames = array();
@@ -52,8 +53,8 @@ class JSBuilder
         $this->setDefCompilerName('js', $jsCompilerName);
 
         // append compilers
-        $this->appendCompiler('php', 'FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\JsPhpCompiler');
-        $this->appendCompiler('js', 'FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BabelJSCompiler');
+        $this->appendCompiler('FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\JsPhpCompiler');
+        $this->appendCompiler('FlyCubePHP\Core\AssetPipeline\JSBuilder\Compilers\BabelJSCompiler');
     }
 
     /**
@@ -151,8 +152,6 @@ class JSBuilder
             return;
         $this->_isLoaded = true;
 
-        // TODO add functions for extensions!
-
         // --- include other extensions ---
         $extRoot = strval(\FlyCubePHP\configValue(Config::TAG_EXTENSIONS_FOLDER, "extensions"));
         $migratorsFolder = CoreHelper::buildPath(CoreHelper::rootDir(), $extRoot, "asset_pipeline", "js_builder");
@@ -164,7 +163,20 @@ class JSBuilder
             if (strcmp(strtolower($fExt), "php") !== 0)
                 continue;
             try {
+                $classes = get_declared_classes();
                 include_once $item;
+                $diff = array_diff(get_declared_classes(), $classes);
+                reset($diff);
+                foreach ($diff as $cName) {
+                    try {
+                        if (!method_exists(strval($cName), 'compilerName')
+                            || !method_exists(strval($cName), 'fileExtension'))
+                            continue;
+                        $this->appendCompiler(strval($cName));
+                    } catch (\Exception $e) {
+                        // nothing...
+                    }
+                }
             } catch (\Exception $e) {
                 // nothing...
             }
@@ -220,6 +232,7 @@ class JSBuilder
         if (empty($name))
             return "";
         if (Config::instance()->isDevelopment()) {
+            // search asset file path
             $fPath = $this->searchFilePath($name);
             if (empty($fPath))
                 throw ErrorAssetPipeline::makeError([
@@ -231,7 +244,14 @@ class JSBuilder
                     'backtrace-shift' => 2
                 ]);
 
-            $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
+            // load require tree
+            $tmpRtIsChanged = false;
+            $tmpRT = $this->loadRequireTree($fPath, $tmpRtIsChanged);
+            if ($tmpRtIsChanged)
+                $this->saveRequireTree($tmpRT);
+
+            // prepare require tree
+            $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
             if (empty($tmpFList) || count($tmpFList) === 1) {
                 $fPath = $this->preBuildFile($fPath);
                 return CoreHelper::buildAppPath($fPath);
@@ -281,13 +301,52 @@ class JSBuilder
     }
 
     /**
-     * Метод разбора списка зависимостей JS файла
+     * Метод загрузки дерева зависимостей файла
+     * @param string $path
+     * @param bool $isChanged
+     * @return array|array[]
+     * @throws ErrorAssetPipeline
+     *
+     * Данный метод так же проверяет дерево зависмостей на его изменения
+     * и перезагружает только те части, которые были изменены.
+     */
+    private function loadRequireTree(string $path, bool &$isChanged = false): array {
+        // check require tree in cache
+        $tmpRT = $this->cachedRequireTree($path);
+        if (is_null($tmpRT)) {
+            $isChanged = true;
+            return $this->parseRequireTree($path);
+        }
+
+        foreach ($tmpRT as $key => $object) {
+            // check object
+            $fileLastModified = CoreHelper::fileLastModified($object['path']);
+            $fileLastModifiedCached = $object['last-modified'];
+            if ($fileLastModified === -1
+                || $fileLastModified > $fileLastModifiedCached) {
+                // parse require tree
+                $isChanged = true;
+                $tmpRT[$key] = $this->parseRequireTree($object['path']);
+            } else {
+                // check object requires
+                $treePartRequires = $object['require'];
+                foreach ($treePartRequires as $keyReq => $objectReq) {
+                    $tmpRtReq = $this->loadRequireTree($objectReq['path'], $isChanged);
+                    $object['require'][$keyReq] = $tmpRtReq[$keyReq];
+                }
+            }
+        }
+        return $tmpRT;
+    }
+
+    /**
+     * Метод разбора дерева зависимостей JS файла
      * @param string $path
      * @param array $readFiles
      * @return array
      * @throws
      */
-    private function parseRequireList(string $path, array &$readFiles = array()): array {
+    private function parseRequireTree(string $path, array &$readFiles = array()): array {
         if (empty($path))
             return array();
         if (is_dir($path))
@@ -297,6 +356,7 @@ class JSBuilder
         $neededPath = $this->makeFilePathWithoutExt($path);
         if (in_array($neededPath, $readFiles))
             return array();
+        // parse requires
         $isMLineComment = false;
         $tmpChild = array();
         if ($file = fopen($path, "r")) {
@@ -331,7 +391,8 @@ class JSBuilder
                     foreach ($tmpJS as $js) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $js))
                             continue;
-                        $tmpChild = array_merge($tmpChild, $this->parseRequireList($js, $readFiles));
+                        // parse child
+                        $tmpChild = array_merge($tmpChild, $this->parseRequireTree($js, $readFiles));
                     }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
@@ -347,9 +408,10 @@ class JSBuilder
                     continue;
                 }
                 // --- parse child file ---
-                if (!empty($tmpPath))
-                    $tmpChild = array_merge($tmpChild, $this->parseRequireList($tmpPath, $readFiles));
-                else
+                if (!empty($tmpPath)) {
+                    // parse child
+                    $tmpChild = array_merge($tmpChild, $this->parseRequireTree($tmpPath, $readFiles));
+                } else {
                     throw ErrorAssetPipeline::makeError([
                         'tag' => 'asset-pipeline',
                         'message' => "Not found needed js file: $line",
@@ -360,19 +422,50 @@ class JSBuilder
                         'line' => $currentLine,
                         'has-asset-code' => true
                     ]);
+                }
             }
             fclose($file);
         }
-        $tmpChildKey = CoreHelper::buildAppPath($path);
-        $pos = strpos($tmpChildKey, "javascripts/");
-        if ($pos === false) {
-            $tmpChildKey = basename($tmpChildKey);
-        } else {
-            $tmpChildKey = substr($tmpChildKey, $pos + 12, strlen($tmpChildKey));
-            $tmpChildKey = trim($tmpChildKey);
+        $fAppPath = CoreHelper::buildAppPath($path);
+        return [
+            $fAppPath => [
+                'name' => $this->makeRequireFileName($path),
+                'path' => $fAppPath,
+                'last-modified' => CoreHelper::fileLastModified($path),
+                'require' => $tmpChild
+            ]
+        ];
+    }
+
+    /**
+     * Метод преобразования дерева зависимостей JS файла в список
+     * @param array $tree
+     * @return array
+     */
+    private function requireTreeToList(array $tree): array {
+        $tmpList = [];
+        foreach ($tree as $object) {
+            $tmpList = array_merge($tmpList, $this->requireTreeToList($object['require']));
+            $tmpList = array_merge($tmpList, [ $object['name'] => $object['path'] ]);
         }
-        $tmpChild[$tmpChildKey] = $path;
-        return $tmpChild;
+        return $tmpList;
+    }
+
+    /**
+     * "Собрать" имя зависимого файла
+     * @param $path - путь до зависимого файла
+     * @return string
+     */
+    private function makeRequireFileName($path): string {
+        $tmpName = CoreHelper::buildAppPath($path);
+        $pos = strpos($tmpName, "javascripts/");
+        if ($pos === false) {
+            $tmpName = basename($tmpName);
+        } else {
+            $tmpName = substr($tmpName, $pos + 12, strlen($tmpName));
+            $tmpName = trim($tmpName);
+        }
+        return $tmpName;
     }
 
     /**
@@ -476,7 +569,15 @@ class JSBuilder
 
         $tmpFileData = "";
         $lastModified = -1;
-        $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
+
+        // load require tree
+        $tmpRtIsChanged = false;
+        $tmpRT = $this->loadRequireTree($fPath, $tmpRtIsChanged);
+        if ($tmpRtIsChanged)
+            $this->saveRequireTree($tmpRT);
+
+        // prepare require tree
+        $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
         foreach ($tmpFList as $item) {
             $item = $this->preBuildFile($item);
 
@@ -612,11 +713,10 @@ class JSBuilder
 
     /**
      * Добавить компилятор JS файлов и его описание
-     * @param string $fileExt Расширение файла
      * @param string $className Имя класса (с namespace; наследник класса BaseJavaScriptCompiler)
      */
-    private function appendCompiler(string $fileExt, string $className) {
-        $fileExt = strtolower(trim($fileExt));
+    private function appendCompiler(string $className) {
+        $fileExt = strtolower(trim($className::fileExtension()));
         $compilerName = strtolower(trim($className::compilerName()));
         $className = trim($className);
         if (empty($fileExt)
@@ -661,6 +761,8 @@ class JSBuilder
     private function setDefCompilerName(string $fileExt, string $compilerName) {
         $fileExt = strtolower(trim($fileExt));
         $compilerName = strtolower(trim($compilerName));
+        if (empty($fileExt) || empty($compilerName))
+            return;
         $this->_defCompilerNames[$fileExt] = $compilerName;
     }
 
@@ -691,7 +793,7 @@ class JSBuilder
                     'class-method' => __FUNCTION__
                 ]);
 
-            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', JSBuilder::CACHE_LIST_FILE));
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', JSBuilder::CACHE_LIST_FILE));
             if (!file_exists($fPath)) {
                 $this->updateCacheList();
                 return;
@@ -699,10 +801,15 @@ class JSBuilder
             $fData = file_get_contents($fPath);
             $cacheList = json_decode($fData, true);
         } else {
-            $cacheList = APCu::cacheData('js-builder-cache', [ 'cache-files' => [], 'js-files' => [] ]);
+            $cacheList = APCu::cacheData('js-builder-cache', [
+                'cache-files' => [],
+                'js-files' => [],
+                'js-require-list' => []
+            ]);
         }
         $this->_cacheList = $cacheList['cache-files'];
         $this->_jsList = $cacheList['js-files'];
+        $this->_jsRequireList = $cacheList['js-require-list'];
     }
 
     /**
@@ -720,8 +827,12 @@ class JSBuilder
                     'class-method' => __FUNCTION__
                 ]);
 
-            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', JSBuilder::CACHE_LIST_FILE));
-            $fData = json_encode(['cache-files' => $this->_cacheList, 'js-files' => $this->_jsList]);
+            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', JSBuilder::CACHE_LIST_FILE));
+            $fData = json_encode([
+                'cache-files' => $this->_cacheList,
+                'js-files' => $this->_jsList,
+                'js-require-list' => $this->_jsRequireList
+            ]);
             $tmpFile = tempnam($dirPath, basename($fPath));
             if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
                 @chmod($fPath, 0666 & ~umask());
@@ -734,8 +845,16 @@ class JSBuilder
                 ]);
             }
         } else {
-            APCu::setCacheData('js-builder-cache', ['cache-files' => $this->_cacheList, 'js-files' => $this->_jsList]);
-            APCu::saveEncodedApcuData('js-builder-cache', ['cache-files' => $this->_cacheList, 'js-files' => $this->_jsList]);
+            APCu::setCacheData('js-builder-cache', [
+                'cache-files' => $this->_cacheList,
+                'js-files' => $this->_jsList,
+                'js-require-list' => $this->_jsRequireList
+            ]);
+            APCu::saveEncodedApcuData('js-builder-cache', [
+                'cache-files' => $this->_cacheList,
+                'js-files' => $this->_jsList,
+                'js-require-list' => $this->_jsRequireList
+            ]);
         }
     }
 
@@ -783,5 +902,37 @@ class JSBuilder
             }
         }
         return $tmpArray;
+    }
+
+    /**
+     * Сохранить дерево зависимостей JS файла
+     * @param array $tree
+     * @throws ErrorAssetPipeline
+     */
+    private function saveRequireTree(array $tree) {
+        $this->saveRequireTreePart($tree);
+        $this->updateCacheList();
+    }
+
+    /**
+     * Сохранить часть дерева зависимостей JS файла
+     * @param array $treePart
+     */
+    private function saveRequireTreePart(array $treePart) {
+        foreach ($treePart as $object) {
+            $this->_jsRequireList[$object['path']] = [ $object['path'] => $object ];
+            $this->saveRequireTreePart($object['require']);
+        }
+    }
+
+    /**
+     * Поиск дерева зависимостей JS файла в кэше
+     * @param string $path
+     * @return array|null
+     */
+    private function cachedRequireTree(string $path)/*: array|null*/ {
+        if (isset($this->_jsRequireList[$path]))
+            return $this->_jsRequireList[$path];
+        return null;
     }
 }

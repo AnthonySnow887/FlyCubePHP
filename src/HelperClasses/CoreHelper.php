@@ -291,6 +291,23 @@ class CoreHelper
     }
 
     /**
+     * Получить время последнего изменения файла
+     * @param string $path - путь до файла
+     * @return int
+     *
+     * NOTE: If file not found or select last modified failed - return -1.
+     */
+    static public function fileLastModified(string $path): int {
+        if (empty($path) || !file_exists($path))
+            return -1;
+        // get file last modified
+        $fLastModified = filemtime($path);
+        if ($fLastModified === false)
+            $fLastModified = -1;
+        return $fLastModified;
+    }
+
+    /**
      * Обрезать символ вначале
      * @param string $str - строка
      * @param string $symbol - удаляемый символ

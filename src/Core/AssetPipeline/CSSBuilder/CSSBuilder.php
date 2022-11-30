@@ -25,6 +25,7 @@ class CSSBuilder
     private $_isLoaded = false;
     private $_cssDirs = array();
     private $_cssList = array();
+    private $_cssRequireList = array();
     private $_cacheList = array();
     private $_cacheDir = "";
     private $_compilers = array();
@@ -47,7 +48,7 @@ class CSSBuilder
         $this->setDefCompilerName('scss', SassCompiler::compilerName());
 
         // append compilers
-        $this->appendCompiler('scss', 'FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\SassCompiler');
+        $this->appendCompiler('FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\SassCompiler');
     }
 
     /**
@@ -145,8 +146,6 @@ class CSSBuilder
             return;
         $this->_isLoaded = true;
 
-        // TODO add functions for extensions!
-
         // --- include other extensions ---
         $extRoot = strval(\FlyCubePHP\configValue(Config::TAG_EXTENSIONS_FOLDER, "extensions"));
         $migratorsFolder = CoreHelper::buildPath(CoreHelper::rootDir(), $extRoot, "asset_pipeline", "css_builder");
@@ -158,7 +157,20 @@ class CSSBuilder
             if (strcmp(strtolower($fExt), "php") !== 0)
                 continue;
             try {
+                $classes = get_declared_classes();
                 include_once $item;
+                $diff = array_diff(get_declared_classes(), $classes);
+                reset($diff);
+                foreach ($diff as $cName) {
+                    try {
+                        if (!method_exists(strval($cName), 'compilerName')
+                            || !method_exists(strval($cName), 'fileExtension'))
+                            continue;
+                        $this->appendCompiler(strval($cName));
+                    } catch (\Exception $e) {
+                        // nothing...
+                    }
+                }
             } catch (\Exception $e) {
                 // nothing...
             }
@@ -214,6 +226,7 @@ class CSSBuilder
         if (empty($name))
             return "";
         if (Config::instance()->isDevelopment()) {
+            // search asset file path
             $fPath = $this->searchFilePath($name);
             if (empty($fPath))
                 throw ErrorAssetPipeline::makeError([
@@ -225,18 +238,21 @@ class CSSBuilder
                     'backtrace-shift' => 2
                 ]);
 
-            $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
+            // load require tree
+            $tmpRtIsChanged = false;
+            $tmpRT = $this->loadRequireTree($fPath, $tmpRtIsChanged);
+            if ($tmpRtIsChanged)
+                $this->saveRequireTree($tmpRT);
+
+            // prepare require tree
+            $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
             if (empty($tmpFList) || count($tmpFList) === 1) {
-                $fExt = pathinfo($fPath, PATHINFO_EXTENSION);
-                if (strtolower($fExt) === "scss")
-                    $fPath = $this->preBuildFile($fPath);
+                $fPath = $this->preBuildFile($fPath);
                 return CoreHelper::buildAppPath($fPath);
             }
             $tmpCSSLst = array();
             foreach ($tmpFList as $key => $item) {
-                $fExt = pathinfo($item, PATHINFO_EXTENSION);
-                if (strtolower($fExt) === "scss")
-                    $item = $this->preBuildFile($item);
+                $item = $this->preBuildFile($item);
                 $tmpCSSLst[$key] = CoreHelper::buildAppPath($item);
             }
             return $tmpCSSLst;
@@ -280,13 +296,52 @@ class CSSBuilder
     }
 
     /**
-     * Метод разбора списка зависимостей CSS/SCSS файла
+     * Метод загрузки дерева зависимостей файла
+     * @param string $path
+     * @param bool $isChanged
+     * @return array|array[]
+     * @throws ErrorAssetPipeline
+     *
+     * Данный метод так же проверяет дерево зависмостей на его изменения
+     * и перезагружает только те части, которые были изменены.
+     */
+    private function loadRequireTree(string $path, bool &$isChanged = false): array {
+        // check require tree in cache
+        $tmpRT = $this->cachedRequireTree($path);
+        if (is_null($tmpRT)) {
+            $isChanged = true;
+            return $this->parseRequireTree($path);
+        }
+
+        foreach ($tmpRT as $key => $object) {
+            // check object
+            $fileLastModified = CoreHelper::fileLastModified($object['path']);
+            $fileLastModifiedCached = $object['last-modified'];
+            if ($fileLastModified === -1
+                || $fileLastModified > $fileLastModifiedCached) {
+                // parse require tree
+                $isChanged = true;
+                $tmpRT[$key] = $this->parseRequireTree($object['path']);
+            } else {
+                // check object requires
+                $treePartRequires = $object['require'];
+                foreach ($treePartRequires as $keyReq => $objectReq) {
+                    $tmpRtReq = $this->loadRequireTree($objectReq['path'], $isChanged);
+                    $object['require'][$keyReq] = $tmpRtReq[$keyReq];
+                }
+            }
+        }
+        return $tmpRT;
+    }
+
+    /**
+     * Метод разбора дерева зависимостей файла стилей
      * @param string $path
      * @param array $readFiles
      * @return array
      * @throws
      */
-    private function parseRequireList(string $path, array &$readFiles = array()): array {
+    private function parseRequireTree(string $path, array &$readFiles = array()): array {
         if (empty($path))
             return array();
         if (is_dir($path))
@@ -296,7 +351,7 @@ class CSSBuilder
         $neededPath = $this->makeFilePathWithoutExt($path);
         if (in_array($neededPath, $readFiles))
             return array();
-
+        // parse requires
         $isMLineComment = false;
         $tmpChild = array();
         if ($file = fopen($path, "r")) {
@@ -331,7 +386,8 @@ class CSSBuilder
                     foreach ($tmpCSS as $css) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
                             continue;
-                        $tmpChild = array_merge($tmpChild, $this->parseRequireList($css, $readFiles));
+                        // parse child
+                        $tmpChild = array_merge($tmpChild, $this->parseRequireTree($css, $readFiles));
                     }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
@@ -347,9 +403,10 @@ class CSSBuilder
                     continue;
                 }
                 // --- parse child file ---
-                if (!empty($tmpPath))
-                    $tmpChild = array_merge($tmpChild, $this->parseRequireList($tmpPath, $readFiles));
-                else
+                if (!empty($tmpPath)) {
+                    // parse child
+                    $tmpChild = array_merge($tmpChild, $this->parseRequireTree($tmpPath, $readFiles));
+                } else {
                     throw ErrorAssetPipeline::makeError([
                         'tag' => 'asset-pipeline',
                         'message' => "Not found needed stylesheet file: $line",
@@ -360,19 +417,50 @@ class CSSBuilder
                         'line' => $currentLine,
                         'has-asset-code' => true
                     ]);
+                }
             }
             fclose($file);
         }
-        $tmpChildKey = CoreHelper::buildAppPath($path);
-        $pos = strpos($tmpChildKey, "stylesheets/");
-        if ($pos === false) {
-            $tmpChildKey = basename($tmpChildKey);
-        } else {
-            $tmpChildKey = substr($tmpChildKey, $pos + 12, strlen($tmpChildKey));
-            $tmpChildKey = trim($tmpChildKey);
+        $fAppPath = CoreHelper::buildAppPath($path);
+        return [
+            $fAppPath => [
+                'name' => $this->makeRequireFileName($path),
+                'path' => $fAppPath,
+                'last-modified' => CoreHelper::fileLastModified($path),
+                'require' => $tmpChild
+            ]
+        ];
+    }
+
+    /**
+     * Метод преобразования дерева зависимостей JS файла в список
+     * @param array $tree
+     * @return array
+     */
+    private function requireTreeToList(array $tree): array {
+        $tmpList = [];
+        foreach ($tree as $object) {
+            $tmpList = array_merge($tmpList, $this->requireTreeToList($object['require']));
+            $tmpList = array_merge($tmpList, [ $object['name'] => $object['path'] ]);
         }
-        $tmpChild[$tmpChildKey] = $path;
-        return $tmpChild;
+        return $tmpList;
+    }
+
+    /**
+     * "Собрать" имя зависимого файла
+     * @param $path - путь до зависимого файла
+     * @return string
+     */
+    private function makeRequireFileName($path): string {
+        $tmpName = CoreHelper::buildAppPath($path);
+        $pos = strpos($tmpName, "stylesheets/");
+        if ($pos === false) {
+            $tmpName = basename($tmpName);
+        } else {
+            $tmpName = substr($tmpName, $pos + 12, strlen($tmpName));
+            $tmpName = trim($tmpName);
+        }
+        return $tmpName;
     }
 
     /**
@@ -471,7 +559,15 @@ class CSSBuilder
 
         $tmpFileData = "";
         $lastModified = -1;
-        $tmpFList = $this->prepareRequireList($this->parseRequireList($fPath));
+
+        // load require tree
+        $tmpRtIsChanged = false;
+        $tmpRT = $this->loadRequireTree($fPath, $tmpRtIsChanged);
+        if ($tmpRtIsChanged)
+            $this->saveRequireTree($tmpRT);
+
+        // prepare require tree
+        $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
         foreach ($tmpFList as $item) {
             $item = $this->preBuildFile($item);
 
@@ -568,11 +664,10 @@ class CSSBuilder
 
     /**
      * Добавить компилятор CSS файлов и его описание
-     * @param string $fileExt Расширение файла
      * @param string $className Имя класса (с namespace; наследник класса BaseStylesheetCompiler)
      */
-    private function appendCompiler(string $fileExt, string $className) {
-        $fileExt = strtolower(trim($fileExt));
+    private function appendCompiler(string $className) {
+        $fileExt = strtolower(trim($className::fileExtension()));
         $compilerName = strtolower(trim($className::compilerName()));
         $className = trim($className);
         if (empty($fileExt)
@@ -617,6 +712,8 @@ class CSSBuilder
     private function setDefCompilerName(string $fileExt, string $compilerName) {
         $fileExt = strtolower(trim($fileExt));
         $compilerName = strtolower(trim($compilerName));
+        if (empty($fileExt) || empty($compilerName))
+            return;
         $this->_defCompilerNames[$fileExt] = $compilerName;
     }
 
@@ -655,10 +752,15 @@ class CSSBuilder
             $fData = file_get_contents($fPath);
             $cacheList = json_decode($fData, true);
         } else {
-            $cacheList = APCu::cacheData('css-builder-cache', [ 'cache-files' => [], 'css-files' => [] ]);
+            $cacheList = APCu::cacheData('css-builder-cache', [
+                'cache-files' => [],
+                'css-files' => [],
+                'css-require-list' => []
+            ]);
         }
         $this->_cacheList = $cacheList['cache-files'];
         $this->_cssList = $cacheList['css-files'];
+        $this->_cssRequireList = $cacheList['css-require-list'];
     }
 
     /**
@@ -677,7 +779,11 @@ class CSSBuilder
                 ]);
 
             $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', CSSBuilder::CACHE_LIST_FILE));
-            $fData = json_encode(['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
+            $fData = json_encode([
+                'cache-files' => $this->_cacheList,
+                'css-files' => $this->_cssList,
+                'css-require-list' => $this->_cssRequireList
+            ]);
             $tmpFile = tempnam($dirPath, basename($fPath));
             if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
                 @chmod($fPath, 0666 & ~umask());
@@ -690,8 +796,16 @@ class CSSBuilder
                 ]);
             }
         } else {
-            APCu::setCacheData('css-builder-cache', ['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
-            APCu::saveEncodedApcuData('css-builder-cache', ['cache-files' => $this->_cacheList, 'css-files' => $this->_cssList]);
+            APCu::setCacheData('css-builder-cache', [
+                'cache-files' => $this->_cacheList,
+                'css-files' => $this->_cssList,
+                'css-require-list' => $this->_cssRequireList
+            ]);
+            APCu::saveEncodedApcuData('css-builder-cache', [
+                'cache-files' => $this->_cacheList,
+                'css-files' => $this->_cssList,
+                'css-require-list' => $this->_cssRequireList
+            ]);
         }
     }
 
@@ -739,5 +853,37 @@ class CSSBuilder
             }
         }
         return $tmpArray;
+    }
+
+    /**
+     * Сохранить дерево зависимостей файла стилей
+     * @param array $tree
+     * @throws ErrorAssetPipeline
+     */
+    private function saveRequireTree(array $tree) {
+        $this->saveRequireTreePart($tree);
+        $this->updateCacheList();
+    }
+
+    /**
+     * Сохранить часть дерева зависимостей файла стилей
+     * @param array $treePart
+     */
+    private function saveRequireTreePart(array $treePart) {
+        foreach ($treePart as $object) {
+            $this->_cssRequireList[$object['path']] = [ $object['path'] => $object ];
+            $this->saveRequireTreePart($object['require']);
+        }
+    }
+
+    /**
+     * Поиск дерева зависимостей файла стилей в кэше
+     * @param string $path
+     * @return array|null
+     */
+    private function cachedRequireTree(string $path)/*: array|null*/ {
+        if (isset($this->_cssRequireList[$path]))
+            return $this->_cssRequireList[$path];
+        return null;
     }
 }

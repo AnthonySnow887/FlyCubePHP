@@ -22,6 +22,14 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
     }
 
     /**
+     * Расширение файла для компиляции
+     * @return string
+     */
+    static public function fileExtension(): string {
+        return 'js';
+    }
+
+    /**
      * Метод компиляции JS.PHP файла
      * @param string $filePath Путь до файла
      * @return string Путь до собранного файла
