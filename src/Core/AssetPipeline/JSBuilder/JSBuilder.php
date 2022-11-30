@@ -335,6 +335,8 @@ class JSBuilder
                     $tmpRtReq = $this->loadRequireTree($objectReq['path'], $isChanged);
                     $object['require'][$keyReq] = $tmpRtReq[$keyReq];
                 }
+                // update object
+                $tmpRT[$key] = $object;
             }
         }
         return $tmpRT;
