@@ -508,4 +508,36 @@ class CoreHelper
     static public function arrayIsList(array $arr): bool {
         return $arr === [] || (array_keys($arr) === range(0, count($arr) - 1));
     }
+
+    static public function execCmd(string $cmd,
+                                   /*string*/ &$stdOut,
+                                   /*string*/ &$stdErr = "",
+                                   bool $selectStdErr = true) {
+        // clear in/out args
+        $stdOut = "";
+        $stdErr = "";
+        // check
+        if (empty($cmd))
+            return false;
+
+        $descriptorSpec = [
+            0 => [ "pipe", "r" ], // STDIN
+            1 => [ "pipe", "w" ]  // STDOUT
+        ];
+        if ($selectStdErr)
+            $descriptorSpec[2] = [ "pipe", "w" ]; // STDERR
+
+        $cwd = getcwd();
+        $env = null;
+        $proc = proc_open($cmd, $descriptorSpec, $pipes, $cwd, $env);
+        if (!is_resource($proc))
+            return false;
+
+        // select output
+        $stdOut = stream_get_contents($pipes[1]);
+        if ($selectStdErr)
+            $stdErr = stream_get_contents($pipes[2]);
+
+        return proc_close($proc);
+    }
 }

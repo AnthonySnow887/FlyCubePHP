@@ -321,7 +321,8 @@ class CSSBuilder
                 || $fileLastModified > $fileLastModifiedCached) {
                 // parse require tree
                 $isChanged = true;
-                $tmpRT[$key] = $this->parseRequireTree($object['path']);
+                $tmpRtNew = $this->parseRequireTree($object['path']);
+                $tmpRT[$key] = $tmpRtNew[$key];
             } else {
                 // check object requires
                 $treePartRequires = $object['require'];

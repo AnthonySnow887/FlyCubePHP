@@ -47,14 +47,13 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
                 'asset-name' => $filePath
             ]);
 
-        $output=null;
-        $retVal=null;
-        exec("npx babel --config-file $babelConfig $filePath 2>&1", $output, $retVal);
-        $buildResult = implode("\n", $output);
+        $output = "";
+        $stdErr = "";
+        $retVal = CoreHelper::execCmd("npx babel --config-file $babelConfig $filePath", $output, $stdErr, true);
         if ($retVal !== 0) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "[BabelJS] Pre-Build js file failed! Error: $buildResult",
+                'message' => "[BabelJS] Pre-Build js file failed! Error: $output",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath,
@@ -63,7 +62,7 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
                 'has-asset-code' => true
             ]);
         }
-        return $buildResult;
+        return $output;
     }
 
     /**
