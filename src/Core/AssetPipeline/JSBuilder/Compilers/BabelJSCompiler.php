@@ -53,7 +53,7 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
         if ($retVal !== 0) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "[BabelJS] Pre-Build js file failed! Error: $output",
+                'message' => "[BabelJS] Pre-Build js file failed! Error: $stdErr",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath,

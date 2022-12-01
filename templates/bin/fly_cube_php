@@ -785,7 +785,7 @@ function buildPath(...$segments): string {
     if (!is_array($segments))
         return "";
     if (!is_array($segments[0]))
-        return implode(DIRECTORY_SEPARATOR, $segments);
+        return join(DIRECTORY_SEPARATOR, $segments);
     return implode(DIRECTORY_SEPARATOR, $segments[0]);
 }
 
@@ -3001,6 +3001,7 @@ function assetsPrecompile(bool $skipRendering = false) {
         fwrite($STDOUT_2, "OK\r\n");
         unset($tmpController);
     }
+    fwrite($STDOUT_2, "=== FlyCubePHP ======================\r\n");
     // --- close & clear redirected stdout ---
     fclose($STDOUT);
     if (is_file($stdoutPath))
@@ -3889,7 +3890,7 @@ if (in_array('--new', $arguments)) {
     echo "\r\nApplication Env type: $envMode\r\n\n\n";
     $skipRendering = toBool(argumentValue('--skip-rendering', $arguments, false));
     assetsPrecompile($skipRendering);
-    echo "=== FlyCubePHP ======================\r\n";
+    //echo "=== FlyCubePHP ======================\r\n"; TODO use local echo function
 } else if (in_array('--clear-cache', $arguments)) {
     echo "=== FlyCubePHP: Clear application cache ===\r\n";
     clearAppCache();
