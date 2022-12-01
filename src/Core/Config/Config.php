@@ -194,7 +194,7 @@ class Config
      * @return bool
      */
     public function isProduction(): bool {
-        if (strcasecmp($this->arg(Config::TAG_ENV_TYPE),"production") === 0)
+        if (strcasecmp($this->arg(Config::TAG_ENV_TYPE, ""), "production") === 0)
             return true;
         return false;
     }
@@ -204,7 +204,7 @@ class Config
      * @return bool
      */
     public function isDevelopment(): bool {
-        if (strcasecmp($this->arg(Config::TAG_ENV_TYPE), "development") === 0)
+        if (strcasecmp($this->arg(Config::TAG_ENV_TYPE, ""), "development") === 0)
             return true;
         return !$this->isProduction();
     }
