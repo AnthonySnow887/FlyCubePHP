@@ -629,7 +629,7 @@ class AssetPipeline
             $lastModified = filemtime($realPath);
 
             // --- check If-None-Match ---
-            $ifNoneMatch = CoreHelper::removeQuote(trim(RouteCollector::currentRouteHeader('If-None-Match')));
+            $ifNoneMatch = CoreHelper::removeQuote(trim(RouteCollector::currentRouteHeader('If-None-Match', '')));
             $s = strcmp($ifNoneMatch, $eTag);
             if ($s === 0) {
                 header($_SERVER["SERVER_PROTOCOL"] . " 304 Not Modified");
@@ -639,7 +639,7 @@ class AssetPipeline
             // --- check Accept-Encoding ---
             $contentEncodingHeader = "";
             if ($this->_useCompression === true && $supportCompression === true) {
-                $acceptEncoding = trim(RouteCollector::currentRouteHeader('Accept-Encoding'));
+                $acceptEncoding = trim(RouteCollector::currentRouteHeader('Accept-Encoding', ''));
                 if (!empty($acceptEncoding)
                     && strpos($acceptEncoding, $this->_compressionType) !== false
                     && file_exists($compressedRealPath)
