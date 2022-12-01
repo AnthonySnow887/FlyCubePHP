@@ -23,6 +23,7 @@ abstract class ActiveRecord
     private $_tableName = "";
     private $_primaryKey = "id";
     private $_newRecord = true;
+    private $_data = array();
     private $_dataHash = array();
     private $_columnMappings = array();
     private $_passwordColumn = "password";
@@ -41,6 +42,14 @@ abstract class ActiveRecord
         $this->beforeSave('preparePassword');
     }
 
+    final public function &__get(string $name) {
+        return $this->_data[$name];
+    }
+
+    final public function __isset(string $name) {
+        return isset($this->_data[$name]);
+    }
+
     final public function __set(string $name, $value) {
         $tmpName = CoreHelper::camelcase($name, false);
 
@@ -50,9 +59,13 @@ abstract class ActiveRecord
             && strcmp($trace[1]['class'], 'FlyCubePHP\Core\ActiveRecord\ActiveRecord') === 0) {
             $value = $this->beforeSet($name, $value);
         }
-        $this->$tmpName = $value;
+        $this->_data[$tmpName] = $value;
         if (!array_key_exists($tmpName, $this->_dataHash))
             $this->_dataHash[$tmpName] = $value;
+    }
+
+    final public function __unset(string $name) {
+        unset($this->_data[$name]);
     }
 
     /**
