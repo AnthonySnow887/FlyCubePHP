@@ -117,7 +117,7 @@ class AutoLoader
      * @return string
      */
     private function classNamespace(string $classname): string {
-        return join(array_slice(explode('\\', $classname), 0, -1), '\\');
+        return implode('\\', array_slice(explode('\\', $classname), 0, -1));
     }
 
     /**

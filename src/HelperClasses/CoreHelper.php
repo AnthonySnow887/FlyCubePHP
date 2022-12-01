@@ -44,7 +44,7 @@ class CoreHelper
         if (!is_array($segments))
             return "";
         if (!is_array($segments[0]))
-            return join(DIRECTORY_SEPARATOR, $segments);
+            return implode(DIRECTORY_SEPARATOR, $segments);
         return implode(DIRECTORY_SEPARATOR, $segments[0]);
     }
 

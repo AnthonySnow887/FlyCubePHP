@@ -226,13 +226,14 @@ class Config
                 if (substr($line, 0, 1) == "#")
                     continue;
                 $tmpKeyVal = explode(':', $line);
-                if (count($tmpKeyVal) <= 1)
+                if ($tmpKeyVal === false
+                    || count($tmpKeyVal) <= 1)
                     continue;
                 $tmpKey = trim($tmpKeyVal[0]);
                 if (empty($tmpKey))
                     continue;
                 unset($tmpKeyVal[0]);
-                $tmpVal = trim(join(':', $tmpKeyVal));
+                $tmpVal = trim(implode(':', $tmpKeyVal));
                 if (!empty($tmpVal)) {
                     if (strcmp($tmpVal[0], '"') === 0)
                         $tmpVal = substr($tmpVal, 1, strlen($tmpVal));

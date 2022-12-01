@@ -841,7 +841,7 @@ class RouteCollector
         // Get the correct version number
         // Added "|:"
         $known = array('Version', $vPrefix, 'other');
-        $pattern = '#(?<browser>' . join('|', $known) . ')[/|: ]+(?<version>[0-9.|a-zA-Z.]*)#';
+        $pattern = '#(?<browser>' . implode('|', $known) . ')[/|: ]+(?<version>[0-9.|a-zA-Z.]*)#';
         if (!preg_match_all($pattern, $userAgent, $matches)) {
             // we have no matching number just continue
             return "";

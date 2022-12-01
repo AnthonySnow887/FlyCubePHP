@@ -420,7 +420,7 @@ class CSPProtection
         foreach ($this->_settings as $key => $value) {
             if (empty($value))
                 continue;
-            $valueStr = join(" ", $value);
+            $valueStr = implode(" ", $value);
             if (strpos($valueStr, " data:") !== false) {
                 $valueStr = str_replace(" data:", "", $valueStr);
                 $valueStr .= " data:"; // append to end
