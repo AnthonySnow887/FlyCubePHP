@@ -234,19 +234,19 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
             die(1);
         }
 
-        final private function renderError(string $title,
-                                           string $title2,
-                                           string $errorBody) {
+        private function renderError(string $title,
+                                     string $title2,
+                                     string $errorBody) {
             $html = "\r\n\r\n=== FlyCubePHP: ERROR  =========";
             $html .= "\r\nError title: $title ($title2)\r\n\r\n$errorBody";
             $html .= "\r\n=== FlyCubePHP: END ERROR =========\r\n\r\n";
             fwrite(STDERR, $html);
         }
 
-        final private function makeTrace(string $title,
-                                         string $trace,
-                                         int $lineError = -1,
-                                         bool $buildAppPath = true): string {
+        private function makeTrace(string $title,
+                                   string $trace,
+                                   int $lineError = -1,
+                                   bool $buildAppPath = true): string {
             $tmpTraceCount = [];
             $tmpTraceData = [];
             $tmpTraceCountMaxLength = 0;
@@ -294,8 +294,8 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
             return $this->makeDiv($title, $tmpTrace);
         }
 
-        final private function makeDiv(string $title,
-                                       string $data): string {
+        private function makeDiv(string $title,
+                                 string $data): string {
             $title = trim($title);
             $html = "\r\n$title\r\n";
             $html .= "-------------------------\r\n";
@@ -311,7 +311,7 @@ if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPErrorHandling.ph
          * @param int $maxlen - максимальная длина
          * @return string
          */
-        final private function splitStr(string $str, string $splitter, int $maxlen): string {
+        private function splitStr(string $str, string $splitter, int $maxlen): string {
             $pos = -1;
             while (true) {
                 $lastPos = $pos;
@@ -355,8 +355,8 @@ const URL_TWIG = "https://github.com/twigphp/Twig/archive/refs/tags/v2.12.5.zip"
 const DIR_TWIG = "Twig-2.12.5";
 const URL_JSHRINK = "https://github.com/tedious/JShrink/archive/refs/tags/v1.4.0.zip";
 const DIR_JSHRINK = "JShrink-1.4.0";
-const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.10.2.zip";
-const DIR_SCSS_PHP = "scssphp-1.10.2";
+const URL_SCSS_PHP = "https://github.com/scssphp/scssphp/archive/refs/tags/v1.11.0.zip";
+const DIR_SCSS_PHP = "scssphp-1.11.0";
 const URL_PSR_LOG = "https://github.com/php-fig/log/archive/refs/tags/1.1.4.zip";
 const DIR_PSR_LOG = "log-1.1.4";
 const URL_MONOLOG = "https://github.com/Seldaek/monolog/archive/refs/tags/1.26.1.zip";
@@ -785,7 +785,7 @@ function buildPath(...$segments): string {
     if (!is_array($segments))
         return "";
     if (!is_array($segments[0]))
-        return join(DIRECTORY_SEPARATOR, $segments);
+        return implode(DIRECTORY_SEPARATOR, $segments);
     return implode(DIRECTORY_SEPARATOR, $segments[0]);
 }
 

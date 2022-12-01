@@ -836,7 +836,7 @@ abstract class ActiveRecord
      * @return string
      * @throws
      */
-    final private function objectName(): string {
+    private function objectName(): string {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);
@@ -853,7 +853,7 @@ abstract class ActiveRecord
      * @return array
      * @throws
      */
-    final private function objectProperties(): array {
+    private function objectProperties(): array {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);
@@ -874,7 +874,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL INSERT
      * @throws
      */
-    final private function insert() {
+    private function insert() {
         $this->processingCallbacks('before-insert');
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
@@ -914,7 +914,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL UPDATE
      * @throws
      */
-    final private function update() {
+    private function update() {
         $this->processingCallbacks('before-update');
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
@@ -952,7 +952,7 @@ abstract class ActiveRecord
      * Выполнение запроса SQL DELETE
      * @throws
      */
-    final private function delete() {
+    private function delete() {
         $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
         if (is_null($db))
             throw ErrorActiveRecord::makeError([
@@ -988,10 +988,10 @@ abstract class ActiveRecord
      * @param array $dataValues4Upd - названия ключей и значений для UPDATE
      * @throws
      */
-    final private function prepareData(BaseDatabaseAdapter &$db,
-                                       array &$dataColumns,
-                                       array &$dataValues,
-                                       array &$dataValues4Upd = []) {
+    private function prepareData(BaseDatabaseAdapter &$db,
+                                 array &$dataColumns,
+                                 array &$dataValues,
+                                 array &$dataValues4Upd = []) {
         $tmpPassName = CoreHelper::camelcase($this->_passwordColumn, false);
         foreach ($this->_dataHash as $key => $value) {
             $tmpValue = $this->$key;
@@ -1037,7 +1037,7 @@ abstract class ActiveRecord
      * Метод подготовки значений первичного ключа
      * @return mixed
      */
-    final private function preparePKeyValue() {
+    private function preparePKeyValue() {
         $tPK = $this->primaryKey();
         $tPKParam = CoreHelper::camelcase($tPK, false);
         if (array_key_exists($tPKParam, $this->_dataHash))
@@ -1048,7 +1048,7 @@ abstract class ActiveRecord
     /**
      * Метод подготовки пароля к сохранению в БД
      */
-    final private function preparePassword() {
+    private function preparePassword() {
         $tmpPassName = CoreHelper::camelcase($this->_passwordColumn, false);
         if (!isset($this->$tmpPassName))
             return;
@@ -1065,7 +1065,7 @@ abstract class ActiveRecord
      * @param string $val
      * @return string
      */
-    final private function encryptPassword(string $val): string {
+    private function encryptPassword(string $val): string {
         return password_hash($val, PASSWORD_DEFAULT);
     }
 
@@ -1075,7 +1075,7 @@ abstract class ActiveRecord
      * @param string $method
      * @throws ErrorActiveRecord
      */
-    final private function appendCallback(string $callbackType, string $method) {
+    private function appendCallback(string $callbackType, string $method) {
         if (empty($method) || !method_exists($this, $method))
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -1095,7 +1095,7 @@ abstract class ActiveRecord
      * Вызвать колбэк функции обратоки
      * @param string $callbackType
      */
-    final private function processingCallbacks(string $callbackType) {
+    private function processingCallbacks(string $callbackType) {
         if (!isset($this->_callbacks[$callbackType]))
             return;
         foreach ($this->_callbacks[$callbackType] as $method)

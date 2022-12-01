@@ -125,7 +125,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
      * @param BaseControllerHelper $helper
      * @return array
      */
-    final private function makeHelperFunctions(BaseControllerHelper &$helper): array {
+    private function makeHelperFunctions(BaseControllerHelper &$helper): array {
         $tmpFunc = array();
         $hlpMethods = $helper->helperMethods();
         foreach ($hlpMethods as $method) {
@@ -145,7 +145,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
     /**
      * Загрузить забовый helper приложения
      */
-    final private function loadAppHelper() {
+    private function loadAppHelper() {
         $name = "ApplicationHelper";
         $path = CoreHelper::buildAppPath("app", "helpers", "$name.php");
         if (!is_file($path) || !is_readable($path))
@@ -161,7 +161,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
     /**
      * Загрузить расширения
      */
-    final private function loadExtensions() {
+    private function loadExtensions() {
         if (!CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_EXTENSION_SUPPORT, false)))
             return;
         // --- include other helpers ---
@@ -202,7 +202,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
      * @return string
      * @throws
      */
-    final private function helperClassPath(string $className): string {
+    private function helperClassPath(string $className): string {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($className);
@@ -220,7 +220,7 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
      * @param string $searchFunc - название функции (без скобок и аргументов)
      * @return int
      */
-    final private function helperFunctionLine(string $path, string $searchFunc): int {
+    private function helperFunctionLine(string $path, string $searchFunc): int {
         if (!is_file($path) || !is_readable($path))
             return 0;
         $lineCount = 1;

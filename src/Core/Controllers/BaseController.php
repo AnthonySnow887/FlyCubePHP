@@ -281,7 +281,7 @@ abstract class BaseController
      * @throws
      * @private
      */
-    final private function verifyAuthenticityToken() {
+    private function verifyAuthenticityToken() {
         try {
             $isSuccess = RequestForgeryProtection::instance()->isVerifiedRequest();
         } catch (\Exception $e) {
@@ -300,7 +300,7 @@ abstract class BaseController
      * @throws
      * @private
      */
-    final private function skipBeforeActionPr(string $checkMethod, string $action) {
+    private function skipBeforeActionPr(string $checkMethod, string $action) {
         if (empty($action) || !method_exists($this, $action))
             throw ErrorController::makeError([
                 'tag' => "before-action",
@@ -325,7 +325,7 @@ abstract class BaseController
      * @throws
      * @private
      */
-    final private function skipAfterActionPr(string $checkMethod, string $action) {
+    private function skipAfterActionPr(string $checkMethod, string $action) {
         if (empty($action) || !method_exists($this, $action))
             throw ErrorController::makeError([
                 'tag' => "after-action",

@@ -248,9 +248,9 @@ EOT;
         die();
     }
 
-    final private function renderError(string $title = "FlyCubePHP Error",
-                                       string $title2 = "",
-                                       string $errorBody) {
+    private function renderError(string $title,
+                                 string $title2,
+                                 string $errorBody) {
         if ($this->_isRendered)
             return;
         $this->_isRendered = true;
@@ -375,10 +375,10 @@ EOT;
         echo $html;
     }
 
-    final private function makeTrace(string $title,
-                                     string $trace,
-                                     int $lineError = -1,
-                                     bool $buildAppPath = true): string {
+    private function makeTrace(string $title,
+                               string $trace,
+                               int $lineError = -1,
+                               bool $buildAppPath = true): string {
         $tmpTraceCount = "";
         $tmpTraceData = "";
         $traceLst = [];
@@ -426,10 +426,10 @@ EOT;
 EOT;
     }
 
-    final private function makeDiv(string $title,
-                                   string $data,
-                                   string $padding = "",
-                                   bool $usePre = false): string {
+    private function makeDiv(string $title,
+                             string $data,
+                             string $padding = "",
+                             bool $usePre = false): string {
         $html = "<br><span class='error-title'>$title</span>";
         if (!empty($padding))
             $html .= "<div class='error-information-block' style='padding: $padding'>";
@@ -449,7 +449,7 @@ EOT;
      * @param int $maxlen - максимальная длина
      * @return string
      */
-    final private function splitStr(string $str, string $splitter, int $maxlen): string {
+    private function splitStr(string $str, string $splitter, int $maxlen): string {
         $pos = -1;
         while (true) {
             $lastPos = $pos;

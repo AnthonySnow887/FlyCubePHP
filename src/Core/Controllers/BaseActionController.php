@@ -635,7 +635,7 @@ abstract class BaseActionController extends BaseController
      * @param string $action - Название метода контроллера
      * @return bool
      */
-    final private function hasSkipRenderForAction(string $action): bool {
+    private function hasSkipRenderForAction(string $action): bool {
         return in_array($action, $this->_skipRenderActions);
     }
 
@@ -643,7 +643,7 @@ abstract class BaseActionController extends BaseController
      * Каталог базовых layouts приложения
      * @return string
      */
-    final private function coreLayoutsDirectory(): string {
+    private function coreLayoutsDirectory(): string {
         return CoreHelper::buildAppPath("app", "views", "layouts");
     }
 
@@ -652,7 +652,7 @@ abstract class BaseActionController extends BaseController
      * @param string $dir
      * @return array
      */
-    final private function layoutsDirectoryNamespaces(string $dir): array {
+    private function layoutsDirectoryNamespaces(string $dir): array {
         $tmpPaths = CoreHelper::scanDir($dir, [ 'recursive' => true, 'append-dirs' => true, 'only-dirs' => true ]);
         $tmpNS = [];
         foreach ($tmpPaths as $path) {
@@ -667,7 +667,7 @@ abstract class BaseActionController extends BaseController
      * @return string
      * @throws ErrorController
      */
-    final private function viewsDirectory(): string {
+    private function viewsDirectory(): string {
         $shortName = $this->controllerName();
         return CoreHelper::buildAppPath($this->controllerDirectory(), "views", CoreHelper::underscore($shortName));
     }
@@ -678,7 +678,7 @@ abstract class BaseActionController extends BaseController
      * @return string
      * @throws
      */
-    final private function viewPath(string $action): string {
+    private function viewPath(string $action): string {
         $viewsDirectory = $this->viewsDirectory();
         $viewPath = "$viewsDirectory/$action.html";
         $viewPathTwig = "$viewsDirectory/$action.html.twig";
@@ -694,7 +694,7 @@ abstract class BaseActionController extends BaseController
      * @return string
      * @throws
      */
-    final private function helpersDirectory(): string {
+    private function helpersDirectory(): string {
         return CoreHelper::buildAppPath($this->controllerDirectory(), "helpers");
     }
 
@@ -702,7 +702,7 @@ abstract class BaseActionController extends BaseController
      * Имя текущего хелпера
      * @return string
      */
-    final private function helperName(): string {
+    private function helperName(): string {
         $shortName = $this->controllerName();
         return $shortName . "Helper";
     }
@@ -712,7 +712,7 @@ abstract class BaseActionController extends BaseController
      * @return string
      * @throws
      */
-    final private function helperPath(): string {
+    private function helperPath(): string {
         return CoreHelper::buildAppPath($this->helpersDirectory(), $this->helperName().".php");
     }
 
@@ -720,7 +720,7 @@ abstract class BaseActionController extends BaseController
      * Создать хелпер для текущего контроллера
      * @throws
      */
-    final private function createHelper() {
+    private function createHelper() {
         if (!is_null($this->_helper))
             return;
         if (!file_exists($this->helperPath()))
@@ -739,7 +739,7 @@ abstract class BaseActionController extends BaseController
      * echo prepareViewPath("@@/tmp/app1.html");
      *   => "tmp/app1.html"
      */
-    final private function prepareViewPath(string $path): string {
+    private function prepareViewPath(string $path): string {
         if (empty($path))
             return $path;
         if (strcmp($path[0], "@") === 0) {

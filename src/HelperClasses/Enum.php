@@ -38,7 +38,7 @@ abstract class Enum
      * Enum constructor.
      * @throws \Exception Enum and Subclasses cannot be instantiated.
      */
-    final private function __construct() {
+    private function __construct() {
         throw new \Exception('Enum and Subclasses cannot be instantiated.');
     }
 
