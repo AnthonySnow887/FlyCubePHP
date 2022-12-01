@@ -702,15 +702,15 @@ class RouteCollector
     /**
      * Получить значение HTTP заголовка текущего запроса
      * @param string $name
+     * @param null $def
      * @return mixed|null
      */
-    static public function currentRouteHeader(string $name) {
+    static public function currentRouteHeader(string $name, $def = null) {
         $name = strtolower($name);
         $headers = RouteCollector::currentRouteHeaders(true);
         if (isset($headers[$name]))
             return $headers[$name];
-
-        return null;
+        return $def;
     }
 
     /**
