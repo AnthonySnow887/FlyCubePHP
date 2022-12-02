@@ -17,7 +17,6 @@ use FlyCubePHP\Core\Error\ErrorActiveRecord;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Database\DatabaseFactory;
 use FlyCubePHP\Core\Error\ErrorDatabase;
-use JetBrains\PhpStorm\Pure;
 
 abstract class ActiveRecord
 {
