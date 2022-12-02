@@ -397,6 +397,7 @@ Options include:
     --env=[VALUE]                       Set current environment (production/development; default: development)
     --upgrade                           Update FlyCubePHP core version of your project to the latest version 
     --force                             Forced update flag
+    --patch-twig                        Patch Twig-2.x for php8
     
     --new [option]                      Create new object (project/controller/model/migration/plugin/...etc)
     --project                           Create new FlyCubePHP project
@@ -3526,6 +3527,49 @@ function upgradeFlyCubePhpProject(string $path,
     echo "\r\n";
 }
 
+/**
+ * Метод патчинга зависимой библиотеки Twig-2.x под php8
+ */
+function patchTwig() {
+    if (version_compare(PHP_VERSION, '8.0') < 0) {
+        echo "NOTE: Patch Twig-2.x is skipped because the php version is below 8.0\r\n";
+        return;
+    }
+    $patchPath = realpath(__DIR__."/../vendor/FlyCubePHP/patches/Twig-2.x/php8/");
+    if (!is_dir($patchPath)) {
+        echo "ERROR: Not found patches directory for Twig-2.x!\r\n";
+        return;
+    }
+
+    chdir(__DIR__."/../"); // go to app root
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/HelperClasses/CoreHelper.php";
+    if (!class_exists("\FlyCubePHP\HelperClasses\CoreHelper")) {
+        echo "ERROR: Not found CoreHelper!\r\n";
+        return;
+    }
+    $files = \FlyCubePHP\HelperClasses\CoreHelper::scanDir($patchPath);
+    foreach ($files as $file) {
+        if (!preg_match('/.*\.patch$/', $file))
+            continue;
+        $fData = file_get_contents($file);
+        preg_match('/^[\-|\+]{3}\s*(vendor\/.*\.php)/', $fData, $matches, PREG_OFFSET_CAPTURE);
+        if (isset($matches[1][0])) {
+            $patchFile = $matches[1][0];
+            $stdOut = "";
+            $stdErr = "";
+            echo "  - Patch file \"$patchFile\": ";
+            $retCode = \FlyCubePHP\HelperClasses\CoreHelper::execCmd("patch $patchFile $file", $stdOut, $stdErr);
+            if ($retCode !== 0) {
+                echo "FAILED\r\n";
+                echo "    ERROR: $stdErr\r\n";
+                return;
+            }
+            echo "OK\r\n";
+        }
+    }
+}
+
 
 $app = $argv[0];
 $arguments = [];
@@ -3942,6 +3986,10 @@ if (in_array('--new', $arguments)) {
     $images = toBool(argumentValue('--images', $arguments, true));
     assetsList($javascripts, $stylesheets, $images);
     echo "=== FlyCubePHP ================\r\n";
+} else if (in_array('--patch-twig', $arguments)) {
+    echo "=== FlyCubePHP: Patch Twig-2.x for php8 ===\r\n";
+    patchTwig();
+    echo "=== FlyCubePHP ============================\r\n";
 } else {
     exit("Invalid arguments! Use --help!\r\n");
 }
