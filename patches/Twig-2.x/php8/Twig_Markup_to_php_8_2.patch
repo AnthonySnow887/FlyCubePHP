@@ -1,0 +1,22 @@
+--- vendor/Twig-2.x/Twig/Markup.php	2022-11-30 16:27:08.035961512 +0300
++++ vendor/Twig-2.x/Twig/Markup.php	2022-12-01 22:11:46.003883885 +0300
+@@ -32,11 +32,19 @@
+         return $this->content;
+     }
+ 
++    /**
++     * @return int
++     */
++    #[\ReturnTypeWillChange]
+     public function count()
+     {
+         return mb_strlen($this->content, $this->charset);
+     }
+ 
++    /**
++     * @return mixed
++     */
++    #[\ReturnTypeWillChange]
+     public function jsonSerialize()
+     {
+         return $this->content;

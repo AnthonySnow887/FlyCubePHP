@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Loader/FilesystemLoader.php	2022-12-01 22:35:28.039825570 +0300
++++ vendor/Twig-2.x/Twig/Loader/FilesystemLoader.php	2022-12-01 22:36:33.151822900 +0300
+@@ -37,7 +37,7 @@
+     public function __construct($paths = [], string $rootPath = null)
+     {
+         $this->rootPath = (null === $rootPath ? getcwd() : $rootPath).\DIRECTORY_SEPARATOR;
+-        if (false !== $realPath = realpath($rootPath)) {
++        if (null !== $rootPath && false !== ($realPath = realpath($rootPath))) {
+             $this->rootPath = $realPath.\DIRECTORY_SEPARATOR;
+         }
+ 
