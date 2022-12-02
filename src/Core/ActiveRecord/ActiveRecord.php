@@ -17,6 +17,7 @@ use FlyCubePHP\Core\Error\ErrorActiveRecord;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Database\DatabaseFactory;
 use FlyCubePHP\Core\Error\ErrorDatabase;
+use JetBrains\PhpStorm\Pure;
 
 abstract class ActiveRecord
 {
@@ -211,6 +212,48 @@ abstract class ActiveRecord
      */
     final protected function setDatabase(string $database) {
         $this->_database = $database;
+    }
+
+    /**
+     * Получить массив со список параметров модели
+     * @return array
+     *
+     * === Example:
+     * ActiveRecord.dataParamKeys();
+     *   [ 'id', 'name', 'description' ] // where table columns: id, name, description
+     *
+     * ActiveRecord.id
+     * ActiveRecord.name
+     * ActiveRecord.description
+     */
+    final public function dataParamKeys(): array {
+        return array_keys($this->_data);
+    }
+
+    /**
+     * Получить массив со списком параметров модели и их значениями
+     * @return array
+     *
+     * === Example:
+     * ActiveRecord.dataParamVars();
+     *   [ 'id' => '1', 'name' => 'test', 'description' => 'test description' ] // where table columns: id, name, description
+     */
+    final public function dataParamVars(): array {
+        return $this->_data;
+    }
+
+    /**
+     * Получить массив со списком параметров модели и их значениями
+     * @return array
+     *
+     * === Example:
+     * ActiveRecord.objectVars();
+     *   [ 'id' => '1', 'name' => 'test', 'description' => 'test description' ] // where table columns: id, name, description
+     *
+     * NOTE: This alias function for 'ActiveRecord::dataParamVars()'.
+     */
+    final public function objectVars(): array {
+        return $this->dataParamVars();
     }
 
     /**
