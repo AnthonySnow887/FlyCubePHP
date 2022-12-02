@@ -127,7 +127,7 @@ class Cookie
                 'cookie-options' => $options
             ]);
         $cookieSessionName = session_name();
-        if (strcmp($cookieSessionName, $key) === 0)
+        if ($cookieSessionName !== false && strcmp($cookieSessionName, $key) === 0)
             throw ErrorCookie::makeError([
                 'tag' => 'cookie',
                 'message' => "Invalid key (key '$cookieSessionName' is reserved)!",
@@ -262,8 +262,8 @@ class Cookie
         if (isset($_COOKIE[$key])
             && strcmp(session_name(), $key) !== 0) {
             unset($_COOKIE[$key]);
-            setcookie($key, null, -1);
-            setcookie($key, null, -1, '/');
+            setcookie($key, '', -1);
+            setcookie($key, '', -1, '/');
         }
     }
 
