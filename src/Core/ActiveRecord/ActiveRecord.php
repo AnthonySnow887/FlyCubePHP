@@ -52,14 +52,11 @@ abstract class ActiveRecord
 
     final public function __set(string $name, $value) {
         $tmpName = CoreHelper::camelcase($name, false);
-
-        // --- check caller && call before-set ---
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        if (isset($trace[1]['class'])
-            && strcmp($trace[1]['class'], 'FlyCubePHP\Core\ActiveRecord\ActiveRecord') === 0) {
-            $value = $this->beforeSet($name, $value);
-        }
+        // --- call before-set ---
+        $value = $this->beforeSet($tmpName, $value);
+        // --- save value ---
         $this->_data[$tmpName] = $value;
+        // --- save data hash ---
         if (!array_key_exists($tmpName, $this->_dataHash))
             $this->_dataHash[$tmpName] = $value;
     }
@@ -904,28 +901,6 @@ abstract class ActiveRecord
     }
 
     /**
-     * Свойства объекта класса
-     * @return array
-     * @throws
-     */
-    private function objectProperties(): array {
-        $tmpRef = null;
-        try {
-            $tmpRef = new \ReflectionClass($this);
-        } catch (\Exception $e) {
-            throw new ErrorActiveRecord(__CLASS__, __FUNCTION__, $e->getMessage());
-        }
-        $properties = $tmpRef->getProperties(\ReflectionProperty::IS_PUBLIC);
-        unset($tmpRef);
-        $tmpProperties = array();
-        foreach ($properties as $prop) {
-            $propName = $prop->getName();
-            $tmpProperties[$propName] = $this->$propName;
-        }
-        return $tmpProperties;
-    }
-
-    /**
      * Выполнение запроса SQL INSERT
      * @throws
      */
@@ -1047,31 +1022,11 @@ abstract class ActiveRecord
                                  array &$dataColumns,
                                  array &$dataValues,
                                  array &$dataValues4Upd = []) {
-        $tmpPassName = CoreHelper::camelcase($this->_passwordColumn, false);
-        foreach ($this->_dataHash as $key => $value) {
-            $tmpValue = $this->$key;
-            if ($this->_newRecord === false
-                && $value === $tmpValue)
-                continue; // skip not changed value
-
-            // --- prepare ---
-            $tmpKey = CoreHelper::underscore($key);
-            $tmpName = ":" . $tmpKey . "_value";
-
-            $tmpColumnName = $tmpKey;
-            if ($this->hasColumnMapping($key) === true)
-                $tmpColumnName = $this->columnMapping($key);
-
-            $dataColumns[] = $tmpColumnName;
-            $dataValues4Upd[] = $db->quoteTableName($tmpColumnName)." = $tmpName";
-            $dataValues[$tmpName] = $tmpValue;
-        }
-        $objectProps = $this->objectProperties();
+        $objectProps = $this->dataParamVars();
         foreach ($objectProps as $key => $value) {
-            $tmpValue = $this->$key;
             if ($this->_newRecord === false
                 && array_key_exists($key, $this->_dataHash)
-                && $this->_dataHash[$key] === $tmpValue)
+                && $this->_dataHash[$key] === $value)
                 continue; // skip not changed value
 
             // --- prepare ---
@@ -1084,7 +1039,7 @@ abstract class ActiveRecord
 
             $dataColumns[] = $tmpColumnName;
             $dataValues4Upd[] = $db->quoteTableName($tmpColumnName)." = $tmpName";
-            $dataValues[$tmpName] = $tmpValue;
+            $dataValues[$tmpName] = $value;
         }
     }
 
