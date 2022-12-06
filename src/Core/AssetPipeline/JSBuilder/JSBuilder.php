@@ -351,20 +351,54 @@ class JSBuilder
      */
     private function parseRequireTree(string $path, array &$readFiles = array()): array {
         if (empty($path))
-            return array();
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Asset path is Empty!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'asset-name' => $path,
+                'file' => $path
+            ]);
+
         if (is_dir($path))
-            return array();
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Asset path is directory!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'asset-name' => $path,
+                'file' => $path
+            ]);
+
         if (!file_exists($path))
-            return array();
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Asset file is not exist!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'asset-name' => $path,
+                'file' => $path
+            ]);
+
         $neededPath = $this->makeFilePathWithoutExt($path);
         if (in_array($neededPath, $readFiles))
-            return array();
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Recursive require!",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__,
+                'asset-name' => $path,
+                'file' => $path,
+                'additional-data' => [
+                    'recursive-dep' => true
+                ]
+            ]);
+
         // parse requires
         $isMLineComment = false;
         $tmpChild = array();
         if ($file = fopen($path, "r")) {
-            $readFiles[] = $neededPath;
-            $readFiles[] = $this->makeFilePathWithoutExt($path); // if used pre-build
+            $readFiles[$neededPath] = $neededPath;
             $currentLine = 0;
             while (!feof($file)) {
                 $currentLine += 1;
@@ -395,7 +429,39 @@ class JSBuilder
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.js|\.js\.php)$/", $js))
                             continue;
                         // parse child
-                        $tmpChild = array_merge($tmpChild, $this->parseRequireTree($js, $readFiles));
+                        $jsAppPath = CoreHelper::buildAppPath($js);
+                        try {
+                            $tmpReqTree = $this->parseRequireTree($jsAppPath, $readFiles);
+                            $tmpChild = array_merge($tmpChild, $tmpReqTree);
+                        } catch (\Throwable $ex) {
+                            $errorMessage = $ex->getMessage();
+                            $isRecursiveDep = false;
+                            $recursiveErr = "";
+                            if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
+                                && $ex->additionalDataValue('recursive-dep') === true) {
+                                $isRecursiveDep = true;
+                                if ($ex->hasAdditionalDataKey('recursive-err'))
+                                    $recursiveErr = "$jsAppPath --> " . $ex->additionalDataValue('recursive-err');
+                                else
+                                    $recursiveErr = $jsAppPath;
+
+                                $errorMessage = "Recursive require! $recursiveErr";
+                            }
+                            throw ErrorAssetPipeline::makeError([
+                                'tag' => 'asset-pipeline',
+                                'message' => "Require tree failed! Require tree file \"$jsAppPath\" caused an error: $errorMessage",
+                                'class-name' => __CLASS__,
+                                'class-method' => __FUNCTION__,
+                                'asset-name' => $path,
+                                'file' => $path,
+                                'line' => $currentLine,
+                                'has-asset-code' => true,
+                                'additional-data' => [
+                                    'recursive-dep' => $isRecursiveDep,
+                                    'recursive-err' => $recursiveErr
+                                ]
+                            ]);
+                        }
                     }
                     continue; // ignore require_tree folder
                 } elseif (substr($line, 0, 8) == "require ") {
@@ -413,7 +479,38 @@ class JSBuilder
                 // --- parse child file ---
                 if (!empty($tmpPath)) {
                     // parse child
-                    $tmpChild = array_merge($tmpChild, $this->parseRequireTree($tmpPath, $readFiles));
+                    try {
+                        $tmpReqTree = $this->parseRequireTree($tmpPath, $readFiles);
+                        $tmpChild = array_merge($tmpChild, $tmpReqTree);
+                    } catch (\Throwable $ex) {
+                        $errorMessage = $ex->getMessage();
+                        $isRecursiveDep = false;
+                        $recursiveErr = "";
+                        if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
+                            && $ex->additionalDataValue('recursive-dep') === true) {
+                            $isRecursiveDep = true;
+                            if ($ex->hasAdditionalDataKey('recursive-err'))
+                                $recursiveErr = "$tmpPath --> " . $ex->additionalDataValue('recursive-err');
+                            else
+                                $recursiveErr = $tmpPath;
+
+                            $errorMessage = "Recursive require! $recursiveErr";
+                        }
+                        throw ErrorAssetPipeline::makeError([
+                            'tag' => 'asset-pipeline',
+                            'message' => "Require failed! Require file \"$tmpPath\" caused an error: $errorMessage",
+                            'class-name' => __CLASS__,
+                            'class-method' => __FUNCTION__,
+                            'asset-name' => $path,
+                            'file' => $path,
+                            'line' => $currentLine,
+                            'has-asset-code' => true,
+                            'additional-data' => [
+                                'recursive-dep' => $isRecursiveDep,
+                                'recursive-err' => $recursiveErr
+                            ]
+                        ]);
+                    }
                 } else {
                     throw ErrorAssetPipeline::makeError([
                         'tag' => 'asset-pipeline',
@@ -428,6 +525,7 @@ class JSBuilder
                 }
             }
             fclose($file);
+            unset($readFiles[$neededPath]); // clear readFile
         }
         $fAppPath = CoreHelper::buildAppPath($path);
         return [
@@ -449,7 +547,7 @@ class JSBuilder
         $tmpList = [];
         foreach ($tree as $object) {
             $tmpList = array_merge($tmpList, $this->requireTreeToList($object['require']));
-            $tmpList = array_merge($tmpList, [ $object['name'] => $object['path'] ]);
+            $tmpList = array_unique(array_merge($tmpList, [ $object['name'] => $object['path'] ]));
         }
         return $tmpList;
     }
