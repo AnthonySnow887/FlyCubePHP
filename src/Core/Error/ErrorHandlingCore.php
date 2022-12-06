@@ -76,6 +76,31 @@ class ErrorHandlingCore
     }
 
     /**
+     * Сохранить ошибку в журнал
+     * @param int $errno Код ошибки
+     * @param string $errstr Текст ошибки
+     * @param string $errfile Файл с ошибкой
+     * @param int $errline Строка с ошибкой
+     * @throws
+     */
+    static public function evalLoggingError(int $errno, string $errstr, string $errfile, int $errline) {
+        $errCode = ErrorHandlingCore::fileCodeTrace($errfile, $errline);
+        $backtraceArr = debug_backtrace();
+        array_shift($backtraceArr); // remove current method backtrace
+        $backtrace = ErrorHandlingCore::debugBacktrace($backtraceArr);
+        ErrorHandlingCore::loggingError($errno, $errstr, $errfile, $errline, $errCode, $backtrace);
+    }
+
+    /**
+     * Сохранить исключение в журнал
+     * @param \Throwable $ex
+     * @throws
+     */
+    static public function evalLoggingException(\Throwable $ex) {
+        ErrorHandlingCore::loggingException($ex);
+    }
+
+    /**
      * gets the instance via lazy initialization (created on first usage)
      */
     public static function instance(): ErrorHandlingCore {
