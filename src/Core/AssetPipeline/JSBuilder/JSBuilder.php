@@ -363,7 +363,7 @@ class JSBuilder
         if (is_dir($path))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Asset path is directory!",
+                'message' => "Asset path is directory! Path: \"$path\"",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $path,
@@ -373,7 +373,7 @@ class JSBuilder
         if (!file_exists($path))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Asset file is not exist!",
+                'message' => "Asset file is not exist! Path: \"$path\"",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $path,
