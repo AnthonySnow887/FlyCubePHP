@@ -918,34 +918,36 @@ class JSBuilder
      * @throws
      */
     private function updateCacheList() {
-        if (!APCu::isApcuEnabled()) {
-            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), JSBuilder::SETTINGS_DIR);
-            if (!CoreHelper::makeDir($dirPath, 0777, true))
-                throw ErrorAssetPipeline::makeError([
-                    'tag' => 'asset-pipeline',
-                    'message' => "Make dir for cache settings failed! Path: $dirPath",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
-
-            $fPath = CoreHelper::buildPath($dirPath, hash('sha256', JSBuilder::CACHE_LIST_FILE));
-            $fData = json_encode([
-                'cache-files' => $this->_cacheList,
-                'js-files' => $this->_jsList,
-                'js-require-list' => $this->_jsRequireList
+        // save cache
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), JSBuilder::SETTINGS_DIR);
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Make dir for cache settings failed! Path: $dirPath",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
             ]);
-            $tmpFile = tempnam($dirPath, basename($fPath));
-            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-                @chmod($fPath, 0666 & ~umask());
-            } else {
-                throw ErrorAssetPipeline::makeError([
-                    'tag' => 'asset-pipeline',
-                    'message' => "Write file for cache settings failed! Path: $fPath",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
-            }
+
+        $fPath = CoreHelper::buildPath($dirPath, hash('sha256', JSBuilder::CACHE_LIST_FILE));
+        $fData = json_encode([
+            'cache-files' => $this->_cacheList,
+            'js-files' => $this->_jsList,
+            'js-require-list' => $this->_jsRequireList
+        ]);
+        $tmpFile = tempnam($dirPath, basename($fPath));
+        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+            @chmod($fPath, 0666 & ~umask());
         } else {
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Write file for cache settings failed! Path: $fPath",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        }
+
+        // save APCu cache if enabled
+        if (APCu::isApcuEnabled()) {
             APCu::setCacheData('js-builder-cache', [
                 'cache-files' => $this->_cacheList,
                 'js-files' => $this->_jsList,

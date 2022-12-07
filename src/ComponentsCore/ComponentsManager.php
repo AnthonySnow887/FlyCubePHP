@@ -940,23 +940,25 @@ class ComponentsManager
      * @throws
      */
     private function updateCacheList() {
-        if (!APCu::isApcuEnabled()) {
-            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
-            if (!CoreHelper::makeDir($dirPath, 0777, true))
-                trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
+        // save cache
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ComponentsManager::SETTINGS_DIR);
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            trigger_error("[ComponentsManager] Make dir for cache settings failed! Path: $dirPath!", E_USER_ERROR);
 
-            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
-            $fData = json_encode([
-                'plugins-root-files' => $this->_pluginsRootFiles,
-                'plugins-settings' => $this->_pluginsSettings,
-                'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
-            ]);
-            $tmpFile = tempnam($dirPath, basename($fPath));
-            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))
-                @chmod($fPath, 0666 & ~umask());
-            else
-                trigger_error("[ComponentsManager] Write file for cache settings failed! Path: $fPath", E_USER_ERROR);
-        } else {
+        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ComponentsManager::CACHE_LIST_FILE));
+        $fData = json_encode([
+            'plugins-root-files' => $this->_pluginsRootFiles,
+            'plugins-settings' => $this->_pluginsSettings,
+            'plugins-init-queue' => array_keys($this->_pluginsInitQueue)
+        ]);
+        $tmpFile = tempnam($dirPath, basename($fPath));
+        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath))
+            @chmod($fPath, 0666 & ~umask());
+        else
+            trigger_error("[ComponentsManager] Write file for cache settings failed! Path: $fPath", E_USER_ERROR);
+
+        // save APCu cache if enabled
+        if (APCu::isApcuEnabled()) {
             APCu::setCacheData('components-manager-cache', [
                 'plugins-root-files' => $this->_pluginsRootFiles,
                 'plugins-settings' => $this->_pluginsSettings,

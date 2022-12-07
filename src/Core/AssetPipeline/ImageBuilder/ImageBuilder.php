@@ -176,30 +176,32 @@ class ImageBuilder
      * @throws
      */
     private function updateCacheList() {
-        if (!APCu::isApcuEnabled()) {
-            $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
-            if (!CoreHelper::makeDir($dirPath, 0777, true))
-                throw ErrorAssetPipeline::makeError([
-                    'tag' => 'asset-pipeline',
-                    'message' => "Make dir for cache settings failed! Path: $dirPath",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
+        // save cache
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), ImageBuilder::SETTINGS_DIR);
+        if (!CoreHelper::makeDir($dirPath, 0777, true))
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Make dir for cache settings failed! Path: $dirPath",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
 
-            $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
-            $fData = json_encode(['cache-files' => $this->_imageList]);
-            $tmpFile = tempnam($dirPath, basename($fPath));
-            if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
-                @chmod($fPath, 0666 & ~umask());
-            } else {
-                throw ErrorAssetPipeline::makeError([
-                    'tag' => 'asset-pipeline',
-                    'message' => "Write file for cache settings failed! Path: $fPath",
-                    'class-name' => __CLASS__,
-                    'class-method' => __FUNCTION__
-                ]);
-            }
+        $fPath = CoreHelper::buildPath($dirPath, $hash = hash('sha256', ImageBuilder::CACHE_LIST_FILE));
+        $fData = json_encode(['cache-files' => $this->_imageList]);
+        $tmpFile = tempnam($dirPath, basename($fPath));
+        if (false !== @file_put_contents($tmpFile, $fData) && @rename($tmpFile, $fPath)) {
+            @chmod($fPath, 0666 & ~umask());
         } else {
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "Write file for cache settings failed! Path: $fPath",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        }
+
+        // save APCu cache if enabled
+        if (APCu::isApcuEnabled()) {
             APCu::setCacheData('image-builder-cache', ['cache-files' => $this->_imageList]);
             APCu::saveEncodedApcuData('image-builder-cache', ['cache-files' => $this->_imageList]);
         }

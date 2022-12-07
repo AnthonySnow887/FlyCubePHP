@@ -3930,8 +3930,12 @@ if (in_array('--new', $arguments)) {
     dbSeed();
     echo "=== FlyCubePHP ===========================\r\n";
 } else if (in_array('--assets-precompile', $arguments)) {
+    $apcuCache = "Disabled";
+    if (\FlyCubePHP\Core\Cache\APCu::isApcuEnabled())
+        $apcuCache = "Enabled";
     echo "=== FlyCubePHP: Assets precompile ===\r\n";
-    echo "\r\nApplication Env type: $envMode\r\n\n\n";
+    echo "\r\nApplication Env type: $envMode";
+    echo "\r\nAPCu cache: $apcuCache\r\n\n\n";
     $skipRendering = toBool(argumentValue('--skip-rendering', $arguments, false));
     assetsPrecompile($skipRendering);
     //echo "=== FlyCubePHP ======================\r\n"; TODO use local echo function
