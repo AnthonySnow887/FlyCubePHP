@@ -379,13 +379,13 @@ class CSSBuilder
         if (in_array($neededPath, $readFiles))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "Recursive require!",
+                'message' => "Cyclic require!",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $path,
                 'file' => $path,
                 'additional-data' => [
-                    'recursive-dep' => true
+                    'cyclic-dep' => true
                 ]
             ]);
 
@@ -430,17 +430,17 @@ class CSSBuilder
                             $tmpChild = array_merge($tmpChild, $tmpReqTree);
                         } catch (\Throwable $ex) {
                             $errorMessage = $ex->getMessage();
-                            $isRecursiveDep = false;
-                            $recursiveErr = "";
+                            $isCyclicDep = false;
+                            $cyclicErr = "";
                             if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
-                                && $ex->additionalDataValue('recursive-dep') === true) {
-                                $isRecursiveDep = true;
-                                if ($ex->hasAdditionalDataKey('recursive-err'))
-                                    $recursiveErr = "$cssAppPath --> " . $ex->additionalDataValue('recursive-err');
+                                && $ex->additionalDataValue('cyclic-dep') === true) {
+                                $isCyclicDep = true;
+                                if ($ex->hasAdditionalDataKey('cyclic-err'))
+                                    $cyclicErr = "$cssAppPath --> " . $ex->additionalDataValue('cyclic-err');
                                 else
-                                    $recursiveErr = $cssAppPath;
+                                    $cyclicErr = $cssAppPath;
 
-                                $errorMessage = "Recursive require! $recursiveErr";
+                                $errorMessage = "Cyclic require! $cyclicErr";
                             }
                             throw ErrorAssetPipeline::makeError([
                                 'tag' => 'asset-pipeline',
@@ -452,8 +452,8 @@ class CSSBuilder
                                 'line' => $currentLine,
                                 'has-asset-code' => true,
                                 'additional-data' => [
-                                    'recursive-dep' => $isRecursiveDep,
-                                    'recursive-err' => $recursiveErr
+                                    'cyclic-dep' => $isCyclicDep,
+                                    'cyclic-err' => $cyclicErr
                                 ]
                             ]);
                         }
@@ -479,17 +479,17 @@ class CSSBuilder
                         $tmpChild = array_merge($tmpChild, $tmpReqTree);
                     } catch (\Throwable $ex) {
                         $errorMessage = $ex->getMessage();
-                        $isRecursiveDep = false;
-                        $recursiveErr = "";
+                        $isCyclicDep = false;
+                        $cyclicErr = "";
                         if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
-                            && $ex->additionalDataValue('recursive-dep') === true) {
-                            $isRecursiveDep = true;
-                            if ($ex->hasAdditionalDataKey('recursive-err'))
-                                $recursiveErr = "$tmpPath --> " . $ex->additionalDataValue('recursive-err');
+                            && $ex->additionalDataValue('cyclic-dep') === true) {
+                            $isCyclicDep = true;
+                            if ($ex->hasAdditionalDataKey('cyclic-err'))
+                                $cyclicErr = "$tmpPath --> " . $ex->additionalDataValue('cyclic-err');
                             else
-                                $recursiveErr = $tmpPath;
+                                $cyclicErr = $tmpPath;
 
-                            $errorMessage = "Recursive require! $recursiveErr";
+                            $errorMessage = "Cyclic require! $cyclicErr";
                         }
                         throw ErrorAssetPipeline::makeError([
                             'tag' => 'asset-pipeline',
@@ -501,8 +501,8 @@ class CSSBuilder
                             'line' => $currentLine,
                             'has-asset-code' => true,
                             'additional-data' => [
-                                'recursive-dep' => $isRecursiveDep,
-                                'recursive-err' => $recursiveErr
+                                'cyclic-dep' => $isCyclicDep,
+                                'cyclic-err' => $cyclicErr
                             ]
                         ]);
                     }
