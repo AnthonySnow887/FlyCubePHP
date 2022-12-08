@@ -10,7 +10,8 @@ use FlyCubePHP\HelperClasses\CoreHelper;
 
 class APCu
 {
-    const APCU_CACHE_DIR = "tmp/cache/FlyCubePHP/apcu/";
+    const APCU_PRELOAD_KEY  = "FlyCubePHP_APCu_preload";
+    const APCU_CACHE_DIR    = "tmp/cache/FlyCubePHP/apcu/";
 
     /**
      * Проверка, включена ли поддержка APCu
@@ -19,6 +20,15 @@ class APCu
     static public function isApcuEnabled(): bool {
         $defVal = Config::instance()->isProduction();
         return function_exists('apcu_enabled') && apcu_enabled() && CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_APCU_CACHE, $defVal));
+    }
+
+    /**
+     * Проверка, включен ли режим предварительной загрузки кэша APCu
+     * @return bool
+     */
+    static public function isApcuPreloadEnabled(): bool {
+        $defVal = Config::instance()->isProduction();
+        return self::isApcuEnabled() && CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_APCU_CACHE_PRELOAD, $defVal));
     }
 
     /**
@@ -68,5 +78,30 @@ class APCu
             @chmod($fPath, 0666 & ~umask());
         else
             trigger_error("Write file for cache data failed! Path: $dirPath", E_USER_ERROR);
+    }
+
+    /**
+     * Метод предварительной загрузки кэша APCu
+     */
+    static public function preLoadCache() {
+        if (!self::isApcuPreloadEnabled())
+            return;
+        if (self::cacheData(self::APCU_PRELOAD_KEY, false))
+            return;
+        $dirPath = CoreHelper::buildPath(CoreHelper::rootDir(), self::APCU_CACHE_DIR);
+        $apcuDataFiles = CoreHelper::scanDir($dirPath, [ 'recursive' => false ]);
+        foreach ($apcuDataFiles as $f) {
+            if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.data)$/", $f))
+                continue;
+            $fData = file_get_contents($f);
+            if ($fData === false)
+                trigger_error("Read cache data file failed! Path: $f", E_USER_ERROR);
+
+            $decodedApcuData = unserialize($fData);
+            $tmpKey = basename($f);
+            $tmpKey = substr($tmpKey, 0, strlen($tmpKey) - 5);
+            self::setCacheData($tmpKey, $decodedApcuData);
+        }
+        self::setCacheData(self::APCU_PRELOAD_KEY, true);
     }
 }
