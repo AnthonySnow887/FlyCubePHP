@@ -14,6 +14,7 @@ namespace FlyCubePHP\Core\Session;
 include_once __DIR__.'/../Routes/RouteCollector.php';
 
 use Exception;
+use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
@@ -31,6 +32,15 @@ class Session
     public static function instance(): Session {
         if (static::$_instance === null)
             static::$_instance = new static();
+        // --- init if not done ---
+        if (!static::$_instance->isInit()) {
+            $readOnly = false;
+            $trace = debug_backtrace();
+            if (isset($trace[1]['class'])
+                && strcmp($trace[1]['class'], 'FlyCubePHP\WebSockets\Server\WSWorker') === 0)
+                $readOnly = true;
+            static::$_instance->init($readOnly);
+        }
         return static::$_instance;
     }
 
@@ -76,32 +86,6 @@ class Session
     }
 
     /**
-     * Инициализировать сессию
-     * @param bool $readOnly - открыть сессию в режиме "только чтение"
-     * @return bool
-     */
-    public function init(bool $readOnly = false): bool {
-        if (!isset($_SERVER['SERVER_ADDR']))
-            return false;
-        if ($this->_isInit === true)
-            return true;
-        if ($readOnly !== true)
-            $this->_isInit = session_start();
-        // --- init read-only ---
-        if ($this->_isInit === false
-            && isset($_COOKIE[session_name()])
-            && file_exists(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]))) {
-            $sData = file_get_contents(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]));
-            if ($sData !== false) {
-                $_SESSION = $this->decode($sData);
-                $this->_isInit = true;
-                $this->_isReadOnly = true;
-            }
-        }
-        return $this->_isInit;
-    }
-
-    /**
      * Проверка, запустилась php сессия
      * @return bool
      */
@@ -115,6 +99,19 @@ class Session
      */
     public function isReadOnly(): bool {
         return $this->_isReadOnly;
+    }
+
+    /**
+     * Задать режим открытия сессии только на чтение
+     * @return bool
+     *
+     * NOTE: Если сессия уже открыта, то она будет переоткрыта в режиме только на чтение.
+     */
+    public function setReadOnly(): bool {
+        if (!$this->_isReadOnly)
+            $this->close();
+        $init = $this->init(true);
+        return $init && $this->isReadOnly();
     }
 
     /**
@@ -172,6 +169,30 @@ class Session
     }
 
     /**
+     * Закрыть php сессию
+     * @return bool
+     */
+    public function close(): bool {
+        if ($this->_isInit === false)
+            return false;
+        // --- is read-only ---
+        if ($this->_isReadOnly === true) {
+            $this->_isInit = false;
+            $this->_isReadOnly = false;
+            $_SESSION = array();
+            return true;
+        }
+        // --- is open ---
+        $isOk = session_write_close();
+        if ($isOk === true) {
+            $this->_isInit = false;
+            $this->_isReadOnly = false;
+            $_SESSION = array();
+        }
+        return $isOk;
+    }
+
+    /**
      * Закрыть и удалить сессию
      * @return bool
      */
@@ -193,6 +214,32 @@ class Session
             $_SESSION = array();
         }
         return $isOk;
+    }
+
+    /**
+     * Инициализировать сессию
+     * @param bool $readOnly - открыть сессию в режиме "только чтение"
+     * @return bool
+     */
+    private function init(bool $readOnly = false): bool {
+        if (!isset($_SERVER['SERVER_ADDR']))
+            return false;
+        if ($this->_isInit === true)
+            return true;
+        if ($readOnly !== true)
+            $this->_isInit = session_start();
+        // --- init read-only ---
+        if ($this->_isInit === false
+            && isset($_COOKIE[session_name()])
+            && file_exists(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]))) {
+            $sData = file_get_contents(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]));
+            if ($sData !== false) {
+                $_SESSION = $this->decode($sData);
+                $this->_isInit = true;
+                $this->_isReadOnly = true;
+            }
+        }
+        return $this->_isInit;
     }
 
     /**

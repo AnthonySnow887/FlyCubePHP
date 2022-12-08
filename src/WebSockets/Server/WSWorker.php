@@ -736,7 +736,12 @@ class WSWorker
         $_COOKIE = $connectionInfo['cookie'];
 
         // --- init session ---
-        Session::instance()->init(true);
+        Session::instance();
+        if (!Session::instance()->isReadOnly()) {
+            $this->log(Logger::WARNING, "Session opened in read-write mode! Re-Open session in read-only mode...");
+            if (!Session::instance()->setReadOnly())
+                $this->log(Logger::ERROR, "Open session in read-only mode failed!");
+        }
     }
 
     /**

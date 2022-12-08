@@ -57,10 +57,6 @@ DatabaseFactory::instance()->loadConfig();
 
 // --- init session cookie params ---
 Session::initSessionCookieParams();
-// --- init session ---
-Session::instance()->init();
-// --- init flash messages ---
-FlashMessages::instance();
 
 // --- check cache dirs ---
 $cacheDir = CoreHelper::buildPath(CoreHelper::rootDir(), "tmp", "cache", "FlyCubePHP", "js_builder");
