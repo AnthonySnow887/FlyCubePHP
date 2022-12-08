@@ -14,7 +14,6 @@ namespace FlyCubePHP\Core\Session;
 include_once __DIR__.'/../Routes/RouteCollector.php';
 
 use Exception;
-use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\HelperClasses\CoreHelper;
 
