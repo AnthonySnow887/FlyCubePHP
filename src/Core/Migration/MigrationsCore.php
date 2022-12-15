@@ -256,13 +256,21 @@ class MigrationsCore
 
             // --- check skip ---
             if (strcmp($mCommand, 'up') === 0
-                && $currentVersion >= $mVersion
+                && $currentVersion >= $mVersion) {
+                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
+                continue;
+            }
+            if (strcmp($mCommand, 'up') === 0
                 && $currentDbVersion >= $mVersion) {
                 echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
                 continue;
             }
             if (strcmp($mCommand, 'down') === 0
-                && $currentVersion < $mVersion
+                && $currentVersion < $mVersion) {
+                echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
+                continue;
+            }
+            if (strcmp($mCommand, 'down') === 0
                 && $currentDbVersion < $mVersion) {
                 echo "[Skip][DB: $mDatabaseTitle] Migration ($mVersion - '$mClassName')\r\n";
                 continue;
