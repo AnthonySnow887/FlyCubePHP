@@ -16,6 +16,7 @@ include_once __DIR__.'/../Routes/RouteCollector.php';
 use Exception;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\HelperClasses\CoreHelper;
+use FlyCubePHP\Core\Config\Config;
 
 class Session
 {
@@ -182,13 +183,11 @@ class Session
             return true;
         }
         // --- is open ---
-        $isOk = session_write_close();
-        if ($isOk === true) {
-            $this->_isInit = false;
-            $this->_isReadOnly = false;
-            $_SESSION = array();
-        }
-        return $isOk;
+        session_write_close();
+        $this->_isInit = false;
+        $this->_isReadOnly = false;
+        $_SESSION = array();
+        return true;
     }
 
     /**
@@ -228,10 +227,11 @@ class Session
         if ($readOnly !== true)
             $this->_isInit = session_start();
         // --- init read-only ---
+        $sessPath = CoreHelper::buildPath($this->sessionSavePath(), $this->sessionFilePrefix() . $_COOKIE[session_name()]);
         if ($this->_isInit === false
             && isset($_COOKIE[session_name()])
-            && file_exists(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]))) {
-            $sData = file_get_contents(CoreHelper::buildPath(session_save_path(), self::SESSION_FILE_PREFIX . $_COOKIE[session_name()]));
+            && file_exists($sessPath)) {
+            $sData = file_get_contents($sessPath);
             if ($sData !== false) {
                 $_SESSION = $this->decode($sData);
                 $this->_isInit = true;
@@ -281,5 +281,21 @@ class Session
         $valueText = substr($encodedData, $lastOffset);
         $decodedData[$currentKey] = unserialize($valueText);
         return $decodedData;
+    }
+
+    /**
+     * Префикс файла PHP сессии
+     * @return string
+     */
+    private function sessionFilePrefix(): string {
+        return Config::instance()->arg(Config::TAG_PHP_SESSIONS_FILE_PREFIX, self::SESSION_FILE_PREFIX);
+    }
+
+    /**
+     * Путь до каталога хранения файлов сессий
+     * @return string
+     */
+    private function sessionSavePath(): string {
+        return Config::instance()->arg(Config::TAG_PHP_SESSIONS_SAVE_PATH, session_save_path());
     }
 }
