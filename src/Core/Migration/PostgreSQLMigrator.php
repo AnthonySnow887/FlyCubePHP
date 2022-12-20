@@ -8,6 +8,8 @@
 
 namespace FlyCubePHP\Core\Migration;
 
+use FlyCubePHP\HelperClasses\CoreHelper;
+
 include_once 'BaseMigrator.php';
 
 class PostgreSQLMigrator extends BaseMigrator
@@ -541,9 +543,154 @@ EOT;
             else
                 return "text";
         }
-        if (isset($limit))
+        if (isset($limit) && strcmp($name, 'text') !== 0)
             return "$name ($limit)";
         return $name;
+    }
+
+    /**
+     * Переименовать таблицу
+     * @param string $name - имя
+     * @param string $newName - новое имя
+     */
+    final public function renameTable(string $name, string $newName) {
+        if (empty($name) || empty($newName))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid table name or new name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid database connector (NULL)!');
+        $tmpIdexes = $this->tableIndexes($name);
+        $tmpName = $this->_dbAdapter->quoteTableName($name);
+        // for postgresql without scheme name
+        $tmpNewName = "\"".$this->nameWithoutSchemeName($newName)."\"";
+        // exec query
+        $this->_dbAdapter->query("ALTER TABLE $tmpName RENAME TO $tmpNewName;");
+        foreach ($tmpIdexes as $info) {
+            $indexNewName = str_replace($name, $newName, $info['index_name']);
+            if (strcmp($indexNewName, $info['index_name']) === 0)
+                continue;
+            $this->renameIndex($newName, $info['index_name'], $indexNewName);
+        }
+    }
+
+    /**
+     * Переименовать индекс для таблицы
+     * @param string $table - название таблицы
+     * @param string $oldName - старое название
+     * @param string $newName - новое название
+     */
+    final public function renameIndex(string $table, string $oldName, string $newName) {
+        if (empty($table) || empty($oldName) || empty($newName))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
+        if (strcmp($oldName, $newName) === 0)
+            return; // skip
+        // for postgresql without scheme name
+        $tableSchemeName = $this->schemeName($table);
+        $oldNameSchemeName = $this->schemeName($oldName, $tableSchemeName);
+        if (strcmp($tableSchemeName, $oldNameSchemeName) !== 0)
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: Scheme name in old name is not equal table scheme name!');
+        $tmpOldName = $this->_dbAdapter->quoteTableName($this->nameWithSchemeName($oldName, $oldNameSchemeName));
+        $tmpNewName = "\"".$this->nameWithoutSchemeName($newName)."\"";
+        $this->_dbAdapter->query("ALTER INDEX $tmpOldName RENAME TO $tmpNewName;");
+    }
+
+    /**
+     * Добавить вторичный ключ для таблицы
+     * @param string $table - название таблицы
+     * @param array $columns - названия колонок
+     * @param string $refTable - название таблицы на котороу ссылаемся
+     * @param array $refColumns - названия колонок на которые ссылаемся
+     * @param array $props - свойства
+     *
+     * Supported Props:
+     *
+     * [bool] on_update - добавить флаг 'ON UPDATE' (может не поддерживаться)
+     * [bool] on_delete - добавить флаг 'ON DELETE' (может не поддерживаться)
+     * [string] action  - добавить флаг поведения 'NO ACTION / CASCADE / RESTRICT / SET DEFAULT / SET NULL' (может не поддерживаться)
+     * [string] name    - задать имя вторичного ключа
+     */
+    final public function addForeignKey(string $table, array $columns,
+                                        string $refTable, array $refColumns,
+                                        array $props = []) {
+        if (empty($table) || empty($columns)
+            || empty($refTable) || empty($refColumns))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid input arguments!');
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid database connector (NULL)!');
+        $columns = array_filter($columns,'strlen');
+        if (empty($columns))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid columns (Empty)!');
+        $refColumns = array_filter($refColumns,'strlen');
+        if (empty($refColumns))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid refColumns (Empty)!');
+        $columnNames = implode(', ', $columns);
+        $refColumnNames = implode(', ', $refColumns);
+        $tmpName = "fk_" . $this->nameWithoutSchemeName($table) . "_" . implode('_', $columns);
+        if (isset($props['name']) && !empty($props['name']))
+            $tmpName = CoreHelper::underscore($props['name']);
+
+        $table = $this->_dbAdapter->quoteTableName($table);
+        $refTable = $this->_dbAdapter->quoteTableName($refTable);
+        $sql = "ALTER TABLE $table ADD CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName)." FOREIGN KEY ($columnNames) REFERENCES $refTable ($refColumnNames)";
+        $addNext = false;
+        if (isset($props['on_update']) && $props['on_update'] === true) {
+            $sql .= " ON UPDATE";
+            $addNext = true;
+        } elseif (isset($props['on_delete']) && $props['on_delete'] === true) {
+            $sql .= " ON DELETE";
+            $addNext = true;
+        }
+        if (isset($props['action']) && $addNext === true) {
+            $tmpAct = $this->makeReferenceAction($props['action']);
+            $sql .= " $tmpAct";
+        } elseif ($addNext === true) {
+            $sql .= " NO ACTION";
+        }
+        $this->_dbAdapter->query("$sql;");
+    }
+
+    // --- protected ---
+
+    /**
+     * Удалить индекс у таблицы
+     * @param array $args
+     */
+    final protected function dropIndexProtected(array $args)
+    {
+        if (is_null($this->_dbAdapter))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+        if (empty($args))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
+        if (!isset($args['table']))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+        if (!isset($args['columns']) && !isset($args['name']))
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+        $table = $args['table'];
+        $tmpName = "";
+        if (isset($args['columns'])) {
+            $columns = array_filter($args['columns'], 'strlen');
+            if (empty($columns))
+                return;
+            $tmpName = $table . "_" . implode('_', $columns) . "_index";
+        }
+        if (isset($args['name']))
+            $tmpName = $args['name'];
+
+        $tableSchemeName = $this->schemeName($table);
+        $tmpNameSchemeName = $this->schemeName($tmpName, $tableSchemeName);
+        if (strcmp($tableSchemeName, $tmpNameSchemeName) !== 0)
+            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: Scheme name in index name is not equal table scheme name!');
+        $tmpName = $this->_dbAdapter->quoteTableName($this->nameWithSchemeName($tmpName, $tmpNameSchemeName));
+
+        $sql = "DROP INDEX";
+        if (isset($args['if_exists']) && $args['if_exists'] === true)
+            $sql .= " IF EXISTS";
+        $sql .= " $tmpName";
+        if (isset($args['cascade']) && $args['cascade'] === true)
+            $sql .= " CASCADE";
+
+        $this->_dbAdapter->query("$sql;");
     }
 
     // --- private ---
@@ -586,5 +733,33 @@ EOT;
                 return true;
         }
         return false;
+    }
+
+    private function schemeName(string $name, string $schemeName = ''): string {
+        $nameLst = explode('.', $name);
+        if (count($nameLst) == 1) {
+            if (strlen($schemeName) === 0)
+                return 'public';
+            return $schemeName;
+        }
+        return $nameLst[0];
+    }
+
+    private function nameWithSchemeName(string $name, string $schemeName = ''): string {
+        $nameLst = explode('.', $name);
+        if (count($nameLst) == 1) {
+            if (strlen($schemeName) === 0)
+                return $name;
+            return "$schemeName.$name";
+        }
+        return implode('.', $nameLst);
+    }
+
+    private function nameWithoutSchemeName(string $name): string {
+        $nameLst = explode('.', $name);
+        if (count($nameLst) == 1)
+            return $name;
+        array_shift($nameLst);
+        return implode('.', $nameLst);
     }
 }

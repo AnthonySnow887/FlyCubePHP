@@ -107,12 +107,20 @@ abstract class Migration
         $this->_dbAdapter->setOutputDelimiter($outputDelimiter);
         $this->_dbAdapter->beginTransaction();
 
-        if ($version >= $this->_version)
-            $this->up();
-        else
-            $this->down();
+        $res = false;
+        try {
+            if ($version >= $this->_version)
+                $this->up();
+            else
+                $this->down();
 
-        $res = $this->_dbAdapter->commitTransaction();
+            $res = $this->_dbAdapter->commitTransaction();
+        } catch (\Throwable $e) {
+            $errMsg = $e->getMessage();
+            echo "[Migration] Migrate failed! Error: $errMsg\n";
+            $this->_dbAdapter->rollBackTransaction();
+            $res = false;
+        }
         unset($this->_migrator);
         unset($this->_dbAdapter);
         return $res;
