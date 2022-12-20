@@ -273,6 +273,8 @@ abstract class BaseMigrator
         $this->_dbAdapter->query("ALTER TABLE $tmpName RENAME TO $tmpNewName;");
         foreach ($tmpIdexes as $info) {
             $indexNewName = str_replace($name, $newName, $info['index_name']);
+            if (strcmp($indexNewName, $info['index_name']) === 0)
+                continue;
             $this->renameIndex($newName, $info['index_name'], $indexNewName);
         }
     }
