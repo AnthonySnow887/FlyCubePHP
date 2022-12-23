@@ -9,6 +9,8 @@ include_once 'BaseJavaScriptCompiler.php';
 
 class BabelJSCompiler extends BaseJavaScriptCompiler
 {
+    const version = "1.0.0";
+
     public function __construct(string $buildDir) {
         parent::__construct($buildDir);
     }
@@ -19,6 +21,26 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
      */
     static public function compilerName(): string {
         return 'BabelJS';
+    }
+
+    /**
+     * Версия компилятора
+     * @return string
+     */
+    static public function compilerVersion(): string {
+        $output = "";
+        $stdErr = "";
+        $retVal = CoreHelper::execCmd("npx babel -V", $output, $stdErr, true);
+        if ($retVal !== 0) {
+            throw ErrorAssetPipeline::makeError([
+                'tag' => 'asset-pipeline',
+                'message' => "[BabelJS] Get BabelJS version failed! Error: $stdErr",
+                'class-name' => __CLASS__,
+                'class-method' => __FUNCTION__
+            ]);
+        }
+        $output = trim($output);
+        return self::version . " [BabelJS ver. $output]";
     }
 
     /**

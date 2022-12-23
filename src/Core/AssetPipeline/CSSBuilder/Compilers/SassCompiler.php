@@ -13,8 +13,11 @@ use ScssPhp\ScssPhp\Compiler;
 use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 
+
 class SassCompiler extends BaseStylesheetCompiler
 {
+    const version = "1.0.0";
+
     private $_enableScssLogging = false;
 
     public function __construct(string $buildDir, array $cssDirs) {
@@ -30,6 +33,15 @@ class SassCompiler extends BaseStylesheetCompiler
      */
     static public function compilerName(): string {
         return 'Sass';
+    }
+
+    /**
+     * Версия компилятора
+     * @return string
+     */
+    static public function compilerVersion(): string {
+        $v = \ScssPhp\ScssPhp\Version::VERSION;
+        return self::version . " [ScssPhp ver. $v]";
     }
 
     /**

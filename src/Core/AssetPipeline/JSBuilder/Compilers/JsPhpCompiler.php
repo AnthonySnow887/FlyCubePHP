@@ -8,6 +8,8 @@ use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 
 class JsPhpCompiler extends BaseJavaScriptCompiler
 {
+    const version = "1.0.0";
+
     public function __construct(string $buildDir) {
         parent::__construct($buildDir);
     }
@@ -18,6 +20,14 @@ class JsPhpCompiler extends BaseJavaScriptCompiler
      */
     static public function compilerName(): string {
         return 'JsPhp';
+    }
+
+    /**
+     * Версия компилятора
+     * @return string
+     */
+    static public function compilerVersion(): string {
+        return self::version;
     }
 
     /**

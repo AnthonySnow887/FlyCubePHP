@@ -54,6 +54,7 @@ abstract class BaseJavaScriptCompiler
             return $fPath;
         // compile...
         $compilerName = $this->compilerName();
+        $compilerVersion = $this->compilerVersion();
         $sqlStartMS = microtime(true);
         $tmpJS = $this->compile($filePath);
         $sqlMS = round(microtime(true) - $sqlStartMS, 3);
@@ -63,7 +64,7 @@ abstract class BaseJavaScriptCompiler
         $buildTime = date('H:i');
         $buildPrefix = <<<EOT
 //
-// File compiled with FlyCubePHP-$compilerName.
+// File compiled with FlyCubePHP-$compilerName (ver. $compilerVersion).
 //       Date: $buildDate
 //       Time: $buildTime
 // Build time: $sqlMS sec
@@ -117,6 +118,12 @@ EOT;
      * @return string
      */
     abstract static public function compilerName(): string;
+
+    /**
+     * Версия компилятора
+     * @return string
+     */
+    abstract static public function compilerVersion(): string;
 
     /**
      * Расширение файла для компиляции
