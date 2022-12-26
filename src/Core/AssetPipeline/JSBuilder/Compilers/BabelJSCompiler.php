@@ -59,11 +59,13 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
      */
     protected function compile(string $filePath): string
     {
-        $babelConfig = CoreHelper::buildPath(CoreHelper::rootDir(), 'babel.config.json');
-        if (!file_exists($babelConfig))
+        $babelConfig = CoreHelper::buildPath(CoreHelper::rootDir(), '.babelrc');
+        $babelConfig7 = CoreHelper::buildPath(CoreHelper::rootDir(), '.babelrc.json');
+        if (!file_exists($babelConfig)
+            && !file_exists($babelConfig7))
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
-                'message' => "[BabelJS] Not found BabelJS config file! Search path: $babelConfig",
+                'message' => "[BabelJS] Not found BabelJS config file! Search path-1: $babelConfig; Search path-2: $babelConfig7",
                 'class-name' => __CLASS__,
                 'class-method' => __FUNCTION__,
                 'asset-name' => $filePath
@@ -71,7 +73,7 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
 
         $output = "";
         $stdErr = "";
-        $retVal = CoreHelper::execCmd("npx babel --config-file $babelConfig $filePath", $output, $stdErr, true);
+        $retVal = CoreHelper::execCmd("npx babel $filePath", $output, $stdErr, true);
         if ($retVal !== 0) {
             throw ErrorAssetPipeline::makeError([
                 'tag' => 'asset-pipeline',
