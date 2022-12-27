@@ -822,12 +822,13 @@ abstract class BaseMigrator
             } else {
                 // use as column type
                 $tmpType = $this->toDatabaseType($value);
-                $tmpSql .= "\"$key\" $tmpType";
+                $tmpSql .= $this->_dbAdapter->quoteTableName($key) . " $tmpType";
             }
         }
         if (!empty($tmpPKey)) {
             $tmpTable = explode('.', $table);
             $tmpName = $tmpTable[count($tmpTable) - 1] . "_pkey";
+            $tmpName = $this->_dbAdapter->quoteTableName($tmpName);
             $tmpSql .= ",\nCONSTRAINT $tmpName PRIMARY KEY ($tmpPKey)";
         }
         if (!empty($tmpUnique)) {
