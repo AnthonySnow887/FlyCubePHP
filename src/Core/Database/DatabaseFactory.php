@@ -258,6 +258,8 @@ class DatabaseFactory
             throw new \RuntimeException("[DatabaseFactory][loadDatabaseSecondarySettings] Not found database $key settings! Path: $path");
 
         $tmpSettings = $configDataJSON[$key];
+        if (empty($tmpSettings))
+            return [];
         if (is_string($tmpSettings)) {
             return $this->loadDatabaseSettings($tmpSettings, $configDataJSON, $path);
         } elseif (is_array($tmpSettings) && !CoreHelper::arrayIsList($tmpSettings)) {

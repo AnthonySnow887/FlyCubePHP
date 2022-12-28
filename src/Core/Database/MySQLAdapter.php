@@ -63,15 +63,16 @@ class MySQLAdapter extends BaseDatabaseAdapter
      * @return string
      */
     final public function quoteTableName(string $name): string {
-        $nameLst = explode('.', $name);
-        $tmpName = "";
-        foreach ($nameLst as $n) {
-            if (empty($tmpName))
-                $tmpName = "`$n`";
-            else
-                $tmpName .= ".`$n`";
-        }
-        return $tmpName;
+//        $nameLst = explode('.', $name);
+//        $tmpName = "";
+//        foreach ($nameLst as $n) {
+//            if (empty($tmpName))
+//                $tmpName = "`$n`";
+//            else
+//                $tmpName .= ".`$n`";
+//        }
+//        return $tmpName;
+        return "`$name`";
     }
 
     /**

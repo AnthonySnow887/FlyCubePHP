@@ -282,8 +282,10 @@ class MigrationsCore
 
             echo "[". ucwords($mCommand)."][DB: $mDatabaseTitle] Migrate $msgAttr ($mVersion - '$mClassName')\r\n";
             ob_start();
-            if ($m->migrate($version, $migratorName, $showOutput, "\r\n") === false)
+            if ($m->migrate($version, $migratorName, $showOutput, "\r\n") === false) {
+                echo "[". ucwords($mCommand)." - FAILED][DB: $mDatabaseTitle] Migrate $msgAttr ($mVersion - '$mClassName')\r\n";
                 break;
+            }
             $outPut = ob_get_clean();
             if ($showOutput)
                 echo $outPut;
@@ -476,8 +478,10 @@ class MigrationsCore
             }
             echo "[Down][DB: $mDatabaseTitle] Migrate from ($mVersion - '$mClassName')\r\n";
             ob_start();
-            if ($m->migrate(($mVersion - 1), $migratorName, $showOutput, "\r\n") === false)
+            if ($m->migrate(($mVersion - 1), $migratorName, $showOutput, "\r\n") === false) {
+                echo "[Down - FAILED][DB: $mDatabaseTitle] Migrate from ($mVersion - '$mClassName')\r\n";
                 break;
+            }
             $outPut = ob_get_clean();
             if ($showOutput)
                 echo $outPut;

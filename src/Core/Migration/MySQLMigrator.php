@@ -21,9 +21,9 @@ class MySQLMigrator extends BaseMigrator
      */
     public function createDatabase(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> createDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> createDatabase: invalid database adapter (NULL)!');
         $strOptions = "";
         if (isset($props['collation']))
             $strOptions = "DEFAULT COLLATE ".$props['collation'];
@@ -32,9 +32,7 @@ class MySQLMigrator extends BaseMigrator
         else
             $strOptions = "DEFAULT CHARACTER SET utf8";
 
-        $res = $this->_dbAdapter->query("CREATE DATABASE ".$this->_dbAdapter->quoteTableName($name)." $strOptions;");
-        if (is_null($res))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid result (NULL)!');
+        $this->_dbAdapter->query("CREATE DATABASE ".$this->_dbAdapter->quoteTableName($name)." $strOptions;");
     }
 
     /**
@@ -43,13 +41,11 @@ class MySQLMigrator extends BaseMigrator
      */
     public function dropDatabase(string $name) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropDatabase: invalid database adapter (NULL)!');
 
-        $res = $this->_dbAdapter->query("DROP DATABASE IF EXISTS ".$this->_dbAdapter->quoteTableName($name).";");
-        if (is_null($res))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid result (NULL)!');
+        $this->_dbAdapter->query("DROP DATABASE IF EXISTS ".$this->_dbAdapter->quoteTableName($name).";");
     }
 
     /**
@@ -78,7 +74,7 @@ class MySQLMigrator extends BaseMigrator
     final public function tableIndexes(string $table)
     {
         if (is_null($this->_dbAdapter))
-            return []; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> tableIndexes: invalid database connector (NULL)!');
+            return [];
 
         // --- select table information ---
         $dbName = $this->_dbAdapter->database();
@@ -131,7 +127,7 @@ class MySQLMigrator extends BaseMigrator
      */
     final public function tableColumns(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $res = $this->_dbAdapter->query("SHOW COLUMNS FROM ".$this->_dbAdapter->quoteTableName($table).";");
         if (empty($res))
@@ -174,7 +170,7 @@ class MySQLMigrator extends BaseMigrator
      */
     final public function tablePrimaryKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table sql ---
         $res = $this->_dbAdapter->query("SHOW KEYS FROM ".$this->_dbAdapter->quoteTableName($table)." WHERE Key_name = 'PRIMARY';");
         if (empty($res))
@@ -226,7 +222,7 @@ class MySQLMigrator extends BaseMigrator
      */
     final public function tableForeignKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table sql ---
         $dbName = $this->_dbAdapter->database();
         $sql = <<<EOT
@@ -272,13 +268,13 @@ EOT;
      */
     public function renameColumn(string $table, string $column, string $newName) {
         if (empty($table) || empty($column) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid table name or column name or new column name!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> renameColumn: invalid table name or column name or new column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> renameColumn: invalid database adapter (NULL)!');
         $tmpIdexes = $this->tableIndexes($table);
         $tmpColumns = $this->tableColumns($table);
         if (!isset($tmpColumns[$column]))
-            return;
+            throw new \RuntimeException("Migration::MySQLMigrator -> renameColumn: not found column \"$column\" in table \"$table\"!");
         $tmpTable = $this->_dbAdapter->quoteTableName($table);
         $tmpColumn = $this->_dbAdapter->quoteTableName($column);
         $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
@@ -314,9 +310,9 @@ EOT;
      */
     public function changeColumn(string $table, string $column, string $type, array $props = []) {
         if (empty($table) || empty($column) || empty($type))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid table name or column name or column type!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> changeColumn: invalid table name or column name or column type!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> changeColumn: invalid database adapter (NULL)!');
 
         $table = $this->_dbAdapter->quoteTableName($table);
 
@@ -350,12 +346,12 @@ EOT;
      */
     public function changeColumnNull(string $table, string $column, $notNull = false) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid table name or column name!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> changeColumnNull: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> changeColumnNull: invalid database adapter (NULL)!');
         $tmpColumns = $this->tableColumns($table);
         if (!isset($tmpColumns[$column]))
-            return;
+            throw new \RuntimeException("Migration::MySQLMigrator -> changeColumnNull: not found column \"$column\" in table \"$table\"!");
         $tmpTable = $this->_dbAdapter->quoteTableName($table);
         $tmpColumn = $this->_dbAdapter->quoteTableName($column);
         $colType = $tmpColumns[$column]['type'];
@@ -378,14 +374,14 @@ EOT;
      */
     public function renameIndex(string $table, string $oldName, string $newName) {
         if (empty($table) || empty($oldName) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> renameIndex: invalid table name or old name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> renameIndex: invalid database connector (NULL)!');
         if (strcmp($oldName, $newName) === 0)
-            return; // skip
+            throw new \RuntimeException('Migration::MySQLMigrator -> renameIndex: old name is the same as new name!');
         $tIndexes = $this->tableIndexes($table);
         if (empty($tIndexes) || !isset($tIndexes[$oldName]))
-            return;
+            throw new \RuntimeException("Migration::MySQLMigrator -> renameIndex: not found old index name \"$oldName\" for table \"$table\"!");
         $this->dropIndex($table, [ 'name' => $oldName ]);
         $this->addIndex($table, $tIndexes[$oldName]['columns'], [ 'name' => $newName, 'unique' => $tIndexes[$oldName]['unique']]);
     }
@@ -396,20 +392,21 @@ EOT;
      */
     protected function dropIndexProtected(array $args) {
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropIndexProtected: invalid database adapter (NULL)!');
         if (empty($args))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropIndexProtected: invalid args (Empty)!');
         if (!isset($args['table']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropIndexProtected: not found \'table\' in args!');
         if (!isset($args['columns']) && !isset($args['name']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropIndexProtected: not found \'columns\' and \'name\' in args!');
         $table = $args['table'];
         $tmpName = "";
         if (isset($args['columns'])) {
             $columns = array_filter($args['columns'], 'strlen');
             if (empty($columns))
-                return;
-            $tmpName = $table . "_" . implode('_', $columns) . "_index";
+                throw new \RuntimeException('Migration::MySQLMigrator -> dropIndexProtected: empty \'columns\' in args!');
+            $tableLst = explode('.', $table);
+            $tmpName = $tableLst[count($tableLst) - 1] . "_" . implode('_', $columns) . "_index";
         }
         if (isset($args['name']))
             $tmpName = $args['name'];
@@ -417,7 +414,7 @@ EOT;
         if (isset($args['if_exists']) && $args['if_exists'] === true) {
             $tIndexes = $this->tableIndexes($table);
             if (!isset($tIndexes[$tmpName]))
-                return;
+                return; // not found -> ok -> exit
         }
         $table = $this->_dbAdapter->quoteTableName($table);
         $tmpName = $this->_dbAdapter->quoteTableName($tmpName);
@@ -431,12 +428,12 @@ EOT;
      */
     public function dropForeignKey(string $table, array $columns) {
         if (empty($table) || empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropForeignKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::MySQLMigrator -> dropForeignKey: invalid columns (Empty)!');
         // --- select f-keys list ---
         $tmpForeignKeysLst = $this->tableForeignKeys($table);
         $columnNames = implode(', ', $columns);
@@ -448,7 +445,7 @@ EOT;
             }
         }
         if (empty($tmpName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: not found fkey name for table $table and columns ($columnNames)!');
+            throw new \RuntimeException("Migration::MySQLMigrator -> dropForeignKey: not found foreign key name for table \"$table\" and columns (\"$columnNames\")!");
         $tmpTable = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $tmpTable DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName).";");
         $this->dropIndex($table, [ 'name' => $tmpName, 'if_exists' => true ]);

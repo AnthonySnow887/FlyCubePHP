@@ -22,13 +22,12 @@ class SQLiteMigrator extends BaseMigrator
      */
     public function createDatabase(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database adapter (NULL)!');
         $settings = $this->_dbAdapter->settings();
         $settings['database'] = $name;
         $this->_dbAdapter->recreatePDO($settings);
-        return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> createDatabase: not supported!');
     }
 
     /**
@@ -37,12 +36,11 @@ class SQLiteMigrator extends BaseMigrator
      */
     public function dropDatabase(string $name) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database connector (NULL)!');
-        if (!is_file($name))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropDatabase: not found database file '$name'!');
-        unlink($name);
+            throw new \RuntimeException('Migration::SQLiteMigrator -> createDatabase: invalid database adapter (NULL)!');
+        if (is_file($name))
+            unlink($name);
     }
 
     /**
@@ -70,7 +68,7 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function tableIndexes(string $table) {
         if (is_null($this->_dbAdapter))
-            return []; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableIndexes: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $res = $this->_dbAdapter->query("PRAGMA INDEX_LIST(\"$table\");");
         if (empty($res))
@@ -122,7 +120,7 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function tableColumns(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $res = $this->_dbAdapter->query("PRAGMA table_info(\"$table\");");
         if (empty($res))
@@ -158,7 +156,7 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function tablePrimaryKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table sql ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
@@ -212,7 +210,7 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function tableForeignKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table sql ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
@@ -261,12 +259,14 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function renameIndex(string $table, string $oldName, string $newName) {
         if (empty($table) || empty($oldName) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: invalid table name or old name or new name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: invalid table name or old name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: invalid database adapter (NULL)!');
+        if (strcmp($oldName, $newName) === 0)
+            throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: old name is the same as new name!');
         $tmpIndexes = $this->tableIndexes($table);
         if (empty($tmpIndexes))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: table not contains indexes!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: table not contains indexes!');
         $iIndexInfo = [];
         foreach ($tmpIndexes as $info) {
             if (strcmp($info['index_name'], $oldName) === 0) {
@@ -274,8 +274,11 @@ class SQLiteMigrator extends BaseMigrator
                 break;
             }
         }
-        if (empty($iIndexInfo))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> renameIndex: not found old index (name: $oldName)!');
+        if (empty($iIndexInfo)) {
+            if (strcmp($newName, $tmpIndexes) === 0)
+                return; // Already added
+            throw new \RuntimeException("Migration::SQLiteMigrator -> renameIndex: not found info for table index (name: \"$oldName\")!");
+        }
 
         // --- drop old index ---
         $this->dropIndex($table, [ 'name' => $oldName ]);
@@ -300,22 +303,22 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function addColumn(string $table, string $column, array $props = []) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid table name or column name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addColumn: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addColumn: invalid database adapter (NULL)!');
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addColumn: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "\"$column\"");
         if ($pos !== false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> addColumn: column \"$column\" in table \"$table\" already exists!");
         $tmpPKey = "";
         $tmpUnique = [];
         $sql = $this->prepareCreateColumn($column, $props, $tmpPKey, $tmpUnique);
         if (empty($sql))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addColumn: invalid SQL!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addColumn: prepare create column return empty result!');
         $this->_dbAdapter->query("ALTER TABLE \"$table\" ADD $sql;");
     }
 
@@ -334,19 +337,19 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function changeColumn(string $table, string $column, string $type, array $props = []) {
         if (empty($table) || empty($column) || empty($type))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumn: invalid table name or column name or column type!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumn: invalid table name or column name or column type!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumn: invalid database adapter (NULL)!');
         // --- select indexes ---
         $tmpIdexes = $this->tableIndexes($table);
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumn: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "\"$column\"");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumn: column \"$column\" not found in table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -395,7 +398,7 @@ class SQLiteMigrator extends BaseMigrator
 
         $res = $this->_dbAdapter->query("PRAGMA table_info(\"$table\");");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumn: SQLite table_info(\"$table\") return empty result!");
         $tmpColumns = "";
         foreach ($res as $r) {
             $cName = $r->name;
@@ -423,7 +426,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
     }
@@ -436,23 +439,23 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function changeColumnDefault(string $table, string $column, $default = null) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid table name or column name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid database adapter (NULL)!');
         // --- select indexes ---
         $tmpIdexes = $this->tableIndexes($table);
         // --- select columns ---
         $tmpColumns = $this->tableColumns($table);
         if (!isset($tmpColumns[$column]))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: not found column '$column' in table '$table'!');
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumnDefault: not found column \"$column\" in table columns list!");
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "\"$column\"");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumnDefault: column \"$column\" not found in table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -522,7 +525,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
     }
@@ -535,23 +538,23 @@ class SQLiteMigrator extends BaseMigrator
      */
     public function changeColumnNull(string $table, string $column, $notNull = false) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid table name or column name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnNull: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnNull: invalid database adapter (NULL)!');
         // --- select indexes ---
         $tmpIdexes = $this->tableIndexes($table);
         // --- select columns ---
         $tmpColumns = $this->tableColumns($table);
         if (!isset($tmpColumns[$column]))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnDefault: not found column '$column' in table '$table'!');
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumnNull: not found column \"$column\" in table columns list!");
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> changeColumnNull: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "\"$column\"");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> changeColumnNull: column \"$column\" not found in table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -621,7 +624,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
     }
@@ -633,17 +636,17 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function dropColumn(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropColumn: invalid table name or column name!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropColumn: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropColumn: invalid database adapter (NULL)!');
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropColumn: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "\"$column\"");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropColumn: column \"$column\" not found in table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -685,7 +688,7 @@ class SQLiteMigrator extends BaseMigrator
 
         $res = $this->_dbAdapter->query("PRAGMA table_info(\"$table\");");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropColumn: SQLite table_info(\"$table\") return empty result!");
         $tmpColumns = "";
         foreach ($res as $r) {
             $cName = $r->name;
@@ -719,9 +722,9 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function setPrimaryKey(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> setPrimaryKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> setPrimaryKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> setPrimaryKey: invalid database adapter (NULL)!');
         // --- drop old primary keys ---
         $tmpPKeys = $this->tablePrimaryKeys($table);
         foreach ($tmpPKeys as $info)
@@ -729,12 +732,12 @@ class SQLiteMigrator extends BaseMigrator
         // --- select foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> setPrimaryKey: \"PRAGMA foreign_keys\" is Empty!");
         $foreignKeys = $res[0]->foreign_keys;
         // --- select defer_foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA defer_foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> setPrimaryKey: \"PRAGMA defer_foreign_keys\" is Empty!");
         $deferForeignKeys = $res[0]->defer_foreign_keys;
         // --- set new states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = ON;");
@@ -746,7 +749,7 @@ class SQLiteMigrator extends BaseMigrator
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> setPrimaryKey: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $newSql = "";
         $newSqlPath = "";
@@ -810,7 +813,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
 
@@ -826,9 +829,9 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function dropPrimaryKey(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: invalid database adapter (NULL)!');
         $tmpPKeyName = "";
         $tmpPKeys = $this->tablePrimaryKeys($table);
         foreach ($tmpPKeys as $info) {
@@ -838,16 +841,16 @@ class SQLiteMigrator extends BaseMigrator
             }
         }
         if (empty($tmpPKeyName))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: not found pkey name for table $table and column $column!');
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropPrimaryKey: not found primary key name for table \"$table\"!");
         // --- select foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropPrimaryKey: \"PRAGMA foreign_keys\" is Empty!");
         $foreignKeys = $res[0]->foreign_keys;
         // --- select defer_foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA defer_foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropPrimaryKey: \"PRAGMA defer_foreign_keys\" is Empty!");
         $deferForeignKeys = $res[0]->defer_foreign_keys;
         // --- set new states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = ON;");
@@ -859,11 +862,11 @@ class SQLiteMigrator extends BaseMigrator
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropPrimaryKey: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $pos = strpos($sql, "CONSTRAINT $tmpPKeyName PRIMARY KEY");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropPrimaryKey: not found primary key section in SQL data fot table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -923,7 +926,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
 
@@ -952,24 +955,24 @@ class SQLiteMigrator extends BaseMigrator
                                         array $props = []) {
         if (empty($table) || empty($columns)
             || empty($refTable) || empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid columns (Empty)!');
         $refColumns = array_filter($refColumns,'strlen');
         if (empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid refColumns (Empty)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: invalid refColumns (Empty)!');
         // --- select foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> addForeignKey: \"PRAGMA foreign_keys\" is Empty!");
         $foreignKeys = $res[0]->foreign_keys;
         // --- select defer_foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA defer_foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> addForeignKey: \"PRAGMA defer_foreign_keys\" is Empty!");
         $deferForeignKeys = $res[0]->defer_foreign_keys;
         // --- set new states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = ON;");
@@ -981,7 +984,7 @@ class SQLiteMigrator extends BaseMigrator
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> addForeignKey: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
         $newSql = "";
         $newSqlPath = "";
@@ -1062,7 +1065,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
 
@@ -1078,21 +1081,21 @@ class SQLiteMigrator extends BaseMigrator
      */
     final public function dropForeignKey(string $table, array $columns) {
         if (empty($table) || empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: invalid columns (Empty)!');
         // --- select foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropForeignKey: \"PRAGMA foreign_keys\" is Empty!");
         $foreignKeys = $res[0]->foreign_keys;
         // --- select defer_foreign_keys ---
         $res = $this->_dbAdapter->query("PRAGMA defer_foreign_keys;");
         if (empty($res))
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropForeignKey: \"PRAGMA defer_foreign_keys\" is Empty!");
         $deferForeignKeys = $res[0]->defer_foreign_keys;
         // --- set new states ---
         $this->_dbAdapter->query("PRAGMA defer_foreign_keys = ON;");
@@ -1112,17 +1115,17 @@ class SQLiteMigrator extends BaseMigrator
             }
         }
         if (empty($tmpName))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: not found fkey name for table $table and columns ($columnNames)!');
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropForeignKey: not found foreign key name for table \"$table\" and columns (\"$columnNames\")!");
 
         // --- select table information ---
         $res = $this->_dbAdapter->query("SELECT sql FROM sqlite_master WHERE name = \"$table\";");
         if (empty($res))
-            return;
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropForeignKey: SQL data in sqlite_master is Empty!');
         $sql = $res[0]->sql;
 
         $pos = strpos($sql, "CONSTRAINT \"$tmpName\" FOREIGN KEY");
         if ($pos === false)
-            return;
+            throw new \RuntimeException("Migration::SQLiteMigrator -> dropForeignKey: not found foreign key section in SQL data fot table \"$table\"!");
         $newSql = "";
         $newSqlPath = "";
         $useSkip = false;
@@ -1182,7 +1185,7 @@ class SQLiteMigrator extends BaseMigrator
         $tmpIdexesUpd = $this->tableIndexes($table);
         foreach ($tmpIdexes as $index) {
             if (isset($tmpIdexesUpd[$index['index_name']]))
-                continue;
+                continue; // skip - already added
             $this->addIndex($table, $index['columns'], ['unique' => $index['unique']]);
         }
 
@@ -1214,19 +1217,19 @@ class SQLiteMigrator extends BaseMigrator
      */
     final protected function dropIndexProtected(array $args) {
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid database adapter (NULL)!');
         if (empty($args))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid args!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid args!');
         if (!isset($args['table']))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: not found \'table\' in args!');
         if (!isset($args['columns']) && !isset($args['name']))
-            return; // TODO throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: not found \'columns\' and \'name\' in args!');
         $table = $args['table'];
         $tmpName = "";
         if (isset($args['columns'])) {
             $columns = array_filter($args['columns'],'strlen');
             if (empty($columns))
-                return;
+                throw new \RuntimeException('Migration::SQLiteMigrator -> dropIndexProtected: empty \'columns\' in args!');
             $tmpName = $table . "_" . implode('_', $columns) . "_index";
         }
         if (isset($args['name']))

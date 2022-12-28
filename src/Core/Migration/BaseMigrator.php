@@ -242,9 +242,9 @@ abstract class BaseMigrator
      */
     public function createTable(string $name, array $args) {
         if (empty($name) || empty($args))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> createTable: invalid table name or args!');
+            throw new \RuntimeException('Migration::BaseMigrator -> createTable: invalid table name or args!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> createTable: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> createTable: invalid database adapter (NULL)!');
         $ifNotExists = "";
         if (isset($args['if_not_exists']) && $args['if_not_exists'] === true) {
             $ifNotExists = "IF NOT EXISTS";
@@ -264,9 +264,9 @@ abstract class BaseMigrator
      */
     public function renameTable(string $name, string $newName) {
         if (empty($name) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid table name or new name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid table name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid database adapter (NULL)!');
         $tmpIdexes = $this->tableIndexes($name);
         $tmpName = $this->_dbAdapter->quoteTableName($name);
         $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
@@ -291,9 +291,9 @@ abstract class BaseMigrator
      */
     public function dropTable(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid table name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid table name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid database adapter (NULL)!');
         $name = $this->_dbAdapter->quoteTableName($name);
         $sql = "DROP TABLE $name";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
@@ -319,9 +319,9 @@ abstract class BaseMigrator
      */
     public function addColumn(string $table, string $column, array $props = []) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid table name or column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid database adapter (NULL)!');
         $ifNotExists = "";
         if (isset($props['if_not_exists']) && $props['if_not_exists'] === true) {
             $ifNotExists = "IF NOT EXISTS";
@@ -331,7 +331,7 @@ abstract class BaseMigrator
         $tmpUnique = [];
         $sql = $this->prepareCreateColumn($column, $props, $tmpPKey, $tmpUnique);
         if (empty($sql))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addColumn: invalid SQL!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addColumn: prepare create column return empty result!');
         $table = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $table ADD COLUMN $ifNotExists $sql;");
     }
@@ -344,9 +344,11 @@ abstract class BaseMigrator
      */
     public function renameColumn(string $table, string $column, string $newName) {
         if (empty($table) || empty($column) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid table name or column name or new column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid table name or column name or new column name!');
+        if (strcmp($column, $newName) === 0)
+            throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: column name is the same as new column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameColumn: invalid database adapter (NULL)!');
         $tmpIdexes = $this->tableIndexes($table);
         $tmpTable = $this->_dbAdapter->quoteTableName($table);
         $tmpColumn = $this->_dbAdapter->quoteTableName($column);
@@ -375,9 +377,9 @@ abstract class BaseMigrator
      */
     public function changeColumn(string $table, string $column, string $type, array $props = []) {
         if (empty($table) || empty($column) || empty($type))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid table name or column name or column type!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid table name or column name or column type!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumn: invalid database adapter (NULL)!');
 
         $table = $this->_dbAdapter->quoteTableName($table);
 
@@ -423,9 +425,9 @@ abstract class BaseMigrator
      */
     public function changeColumnDefault(string $table, string $column, $default = null) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: invalid table name or column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: invalid database adapter (NULL)!');
 
         if (!isset($default)) {
             // --- drop default ---
@@ -436,7 +438,7 @@ abstract class BaseMigrator
             // --- replace default ---
             $tmpColumns = $this->tableColumns($table);
             if (!isset($tmpColumns[$column]))
-                return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnDefault: not found column '$column' in table '$table'!');
+                throw new \RuntimeException("Migration::BaseMigrator -> changeColumnDefault: not found column \"$column\" in table columns list!");
             $tmpType = $tmpColumns[$column]['type'];
             $tmpDefault = $this->makeDefaultValue($default, $tmpType);
             $table = $this->_dbAdapter->quoteTableName($table);
@@ -453,9 +455,9 @@ abstract class BaseMigrator
      */
     public function changeColumnNull(string $table, string $column, $notNull = false) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid table name or column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> changeColumnNull: invalid database adapter (NULL)!');
         $table = $this->_dbAdapter->quoteTableName($table);
         if (!isset($notNull) || $notNull === false) {
             $this->_dbAdapter->query("ALTER TABLE $table ALTER COLUMN ".$this->_dbAdapter->quoteTableName($column)." DROP NOT NULL;");
@@ -473,9 +475,9 @@ abstract class BaseMigrator
      */
     public function dropColumn(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid table name or column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropColumn: invalid database adapter (NULL)!');
         $table = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $table DROP COLUMN ".$this->_dbAdapter->quoteTableName($column).";");
     }
@@ -493,7 +495,7 @@ abstract class BaseMigrator
      */
     public function addIndex(string $table, array $columns, array $props = []) {
         if (empty($table) || empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addIndex: invalid table name or column names!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndex: invalid table name or column names!');
         if (isset($props['table']))
             unset($props['table']);
         if (isset($props['columns']))
@@ -511,11 +513,11 @@ abstract class BaseMigrator
      */
     public function renameIndex(string $table, string $oldName, string $newName) {
         if (empty($table) || empty($oldName) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database adapter (NULL)!');
         if (strcmp($oldName, $newName) === 0)
-            return; // skip
+            throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: old name is the same as new name!');
         $tmpOldName = $this->_dbAdapter->quoteTableName($oldName);
         $tmpNewName = $this->_dbAdapter->quoteTableName($newName);
         $this->_dbAdapter->query("ALTER INDEX $tmpOldName RENAME TO $tmpNewName;");
@@ -538,7 +540,7 @@ abstract class BaseMigrator
      */
     public function dropIndex(string $table, array $props = []) {
         if (empty($table))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndex: invalid table name or column name!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropIndex: invalid table name!');
         if (isset($props['table']))
             unset($props['table']);
         $tmpProps = ['table' => $table];
@@ -553,9 +555,9 @@ abstract class BaseMigrator
      */
     public function setPrimaryKey(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> setPrimaryKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::BaseMigrator -> setPrimaryKey: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> setPrimaryKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> setPrimaryKey: invalid database adapter (NULL)!');
         // --- drop old primary keys ---
         $tmpPKeys = $this->tablePrimaryKeys($table);
         foreach ($tmpPKeys as $info)
@@ -574,9 +576,9 @@ abstract class BaseMigrator
      */
     public function dropPrimaryKey(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: invalid database adapter (NULL)!');
         $tmpPKeyName = "";
         $tmpPKeys = $this->tablePrimaryKeys($table);
         foreach ($tmpPKeys as $info) {
@@ -586,7 +588,7 @@ abstract class BaseMigrator
             }
         }
         if (empty($tmpPKeyName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropPrimaryKey: not found pkey name for table $table and column $column!');
+            throw new \RuntimeException("Migration::BaseMigrator -> dropPrimaryKey: not found primary key name for table \"$table\"!");
         $table = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpPKeyName).";");
     }
@@ -611,15 +613,15 @@ abstract class BaseMigrator
                                   array $props = []) {
         if (empty($table) || empty($columns)
             || empty($refTable) || empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid table name or columns or ref-table name or ref-columns!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid columns (Empty)!');
         $refColumns = array_filter($refColumns,'strlen');
         if (empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid refColumns (Empty)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid refColumns (Empty)!');
         $columnNames = implode(', ', $columns);
         $refColumnNames = implode(', ', $refColumns);
         $tmpName = "fk_" . $table . "_" . implode('_', $columns);
@@ -674,7 +676,7 @@ abstract class BaseMigrator
             }
         }
         if (empty($refPKeyColumn))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKeyPKey: not found primary key for table $refTable!');
+            throw new \RuntimeException("Migration::BaseMigrator -> addForeignKeyPKey: not found primary key for table \"$refTable\"!");
         $this->addForeignKey($table, [ $column ], $refTable, [ $refPKeyColumn ], $props);
     }
 
@@ -685,12 +687,12 @@ abstract class BaseMigrator
      */
     public function dropForeignKey(string $table, array $columns) {
         if (empty($table) || empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid table name or columns!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: invalid columns (Empty)!');
         // --- select f-keys list ---
         $tmpForeignKeysLst = $this->tableForeignKeys($table);
         $columnNames = implode(', ', $columns);
@@ -702,7 +704,7 @@ abstract class BaseMigrator
             }
         }
         if (empty($tmpName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKey: not found fkey name for table $table and columns ($columnNames)!');
+            throw new \RuntimeException("Migration::BaseMigrator -> dropForeignKey: not found foreign key name for table \"$table\" and columns (\"$columnNames\")!");
         $table = $this->_dbAdapter->quoteTableName($table);
         $this->_dbAdapter->query("ALTER TABLE $table DROP CONSTRAINT ".$this->_dbAdapter->quoteTableName($tmpName).";");
     }
@@ -714,9 +716,9 @@ abstract class BaseMigrator
      */
     public function dropForeignKeyPKey(string $table, string $column) {
         if (empty($table) || empty($column))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKeyPKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKeyPKey: invalid table name or column name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKeyPKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropForeignKeyPKey: invalid database adapter (NULL)!');
         $this->dropForeignKey($table, [ $column ]);
     }
 
@@ -726,9 +728,9 @@ abstract class BaseMigrator
      */
     public function execute(string $sql) {
         if (empty($sql))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> execute: invalid SQL (Empty)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> execute: invalid SQL (Empty)!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> execute: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> execute: invalid database adapter (NULL)!');
         $this->_dbAdapter->query($sql);
     }
 
@@ -898,20 +900,21 @@ abstract class BaseMigrator
      */
     protected function addIndexProtected(array $args) {
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid database adapter (NULL)!');
         if (empty($args))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid args!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid args!');
         if (!isset($args['table']) || !isset($args['columns']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid args values (not found \'table\' or \'columns\')!');
         $table = $args['table'];
         $columns = $args['columns'];
         if (is_null($columns) || empty($columns))
-            return;
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid columns (Empty)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return;
+            throw new \RuntimeException('Migration::BaseMigrator -> addIndexProtected: invalid columns (Empty)!');
         $columnNames = implode(', ', $columns);
-        $tmpName = $table . "_" . implode('_', $columns) . "_index";
+        $tableLst = explode('.', $table);
+        $tmpName = $tableLst[count($tableLst) - 1] . "_" . implode('_', $columns) . "_index";
         if (isset($args['name']))
             $tmpName = $args['name'];
         $isUnique = "";
@@ -929,20 +932,21 @@ abstract class BaseMigrator
     protected function dropIndexProtected(array $args)
     {
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database adapter (NULL)!');
         if (empty($args))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
         if (!isset($args['table']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: not found \'table\' in args!');
         if (!isset($args['columns']) && !isset($args['name']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: not found \'columns\' and \'name\' in args!');
         $table = $args['table'];
         $tmpName = "";
         if (isset($args['columns'])) {
             $columns = array_filter($args['columns'], 'strlen');
             if (empty($columns))
-                return;
-            $tmpName = $table . "_" . implode('_', $columns) . "_index";
+                throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid columns (Empty)!');
+            $tableLst = explode('.', $table);
+            $tmpName = $tableLst[count($tableLst) - 1] . "_" . implode('_', $columns) . "_index";
         }
         if (isset($args['name']))
             $tmpName = $args['name'];

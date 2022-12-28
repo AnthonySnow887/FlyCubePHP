@@ -31,9 +31,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     public function createDatabase(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid database adapter (NULL)!');
         if (!isset($props['encoding']))
             $props['encoding'] = "utf8";
 
@@ -66,9 +66,7 @@ class PostgreSQLMigrator extends BaseMigrator
             $val = intval($props['connection_limit']);
             $strOptions .= " CONNECTION LIMIT = $val";
         }
-        $res = $this->_dbAdapter->query("CREATE DATABASE \"$name\" $strOptions;");
-        if (is_null($res))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createDatabase: invalid result (NULL)!');
+        $this->_dbAdapter->query("CREATE DATABASE \"$name\" $strOptions;");
     }
 
     /**
@@ -77,13 +75,11 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     public function dropDatabase(string $name) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid database adapter (NULL)!');
 
-        $res = $this->_dbAdapter->query("DROP DATABASE IF EXISTS \"$name\";");
-        if (is_null($res))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropDatabase: invalid result (NULL)!');
+        $this->_dbAdapter->query("DROP DATABASE IF EXISTS \"$name\";");
     }
 
     /**
@@ -99,9 +95,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     public function createExtension(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid extension name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid extension name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createExtension: invalid database adapter (NULL)!');
         $ifNotExists = "";
         if (isset($props['if_not_exists']) && $props['if_not_exists'] === true)
             $ifNotExists = "IF NOT EXISTS";
@@ -122,9 +118,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     public function dropExtension(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid extension name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid extension name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropExtension: invalid database adapter (NULL)!');
         $if_exists = "";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
             $if_exists .= "IF EXISTS";
@@ -144,9 +140,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     final public function createSchema(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createSchema: invalid scheme name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createSchema: invalid scheme name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> createSchema: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> createSchema: invalid database adapter (NULL)!');
         $ifNotExists = "";
         if (isset($props['if_not_exists']) && $props['if_not_exists'] === true)
             $ifNotExists = "IF NOT EXISTS";
@@ -165,9 +161,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     final public function dropSchema(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid scheme name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid scheme name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropSchema: invalid database adapter (NULL)!');
         $if_exists = "";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
             $if_exists .= "IF EXISTS";
@@ -186,9 +182,9 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     final public function dropTable(string $name, array $props = []) {
         if (empty($name))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid table name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropTable: invalid table name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropTable: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropTable: invalid database adapter (NULL)!');
         $name = $this->_dbAdapter->quoteTableName($name);
         $if_exists = "";
         if (isset($props['if_exists']) && $props['if_exists'] === true)
@@ -225,7 +221,7 @@ class PostgreSQLMigrator extends BaseMigrator
     final public function tableIndexes(string $table)
     {
         if (is_null($this->_dbAdapter))
-            return []; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> tableIndexes: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $tableLst = explode('.', $table);
         $sql = "";
@@ -273,7 +269,7 @@ class PostgreSQLMigrator extends BaseMigrator
      */
     final public function tableColumns(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> tableColumns: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $tableLst = explode('.', $table);
         $sql = "";
@@ -331,7 +327,7 @@ EOT;
      */
     final public function tablePrimaryKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> tablePrimaryKeys: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $tableLst = explode('.', $table);
         $sql = "";
@@ -411,7 +407,7 @@ EOT;
             AND indisprimary
 EOT;
         } else {
-            return []; // invalid name!
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> tablePrimaryKeys: invalid table name!');
         }
 
         $res = $this->_dbAdapter->query($sql);
@@ -449,7 +445,7 @@ EOT;
      */
     final public function tableForeignKeys(string $table) {
         if (is_null($this->_dbAdapter))
-            return null; // TODO throw new \RuntimeException('Migration::PostgreSQLMigrator -> tableForeignKeys: invalid database connector (NULL)!');
+            return [];
         // --- select table information ---
         $tableLst = explode('.', $table);
         $sql = "";
@@ -506,7 +502,7 @@ EOT;
             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = '$tableLst[0]' AND tc.table_name = '$tableLst[1]';
 EOT;
         } else {
-            return []; // invalid name!
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> tableForeignKeys: invalid table name!');
         }
         $res = $this->_dbAdapter->query($sql);
         if (empty($res))
@@ -555,9 +551,9 @@ EOT;
      */
     final public function renameTable(string $name, string $newName) {
         if (empty($name) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid table name or new name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameTable: invalid table name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameTable: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameTable: invalid database adapter (NULL)!');
         $tmpIdexes = $this->tableIndexes($name);
         $tmpName = $this->_dbAdapter->quoteTableName($name);
         // for postgresql without scheme name
@@ -580,16 +576,16 @@ EOT;
      */
     final public function renameIndex(string $table, string $oldName, string $newName) {
         if (empty($table) || empty($oldName) || empty($newName))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid table name or old name or new name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameIndex: invalid table name or old name or new name!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameIndex: invalid database adapter (NULL)!');
         if (strcmp($oldName, $newName) === 0)
-            return; // skip
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameIndex: old name is the same as new name!');
         // for postgresql without scheme name
         $tableSchemeName = $this->schemeName($table);
         $oldNameSchemeName = $this->schemeName($oldName, $tableSchemeName);
         if (strcmp($tableSchemeName, $oldNameSchemeName) !== 0)
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> renameIndex: Scheme name in old name is not equal table scheme name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> renameIndex: Scheme name in old name is not equal table scheme name!');
         $tmpOldName = $this->_dbAdapter->quoteTableName($this->nameWithSchemeName($oldName, $oldNameSchemeName));
         $tmpNewName = "\"".$this->nameWithoutSchemeName($newName)."\"";
         $this->_dbAdapter->query("ALTER INDEX $tmpOldName RENAME TO $tmpNewName;");
@@ -615,15 +611,15 @@ EOT;
                                         array $props = []) {
         if (empty($table) || empty($columns)
             || empty($refTable) || empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid input arguments!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> addForeignKey: invalid input arguments!');
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> addForeignKey: invalid database adapter (NULL)!');
         $columns = array_filter($columns,'strlen');
         if (empty($columns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid columns (Empty)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> addForeignKey: invalid columns (Empty)!');
         $refColumns = array_filter($refColumns,'strlen');
         if (empty($refColumns))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> addForeignKey: invalid refColumns (Empty)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> addForeignKey: invalid refColumns (Empty)!');
         $columnNames = implode(', ', $columns);
         $refColumnNames = implode(', ', $refColumns);
         $tmpName = "fk_" . $this->nameWithoutSchemeName($table) . "_" . implode('_', $columns);
@@ -659,20 +655,21 @@ EOT;
     final protected function dropIndexProtected(array $args)
     {
         if (is_null($this->_dbAdapter))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid database connector (NULL)!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: invalid database adapter (NULL)!');
         if (empty($args))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: invalid args!');
         if (!isset($args['table']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: not found \'table\' in args!');
         if (!isset($args['columns']) && !isset($args['name']))
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: invalid args values!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: not found \'columns\' and \'name\' in args!');
         $table = $args['table'];
         $tmpName = "";
         if (isset($args['columns'])) {
             $columns = array_filter($args['columns'], 'strlen');
             if (empty($columns))
-                return;
-            $tmpName = $table . "_" . implode('_', $columns) . "_index";
+                throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: empty \'columns\' in args!');
+            $tableLst = explode('.', $table);
+            $tmpName = $tableLst[count($tableLst) - 1] . "_" . implode('_', $columns) . "_index";
         }
         if (isset($args['name']))
             $tmpName = $args['name'];
@@ -680,7 +677,7 @@ EOT;
         $tableSchemeName = $this->schemeName($table);
         $tmpNameSchemeName = $this->schemeName($tmpName, $tableSchemeName);
         if (strcmp($tableSchemeName, $tmpNameSchemeName) !== 0)
-            return; // TODO throw new \RuntimeException('Migration::BaseMigrator -> dropIndexProtected: Scheme name in index name is not equal table scheme name!');
+            throw new \RuntimeException('Migration::PostgreSQLMigrator -> dropIndexProtected: Scheme name in index name is not equal table scheme name!');
         $tmpName = $this->_dbAdapter->quoteTableName($this->nameWithSchemeName($tmpName, $tmpNameSchemeName));
 
         $sql = "DROP INDEX";
