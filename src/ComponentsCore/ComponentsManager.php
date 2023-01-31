@@ -347,7 +347,10 @@ class ComponentsManager
                     continue;
                 if (in_array($chDir, $this->_ignore_list))
                     continue;
-                $tmpInitFile = CoreHelper::buildAppPath($dir, $chDir, ComponentsManager::PLUGIN_INIT_FILE);
+                $tmpDir = CoreHelper::buildAppPath($dir, $chDir);
+                if (!is_dir($tmpDir))
+                    continue;
+                $tmpInitFile = CoreHelper::buildAppPath($tmpDir, ComponentsManager::PLUGIN_INIT_FILE);
                 $this->loadPluginInitFile($tmpInitFile);
             }
         }
