@@ -327,6 +327,10 @@ class HelpDocObject
                     $tmpPart->appendData($data);
                 }
                 $currentParent = $tmpPart;
+            } else if ($currentParent->level() > $level
+                        && !is_null($currentParent->parentPart())) {
+                $currentParent = $currentParent->parentPart();
+                $this->makePart($currentRoot, $currentParent, $level, $heading, $data);
             } else if ($currentRoot->level() < $level) {
                 $tmpPart = $currentRoot->findSubPart($level, $heading);
                 if (is_null($tmpPart)) {
