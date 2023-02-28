@@ -2930,6 +2930,10 @@ function assetsPrecompile(bool $skipRendering = false) {
     $stdoutPath = sys_get_temp_dir().'/php'.substr(sha1(rand()), 0, 6);
     $STDOUT = fopen($stdoutPath, 'wb');
     $STDOUT_2 = fopen('/dev/tty', 'wb');
+    if (!$STDOUT_2) {
+        fwrite(STDERR, "\r\nWARNING: Open '/dev/tty' failed! Used STDERR!\r\n");
+        $STDOUT_2 = STDERR;
+    }
     // --- output controllers assets build states ---
     fwrite($STDOUT_2, "\r\nBuild Controllers:\r\n");
     foreach ($routes as $route) {
@@ -2995,7 +2999,8 @@ function assetsPrecompile(bool $skipRendering = false) {
             fclose($STDOUT);
             if (is_file($stdoutPath))
                 unlink($stdoutPath);
-            fclose($STDOUT_2);
+            if ($STDOUT_2 != STDERR)
+                fclose($STDOUT_2);
             // --- throw error for output ---
             throw $e;
         }
@@ -3007,7 +3012,8 @@ function assetsPrecompile(bool $skipRendering = false) {
     fclose($STDOUT);
     if (is_file($stdoutPath))
         unlink($stdoutPath);
-    fclose($STDOUT_2);
+    if ($STDOUT_2 != STDERR)
+        fclose($STDOUT_2);
 }
 
 /**
