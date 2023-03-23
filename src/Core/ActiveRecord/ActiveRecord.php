@@ -408,11 +408,21 @@ abstract class ActiveRecord
 
     /**
      * Метод предобработки добавляемых данных (aka __set with return)
-     * @param string $name
-     * @param mixed $value
+     * @param string $name название параметра
+     * @param mixed $value значение параметра
      * @return mixed
      */
     protected function beforeSet(string $name, $value) {
+        return $value;
+    }
+
+    /**
+     * Метод предобработки добавляемых в БД данных (обратное преобразование, выполняемое методом beforeSet(...) )
+     * @param string $name название параметра
+     * @param mixed $value значение параметра
+     * @return mixed
+     */
+    protected function prepareValueForDB(string $name, $value) {
         return $value;
     }
 
@@ -1039,7 +1049,7 @@ abstract class ActiveRecord
 
             $dataColumns[] = $tmpColumnName;
             $dataValues4Upd[] = $db->quoteTableName($tmpColumnName)." = $tmpName";
-            $dataValues[$tmpName] = $value;
+            $dataValues[$tmpName] = $this->prepareValueForDB($key, $value);
         }
     }
 
