@@ -10,9 +10,6 @@ include_once 'BaseServerAdapter.php';
 
 class RedisServerAdapter extends BaseServerAdapter
 {
-    const SOCKET_BUFFER_SIZE        = 1024;
-    const MAX_SOCKET_BUFFER_SIZE    = 10240;
-
     private $_host;
     private $_port;
     private $_password;
@@ -87,7 +84,7 @@ class RedisServerAdapter extends BaseServerAdapter
      */
     protected function write($sock, $data)
     {
-        $written = fwrite($sock, $data, self::SOCKET_BUFFER_SIZE);
+        $written = fwrite($sock, $data, WSConfig::SOCKET_BUFFER_SIZE);
         $data = substr($data, $written);
         if (!empty($data))
             $this->write($sock, $data);
@@ -100,7 +97,7 @@ class RedisServerAdapter extends BaseServerAdapter
     protected function sendToWorkers($data)
     {
         foreach ($this->_workersControls as $control)
-            $this->write($control, $data . WSWorker::SOCKET_MESSAGE_DELIMITER);
+            $this->write($control, $data);
     }
 
     /**

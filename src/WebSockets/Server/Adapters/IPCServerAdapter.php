@@ -10,14 +10,12 @@ include_once 'BaseServerAdapter.php';
 
 class IPCServerAdapter extends BaseServerAdapter
 {
-    const SOCKET_BUFFER_SIZE        = 1024;
-    const MAX_SOCKET_BUFFER_SIZE    = 10240;
-
     private $_sockPath;
     private $_sockMode;
     private $_server = null;
     private $_clients = array();
     private $_read = array();  // read buffers
+    private $_write = array(); // write buffers
 
     function __construct(array $workersControls)
     {
@@ -92,9 +90,29 @@ class IPCServerAdapter extends BaseServerAdapter
                             $this->close($connectionId);
                             continue;
                         }
+
+                        // --- send data response ---
+                        $this->write($this->connectionById($connectionId), "ok");
+
                         // --- process incoming message ---
                         $this->sendToWorkers($connectionId);
                     }
+                }
+            }
+
+            // --- make send list ---
+            $write = array();
+            if ($this->_write) {
+                foreach ($this->_write as $id => $buffer) {
+                    if ($buffer)
+                        $write[$id] = $this->_workersControls[$id];
+                }
+            }
+            // --- send to workers ---
+            if ($write) {
+                foreach ($write as $id => $client) {
+                    if (is_resource($client)) // verify that the connection is not closed during the reading
+                        $this->sendBuffer($id, $client);
                 }
             }
 
@@ -134,13 +152,12 @@ class IPCServerAdapter extends BaseServerAdapter
      * @return bool|int
      */
     protected function read($connectionId) {
-        $data = fread($this->connectionById($connectionId), self::SOCKET_BUFFER_SIZE);
+        $data = fread($this->connectionById($connectionId), WSConfig::SOCKET_BUFFER_SIZE);
         if (!strlen($data)) {
             return 0;
         }
-
         @$this->_read[$connectionId] .= $data; // add the data into the read buffer
-        return strlen($this->_read[$connectionId]) < self::MAX_SOCKET_BUFFER_SIZE;
+        return strlen($this->_read[$connectionId]) < WSConfig::MAX_SOCKET_BUFFER_SIZE;
     }
 
     /**
@@ -148,12 +165,14 @@ class IPCServerAdapter extends BaseServerAdapter
      * @param $sock
      * @param $data
      */
-    protected function write($sock, $data)
-    {
-        $written = fwrite($sock, $data, self::SOCKET_BUFFER_SIZE);
+    protected function write($sock, $data) {
+        $written = fwrite($sock, $data, WSConfig::SOCKET_BUFFER_SIZE);
+        if ($written === false)
+            return false;
         $data = substr($data, $written);
         if (!empty($data))
-            $this->write($sock, $data);
+            return $this->write($sock, $data);
+        return true;
     }
 
     /**
@@ -182,12 +201,25 @@ class IPCServerAdapter extends BaseServerAdapter
      * Отправка данных дочерним потокам
      * @param $connectionId
      */
-    protected function sendToWorkers($connectionId)
-    {
+    protected function sendToWorkers($connectionId) {
         $data = $this->_read[$connectionId];
         $this->_read[$connectionId] = "";
-        foreach ($this->_workersControls as $control)
-            $this->write($control, $data . WSWorker::SOCKET_MESSAGE_DELIMITER);
+        foreach ($this->_workersControls as $id => $control)
+            @$this->_write[$id] .= $data;
+    }
+
+    /**
+     * Отправка записаного буфера данных в сокет
+     * @param $id
+     * @param $connect
+     */
+    protected function sendBuffer($id, $connect) {
+        $written = fwrite($connect, $this->_write[$id], WSConfig::SOCKET_BUFFER_SIZE);
+        if ($written === false || $written === 0) {
+            $this->log(Logger::ERROR, "send buffer failed!");
+            return;
+        }
+        $this->_write[$id] = substr($this->_write[$id], $written);
     }
 
     /**
@@ -196,8 +228,7 @@ class IPCServerAdapter extends BaseServerAdapter
      * @param $message
      * @param array $context
      */
-    protected function log($level, $message, array $context = array())
-    {
+    protected function log($level, $message, array $context = array()) {
         try {
             Logger::log($level, "[". self::class ."] $message", $context);
         } catch (\Exception $e) {

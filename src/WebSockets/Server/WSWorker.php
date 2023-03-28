@@ -8,15 +8,15 @@ Released under the MIT license
 
 namespace FlyCubePHP\WebSockets\Server;
 
+include_once __DIR__.'/../Config/WSConfig.php';
+
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Session\Session;
+use FlyCubePHP\WebSockets\Config\WSConfig;
 
 class WSWorker
 {
-    const SOCKET_BUFFER_SIZE        = 1024;
-    const MAX_SOCKET_BUFFER_SIZE    = 10240;
-    const MAX_SOCKETS               = 1000;
-    const SOCKET_MESSAGE_DELIMITER  = "\n";
+    const MAX_SOCKETS = 1000;
 
     private $_appChannels = array();
     private $_currentClientId = null;
@@ -108,12 +108,11 @@ class WSWorker
 
             // --- select streams ---
             stream_select($read, $write, $except, null); // update the array of sockets that can be processed
-
             if ($read) { // data were obtained from the connected clients
                 foreach ($read as $client) {
                     if ($timer == $client) {
                         // --- check is timer tick ---
-                        $tData = fread($timer, self::SOCKET_BUFFER_SIZE);
+                        $tData = fread($timer, WSConfig::SOCKET_BUFFER_SIZE);
                         // --- check if 'STOP' command ---
                         if (strcmp($tData, "STOP") === 0)
                             exit;
@@ -132,6 +131,7 @@ class WSWorker
                         $connectionId = $this->idByConnection($client);
                         if ($this->_controlSocket == $client) {
                             if (!$this->read($connectionId)) { // connection has been closed or the buffer was overflow or master is stopped
+                                $this->log(Logger::WARNING, "Invalid read from client '$connectionId'! Close connection and Exit!");
                                 $this->close($connectionId);
                                 exit; // stop worker loop
                             }
@@ -140,6 +140,7 @@ class WSWorker
                                 $this->onMasterMessage($data);
                         } else {
                             if (!$this->read($connectionId)) { // connection has been closed or the buffer was overwhelmed
+                                $this->log(Logger::WARNING, "Invalid read from client '$connectionId'! Close connection!");
                                 $this->close($connectionId);
                                 continue;
                             }
@@ -276,12 +277,11 @@ class WSWorker
      * @return bool|int
      */
     protected function read($connectionId) {
-        $data = fread($this->connectionById($connectionId), self::SOCKET_BUFFER_SIZE);
+        $data = fread($this->connectionById($connectionId), WSConfig::SOCKET_BUFFER_SIZE);
         if (!strlen($data))
             return 0;
-
         @$this->_read[$connectionId] .= $data; // add the data into the read buffer
-        return strlen($this->_read[$connectionId]) < self::MAX_SOCKET_BUFFER_SIZE;
+        return strlen($this->_read[$connectionId]) < WSConfig::MAX_SOCKET_BUFFER_SIZE;
     }
 
     /**
@@ -340,9 +340,9 @@ class WSWorker
      */
     protected function readFromBuffer($connectionId) {
         $data = '';
-        if (false !== ($pos = strpos($this->_read[$connectionId], self::SOCKET_MESSAGE_DELIMITER))) {
+        if (false !== ($pos = strpos($this->_read[$connectionId], WSConfig::SOCKET_MESSAGE_DELIMITER))) {
             $data = substr($this->_read[$connectionId], 0, $pos);
-            $this->_read[$connectionId] = substr($this->_read[$connectionId], $pos + strlen(self::SOCKET_MESSAGE_DELIMITER));
+            $this->_read[$connectionId] = substr($this->_read[$connectionId], $pos + strlen(WSConfig::SOCKET_MESSAGE_DELIMITER));
         }
         return $data;
     }
@@ -353,7 +353,11 @@ class WSWorker
      */
     protected function sendBuffer($connect) {
         $connectionId = $this->idByConnection($connect);
-        $written = fwrite($connect, $this->_write[$connectionId], self::SOCKET_BUFFER_SIZE);
+        $written = fwrite($connect, $this->_write[$connectionId], WSConfig::SOCKET_BUFFER_SIZE);
+        if ($written === false || $written === 0) {
+            $this->log(Logger::WARNING, "Send buffer failed (connection id: '$connectionId')!");
+            return;
+        }
         $this->_write[$connectionId] = substr($this->_write[$connectionId], $written);
     }
 
@@ -1130,6 +1134,10 @@ class WSWorker
      * @param $data
      */
     protected function onMasterMessage($data) {
+        if (empty($data)) {
+            $this->log(Logger::ERROR, "Master-message is Empty! Ignore!");
+            return;
+        }
         $data = json_decode($data, true);
         if (!isset($data['broadcasting']) || !isset($data['message'])) {
             $this->log(Logger::ERROR, "Not found broadcasting or message path in master-message!");

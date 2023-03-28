@@ -160,9 +160,11 @@ class WSServer
                 die();
             } else if ($pid) { // parent process
                 fclose($pair[0]);
+                stream_set_blocking($pair[1], 0); // set non-blocking
                 $this->_workersControls[] = $pair[1];
             } else if ($pid == 0) { // child process
                 fclose($pair[1]);
+                stream_set_blocking($pair[0], 0); // set non-blocking
                 $worker = new WSWorker($this->_mountPath, $this->_isEnabledPerform, $appChannels, $server, $pair[0]);
                 $worker->start();
                 break;

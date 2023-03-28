@@ -19,6 +19,18 @@ class RedisClientAdapter implements BaseClientAdapter
      */
     public function broadcast(string $broadcasting, $message): bool
     {
+        // --- make data ---
+        $data = json_encode([
+            'broadcasting' => $broadcasting,
+            'message' => $message
+        ]);
+
+        // --- check data ---
+        if ($data && strlen($data) >= WSConfig::MAX_SOCKET_BUFFER_SIZE) {
+            Logger::error("[". self::class ."] Error: The message exceeds the maximum buffer size (".WSConfig::MAX_SOCKET_BUFFER_SIZE.")! Skip broadcast!");
+            return false;
+        }
+
         $host = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_REDIS_HOST, "");
         $port = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_REDIS_PORT, 6379);
         $password = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_REDIS_PASSWORD, "");
@@ -54,12 +66,8 @@ class RedisClientAdapter implements BaseClientAdapter
         }
 
         // Отправляем запрос
-        $data = json_encode([
-            'broadcasting' => $broadcasting,
-            'message' => $message
-        ]);
         try {
-            $redis->publish($channelName, $data);
+            $redis->publish($channelName, $data . WSConfig::SOCKET_MESSAGE_DELIMITER);
         } catch (\Throwable $e) {
             Logger::error("[". self::class ."] Publishing data to Redis failed (host: $host:$port)! Error: " . $e->getMessage());
             $redis->close();

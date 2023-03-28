@@ -27,6 +27,10 @@ class WSConfig
     const DEFAULT_IPC_SOCK_PATH     = "/tmp/fly_cube_php.soc";
     const DEFAULT_IPC_SOCK_MODE     = "0755";
 
+    const SOCKET_BUFFER_SIZE        = 1024;
+    const MAX_SOCKET_BUFFER_SIZE    = 10240;
+    const SOCKET_MESSAGE_DELIMITER  = "\n";
+
     /**
      * gets the instance via lazy initialization (created on first usage)
      */

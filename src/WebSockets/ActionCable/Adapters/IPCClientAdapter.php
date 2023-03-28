@@ -10,8 +10,6 @@ include_once __DIR__.'/../../Config/WSConfig.php';
 
 class IPCClientAdapter implements BaseClientAdapter
 {
-    const SOCKET_BUFFER_SIZE = 1024;
-
     /**
      * Отправить данные клиентам
      * @param string $broadcasting Название канала вещания
@@ -21,6 +19,19 @@ class IPCClientAdapter implements BaseClientAdapter
      */
     public function broadcast(string $broadcasting, $message): bool
     {
+        // --- make data ---
+        $data = json_encode([
+            'broadcasting' => $broadcasting,
+            'message' => $message
+        ]);
+
+        // --- check data ---
+        if ($data && strlen($data) >= WSConfig::MAX_SOCKET_BUFFER_SIZE) {
+            Logger::error("[". self::class ."] Error: The message exceeds the maximum buffer size (".WSConfig::MAX_SOCKET_BUFFER_SIZE.")! Skip broadcast!");
+            return false;
+        }
+
+        // --- make socket path ---
         $sockPath = WSConfig::instance()->currentSettingsValue(WSConfig::TAG_IPC_SOCK_PATH, WSConfig::DEFAULT_IPC_SOCK_PATH);
 
         // Создаём  UNIX сокет
@@ -41,13 +52,7 @@ class IPCClientAdapter implements BaseClientAdapter
         }
 
         // Отправляем запрос
-        $data = json_encode([
-            'broadcasting' => $broadcasting,
-            'message' => $message
-        ]);
-        $result = $this->write($socket, $data);
-        if ($result === false)
-            Logger::error("[". self::class ."] Error: Write to socket failed!");
+        $result = $this->write($socket, $data . WSConfig::SOCKET_MESSAGE_DELIMITER);
 
         // --- close connection ---
         socket_close($socket);
@@ -62,9 +67,17 @@ class IPCClientAdapter implements BaseClientAdapter
      */
     protected function write($sock, string $data): bool
     {
-        $written = socket_write($sock, $data, self::SOCKET_BUFFER_SIZE);
-        if ($written === false)
+        $written = socket_write($sock, $data, WSConfig::SOCKET_BUFFER_SIZE);
+        if ($written === false) {
+            Logger::error("[" . self::class . "] Error: Write data failed!");
             return false;
+        }
+        // --- wait response ---
+        if (false === ($bytes = socket_recv($sock, $r_data, WSConfig::SOCKET_BUFFER_SIZE, 0))) {
+            Logger::error("[" . self::class . "] Error: Receiving data response failed!");
+            return false;
+        }
+        // --- send next part if needed ---
         $data = substr($data, $written);
         if (!empty($data))
             return $this->write($sock, $data);
