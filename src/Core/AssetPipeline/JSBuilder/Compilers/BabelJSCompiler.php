@@ -86,7 +86,36 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
                 'has-asset-code' => true
             ]);
         }
-        return $output;
+
+        //
+        // check & replace:
+        // v1: var _excluded = [...];
+        // v2: const _excluded = [...];
+        //
+        $excludedUid = "";
+        $outputChecked = "";
+        $outputLst = explode("\n", $output);
+        foreach ($outputLst as $row) {
+            preg_match_all("/^(var|const)\s+_excluded\s*(=)/", $row, $matches);
+            if (count($matches) < 3
+                || count($matches[0]) <= 0) {
+                preg_match_all("/.*((|,)\s*_excluded\s*(,|))/", $row, $matchesNext);
+                if (count($matchesNext) < 4
+                    || count($matchesNext[0]) <= 0) {
+                    $outputChecked .= "$row\n";
+                } else {
+                    $tmpRow = str_replace("_excluded", "_excluded_$excludedUid", $row);
+                    $outputChecked .= "$tmpRow\n";
+                }
+            } else {
+                $excludedUid = uniqid();
+                $tmpRow = str_replace("_excluded", "_excluded_$excludedUid", $row);
+                $outputChecked .= "$tmpRow\n";
+            }
+        }
+
+
+        return $outputChecked;//$output;
     }
 
     /**
