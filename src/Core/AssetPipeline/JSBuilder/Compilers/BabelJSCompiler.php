@@ -113,9 +113,7 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
                 $outputChecked .= "$tmpRow\n";
             }
         }
-
-
-        return $outputChecked;//$output;
+        return $outputChecked;
     }
 
     /**
