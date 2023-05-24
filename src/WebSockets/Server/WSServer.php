@@ -95,13 +95,13 @@ class WSServer
         $host = $this->_host;
         $port = $this->_port;
         $server = stream_socket_server("tcp://$host:$port", $errorNumber, $errorString);
-        stream_set_blocking($server, 0);
         if (!$server) {
             $errMsg = "[". self::class ."] stream_socket_server: $errorString ($errorNumber)";
             Logger::error($errMsg);
             fwrite(STDERR, "$errMsg\r\n");
             die();
         }
+        stream_set_blocking($server, 0);
         $infoMsg = "[". self::class ."] Listen on: tcp://$host:$port";
         Logger::info($infoMsg);
         echo "$infoMsg\r\n";
@@ -152,6 +152,12 @@ class WSServer
         // --- start workers ---
         for ($i = 0; $i < $this->_workersNum; $i++) {
             $pair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+            if (!$pair) {
+                $errMsg = "[". self::class ."] stream_socket_pair failed!";
+                Logger::error($errMsg);
+                fwrite(STDERR, "$errMsg\r\n");
+                die();
+            }
             $pid = pcntl_fork(); // create a fork
             if ($pid == -1) {
                 $errMsg = "[" . self::class . "] Create fork failed (error pcntl_fork)!";
