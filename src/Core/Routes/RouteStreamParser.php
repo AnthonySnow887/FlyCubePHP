@@ -57,8 +57,12 @@ class RouteStreamParser
     private function parseDataBody(): array {
         if (!isset($_SERVER['CONTENT_TYPE']))
             return [];
-        if (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
-            return json_decode(urldecode($this->_input), true);
+        if (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
+            $jsonArray = json_decode(urldecode($this->_input), true);
+            if (!is_array($jsonArray))
+                return [];
+            return $jsonArray;
+        }
 
         // NOTE! Не использовать parse_str($postData, $postArray),
         //       т.к. данный метод портит Base64 строки!
