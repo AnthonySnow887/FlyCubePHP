@@ -132,6 +132,10 @@ class HelpDocObject
         return $this->_parts;
     }
 
+    /**
+     * Отсортировать разделы
+     * @param int $maxLevel Максимальный уровень раздела для сортировки
+     */
     public function sortParts(int $maxLevel = -1)
     {
         if ($this->isEmpty())

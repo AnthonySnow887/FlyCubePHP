@@ -156,6 +156,10 @@ class HelpPart
         $this->_subParts[$part->heading()] = $part;
     }
 
+    /**
+     * Отсортировать подразделы
+     * @param int $maxLevel Максимальный уровень подраздела для сортировки
+     */
     public function sortSubParts(int $maxLevel = -1)
     {
         if (!$this->hasSubParts())
