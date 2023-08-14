@@ -18,12 +18,18 @@ class HelpDocObject
     private $_parts = [];
     private $_templateCompiler = null;
     private $_isEnabledTOC = false;
+    private $_titleTOC = "Table of Contents";
+    private $_isEnabledTOCSort = false;
+    private $_TOCSortMaxLevel = -1;
     private $_enableHeadingLinks = false;
     private $_enableAppendData = false;
 
     function __construct()
     {
         $this->_isEnabledTOC = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_TOC, false));
+        $this->_titleTOC = trim(strval(\FlyCubePHP\configValue(Config::TAG_HELP_DOC_TOC_TITLE, "Table of Contents")));
+        $this->_isEnabledTOCSort = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_TOC_SORT, false));;
+        $this->_TOCSortMaxLevel = intval(\FlyCubePHP\configValue(Config::TAG_HELP_DOC_TOC_SORT_MAX_LEVEL, -1));
         $this->_enableHeadingLinks = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_HEADING_LINKS, false));
         $this->_enableAppendData = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_HELP_DOC_APPEND_DATA, false));
 
@@ -55,6 +61,8 @@ class HelpDocObject
             else
                 $hlp->setRootPart($tmpPart);
         }
+        if ($hlp->isEnabledTOCSort())
+            $hlp->sortParts($hlp->TOCSortMaxLevel());
         return $hlp;
     }
 
@@ -83,6 +91,30 @@ class HelpDocObject
     }
 
     /**
+     * Заголовок для оглавления
+     * @return string
+     */
+    public function titleTOC(): string {
+        return $this->_titleTOC;
+    }
+
+    /**
+     * Включена ли сортировка подразделов
+     * @return bool
+     */
+    public function isEnabledTOCSort(): bool {
+        return $this->_isEnabledTOCSort;
+    }
+
+    /**
+     * Максимальный уровень подраздела для сортировки (если -1, то сортируются все)
+     * @return int
+     */
+    public function TOCSortMaxLevel(): int {
+        return $this->_TOCSortMaxLevel;
+    }
+
+    /**
      * Является ли объект справки пустым (без разделов)?
      * @return bool
      */
@@ -100,6 +132,23 @@ class HelpDocObject
         return $this->_parts;
     }
 
+    public function sortParts(int $maxLevel = -1)
+    {
+        if ($this->isEmpty())
+            return;
+        $firstPartArr = array_slice($this->_parts, 0, 1);
+        $firstPart = array_shift($firstPartArr);
+        if (!$firstPart)
+            return;
+        if ($firstPart->level() > $maxLevel)
+            return;
+        usort($this->_parts, function ($item1, $item2) {
+            return $item1->heading() <=> $item2->heading();
+        });
+        foreach ($this->_parts as $sPart)
+            $sPart->sortSubParts($maxLevel);
+    }
+
     /**
      * Получить help-doc в формате markdown
      * @return string
@@ -110,7 +159,7 @@ class HelpDocObject
             return "";
         $md = "";
         if ($this->_isEnabledTOC === true) {
-            $md .= "# Table of Contents\n\n";
+            $md .= "# ".$this->_titleTOC."\n\n";
             $md .= $this->makeTableOfContents() . "\n\n";
         }
         foreach ($this->_parts as $part)

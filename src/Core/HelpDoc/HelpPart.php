@@ -156,6 +156,25 @@ class HelpPart
         $this->_subParts[$part->heading()] = $part;
     }
 
+    public function sortSubParts(int $maxLevel = -1)
+    {
+        if (!$this->hasSubParts())
+            return;
+        if ($maxLevel != -1 && $this->level() > $maxLevel)
+            return;
+        $firstSubPartArr = array_slice($this->_subParts, 0, 1);
+        $firstSubPart = array_shift($firstSubPartArr);
+        if (!$firstSubPart)
+            return;
+        if ($firstSubPart->level() > $maxLevel)
+            return;
+        usort($this->_subParts, function ($item1, $item2) {
+            return $item1->heading() <=> $item2->heading();
+        });
+        foreach ($this->_subParts as $sPart)
+            $sPart->sortSubParts();
+    }
+
     /**
      * Получить help-doc в формате markdown
      * @return string
