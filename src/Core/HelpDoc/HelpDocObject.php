@@ -144,7 +144,7 @@ class HelpDocObject
         $firstPart = array_shift($firstPartArr);
         if (!$firstPart)
             return;
-        if ($firstPart->level() > $maxLevel)
+        if ($maxLevel != -1 && $firstPart->level() > $maxLevel)
             return;
         usort($this->_parts, function ($item1, $item2) {
             return $item1->heading() <=> $item2->heading();
