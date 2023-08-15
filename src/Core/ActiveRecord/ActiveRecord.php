@@ -849,7 +849,7 @@ abstract class ActiveRecord
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
                 'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
+                'active-r-class' => $className,
                 'active-r-method' => __FUNCTION__
             ]);
         return $db;
