@@ -11,6 +11,7 @@ include_once 'FlyCubePHPErrorHandling.php';
 include_once __DIR__.'/Core/Config/ConfigHelper.php';
 include_once __DIR__.'/Core/Routes/RoutesHelper.php';
 include_once __DIR__.'/Core/ActiveRecord/ActiveRecord.php';
+include_once __DIR__.'/Core/ActiveRecord/ActiveRecordTransactionHelper.php';
 include_once __DIR__.'/Core/Controllers/BaseController.php';
 include_once __DIR__.'/Core/Controllers/Helpers/BaseControllerHelper.php';
 include_once __DIR__.'/Core/AssetPipeline/AssetPipeline.php';

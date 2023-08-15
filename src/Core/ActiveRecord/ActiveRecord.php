@@ -17,6 +17,7 @@ use FlyCubePHP\Core\Error\ErrorActiveRecord;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Database\DatabaseFactory;
 use FlyCubePHP\Core\Error\ErrorDatabase;
+use FlyCubePHP\Core\ActiveRecord\ActiveRecordTransactionHelper;
 
 abstract class ActiveRecord
 {
@@ -196,7 +197,7 @@ abstract class ActiveRecord
      *
      * NOTE: If database name is empty - used primary database.
      */
-    final protected function database(): string {
+    final public function database(): string {
         return $this->_database;
     }
 
@@ -440,14 +441,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName).";", [], static::class);
@@ -476,14 +470,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $db->query("DELETE FROM ".$db->quoteTableName($tName).";");
@@ -533,14 +520,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $res = $db->query("SELECT * FROM ".$db->quoteTableName($tName)." LIMIT $num", [], static::class);
@@ -570,14 +550,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $res = $db->query("SELECT COUNT(*) AS count FROM ".$db->quoteTableName($tName).";");
@@ -659,14 +632,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $res = $db->query($sql, $params, static::class);
@@ -702,15 +668,8 @@ abstract class ActiveRecord
         $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
+        // --- exec query ---
         $tmpWhere = "";
         $tmpWhereVal = array();
         foreach ($args as $key => $val) {
@@ -756,14 +715,7 @@ abstract class ActiveRecord
         $dbName = $aRec->database();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
         // --- exec query ---
         try {
             $res = $db->query("SELECT 1 AS one FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :f_value LIMIT 1;", [ ":f_value" => $pkVal ]);
@@ -799,15 +751,8 @@ abstract class ActiveRecord
         $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
+        // --- exec query ---
         $tmpWhere = "";
         $tmpWhereVal = array();
         foreach ($values as $key => $val) {
@@ -854,15 +799,8 @@ abstract class ActiveRecord
         $columnMappings = $aRec->columnMappings();
         unset($aRec);
         // --- get adapter ---
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => static::class,
-                'active-r-method' => __FUNCTION__
-            ]);
-
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
+        // --- exec query ---
         $tmpColumns = "";
         foreach ($columns as $key => $val) {
             if (!empty($tmpColumns))
@@ -894,6 +832,30 @@ abstract class ActiveRecord
     // --- private ---
 
     /**
+     * Получить объект адаптера по работе с базой данных
+     * @param string $className
+     * @param string $dbName
+     * @return BaseDatabaseAdapter
+     * @throws ErrorActiveRecord
+     */
+    private static function databaseAdapter(string $className, string $dbName) : BaseDatabaseAdapter
+    {
+        $helper = ActiveRecordTransactionHelper::helper($className);
+        if (!is_null($helper))
+            return $helper->databaseAdapter();
+
+        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $dbName ]);
+        if (is_null($db))
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => 'Database adapter is NULL!',
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__
+            ]);
+        return $db;
+    }
+
+    /**
      * Имя объекта класса
      * @return string
      * @throws
@@ -916,14 +878,7 @@ abstract class ActiveRecord
      */
     private function insert() {
         $this->processingCallbacks('before-insert');
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => $this->objectName(),
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($this->objectName(), $this->database());
 
         $dataColumns = array();
         $dataValues = array();
@@ -956,14 +911,7 @@ abstract class ActiveRecord
      */
     private function update() {
         $this->processingCallbacks('before-update');
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => $this->objectName(),
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($this->objectName(), $this->database());
 
         $dataColumns = array();
         $dataValues = array();
@@ -993,14 +941,7 @@ abstract class ActiveRecord
      * @throws
      */
     private function delete() {
-        $db = DatabaseFactory::instance()->createDatabaseAdapter([ 'database' => $this->database() ]);
-        if (is_null($db))
-            throw ErrorActiveRecord::makeError([
-                'tag' => 'active-record',
-                'message' => 'Database adapter is NULL!',
-                'active-r-class' => $this->objectName(),
-                'active-r-method' => __FUNCTION__
-            ]);
+        $db = ActiveRecord::databaseAdapter($this->objectName(), $this->database());
 
         $tName = $this->tableName();
         $tPK = $this->primaryKey();
