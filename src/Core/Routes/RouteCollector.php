@@ -20,7 +20,6 @@ use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Controllers\BaseController;
 use FlyCubePHP\Core\Controllers\BaseActionController;
 use FlyCubePHP\Core\Logger\Logger;
-use FlyCubePHP\HelperClasses\CoreHelper;
 
 class RouteCollector
 {
@@ -318,6 +317,8 @@ class RouteCollector
         else
             $tmpController = $controller;
 
+        // set error handler
+        set_error_handler("\FlyCubePHP\Core\Routes\RouteCollector::evalErrorHandler");
         $renderStartMS = microtime(true);
         try {
             $tmpController->renderPrivate($tmpClassAct);
@@ -325,6 +326,8 @@ class RouteCollector
             $tmpController->evalException($ex);
         }
         $renderMS = round(microtime(true) - $renderStartMS, 3);
+        // restore error handler
+        set_error_handler("\FlyCubePHP\Core\Error\ErrorHandlingCore::evalErrorHandler");
         unset($tmpController);
         return $renderMS;
     }
@@ -811,6 +814,38 @@ class RouteCollector
             }
         }
         return $uri;
+    }
+
+    /**
+     * Обработчик ошибок
+     * @param int $errno Код ошибки
+     * @param string $errstr Текст ошибки
+     * @param string $errfile Файл с ошибкой
+     * @param int $errline Строка с ошибкой
+     * @return bool
+     * @throws
+     *
+     * NOTE: Used only by the RouteCollector kernel!
+     */
+    static public function evalErrorHandler($errno, $errstr, $errfile, $errline) {
+        if (!(error_reporting() & $errno)) {
+            // Этот код ошибки не включен в error_reporting,
+            // так что пусть обрабатываются стандартным обработчиком ошибок PHP
+            return false;
+        }
+        // --- clear all buffers ---
+        while (ob_get_level() !== 0)
+            ob_end_clean();
+
+        $httpM = static::currentRouteMethod();
+        $httpUrl = static::currentRouteUri();
+        $tmpCurRoute = self::instance()->currentRoute();
+        if (is_null($tmpCurRoute))
+            $tmpCurRoute = self::instance()->processingFailed("Not found route: [$httpM] $httpUrl", 404);
+
+        $tmpClassName = $tmpCurRoute->controller();
+        $tmpController = new $tmpClassName();
+        return $tmpController->evalError($errno, $errstr, $errfile, $errline);
     }
 
     /**

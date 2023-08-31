@@ -103,7 +103,7 @@ class ErrorHandlingCore
     /**
      * gets the instance via lazy initialization (created on first usage)
      */
-    public static function instance(): ErrorHandlingCore {
+    static public function instance(): ErrorHandlingCore {
         if (static::$_instance === null)
             static::$_instance = new static();
         return static::$_instance;
@@ -116,7 +116,7 @@ class ErrorHandlingCore
      * @param int $visibleLines - количество видимых строк до и после строки с ошибкой
      * @return string
      */
-    public static function fileCodeTrace(string $filePath, int $line = -1, int $visibleLines = 10): string {
+    static public function fileCodeTrace(string $filePath, int $line = -1, int $visibleLines = 10): string {
         if (!is_file($filePath) || !is_readable($filePath))
             return "";
         $lines = "";
@@ -143,7 +143,7 @@ class ErrorHandlingCore
      * @param array $backtrace - результат вызова метода debug_backtrace()
      * @return string
      */
-    public static function debugBacktrace(array $backtrace): string {
+    static public function debugBacktrace(array $backtrace): string {
         $lines = "";
         foreach ($backtrace as $key => $value) {
             if (!isset($value['class'])
@@ -182,6 +182,22 @@ class ErrorHandlingCore
                 $lines .= "\r\n#$key $class" . $opType . $function . "($fArgs)";
         }
         return $lines;
+    }
+
+    /**
+     * Получить название ошибки PHP по ее коду
+     * @param $type
+     * @return string
+     */
+    static public function errorTypeByValue($type): string {
+        $constants  = get_defined_constants(true);
+        foreach ($constants['Core'] as $key => $value) { // Each Core constant
+            if (preg_match('/^E_/', $key)) {    // Check error constants
+                if ($type == $value)
+                    return $key;
+            }
+        }
+        return "???";
     }
 
     /**
@@ -428,21 +444,5 @@ class ErrorHandlingCore
         $html .= "$tmpTrace\r\n";
         $html .= "-------------------------\r\n";
         return $html;
-    }
-
-    /**
-     * Получить название ошибки PHP по ее коду
-     * @param $type
-     * @return string
-     */
-    static private function errorTypeByValue($type): string {
-        $constants  = get_defined_constants(true);
-        foreach ($constants['Core'] as $key => $value) { // Each Core constant
-            if (preg_match('/^E_/', $key)) {    // Check error constants
-                if ($type == $value)
-                    return $key;
-            }
-        }
-        return "???";
     }
 }

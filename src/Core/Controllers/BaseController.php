@@ -85,6 +85,18 @@ abstract class BaseController
     }
 
     /**
+     * Метод обработки ошибок
+     * @param int $errno Код ошибки
+     * @param string $errstr Текст ошибки
+     * @param string $errfile Файл с ошибкой
+     * @param int $errline Строка с ошибкой
+     * @return bool
+     */
+    public function evalError($errno, $errstr, $errfile, $errline) {
+        return false;
+    }
+
+    /**
      * Добавить обработчик перед вызовом основного метода контроллера
      * @param string $checkMethod - название метода проверки
      * @throws
