@@ -285,15 +285,26 @@ class RouteCollector
      * @throws \FlyCubePHP\Core\Error\Error
      */
     private function processingFailed(string $message, int $httpCode = 500)/*: Route|null*/ {
-        if (Config::instance()->isDevelopment())
-            trigger_error($message, E_USER_ERROR);
-
         Logger::warning($message);
         if (!$this->containsRoute('GET', "/$httpCode")) {
+            if (Config::instance()->isDevelopment())
+                trigger_error($message, E_USER_ERROR);
+
             http_response_code($httpCode);
             die();
         }
         $tmpCurRoute = $this->routeByMethodUri('GET', "/$httpCode");
+        // replace REQUEST_METHOD & REQUEST_URI
+        $_SERVER['FAILED_REQUEST_METHOD'] = $_SERVER['REQUEST_METHOD'];
+        $_SERVER['FAILED_REQUEST_URI'] = $_SERVER['REQUEST_URI'];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        // build REQUEST_URI
+        $requestUri = "/$httpCode";
+        $appPrefix = RouteCollector::applicationUrlPrefix();
+        if (!empty($appPrefix) && $appPrefix !== "/") {
+            $requestUri = $appPrefix . $requestUri;
+        }
+        $_SERVER['REQUEST_URI'] = $requestUri;
         if (!isset($_GET['code']))
             $_GET['code'] = $httpCode;
 
@@ -560,17 +571,27 @@ class RouteCollector
     }
 
     /**
+     * "Собрать" URL строку
+     * @param string $requestUri
+     * @return string
+     */
+    static public function buildUri(string $requestUri): string {
+        $protocol = "http";
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+            $protocol = "https";
+        if (isset($_SERVER['HTTP_HOST']) && !empty($requestUri))
+            return "$protocol://".$_SERVER['HTTP_HOST']."/".RouteCollector::spliceUrlFirst($requestUri);
+
+        return "$protocol://";
+    }
+
+    /**
      * Получить текущий URL
      * @return string
      */
     static public function currentUri(): string {
-        $protocol = "http";
-        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
-            $protocol = "https";
-        if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']))
-            return "$protocol://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-        
-        return "$protocol://";
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        return self::buildUri($requestUri);
     }
 
     /**
