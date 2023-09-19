@@ -87,7 +87,7 @@ class RequestForgeryProtection
      * @throws Exception
      */
     public function formAuthenticityToken(): string {
-        return urlencode($this->maskedAuthenticityToken());
+        return $this->maskedAuthenticityToken();
     }
 
     /**
@@ -123,7 +123,7 @@ class RequestForgeryProtection
         if (empty($encodedMaskedToken)
             || !is_string($encodedMaskedToken))
             return false;
-        $maskedToken = base64_decode(urldecode($encodedMaskedToken), true);
+        $maskedToken = CoreHelper::base64_url_decode($encodedMaskedToken, true);
         if ($maskedToken === false)
             return false;
         if (strlen($maskedToken) === RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH) {
@@ -154,9 +154,9 @@ class RequestForgeryProtection
             && !Session::instance()->isInit())
             throw new \FlyCubePHP\Core\Error\Error("Init php-session failed! Save real CSRF token failed!", "verify-authenticity-token");
         if (!Session::instance()->containsKey('_csrf_token'))
-            Session::instance()->setValue('_csrf_token', base64_encode(random_bytes(RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH)));
+            Session::instance()->setValue('_csrf_token', CoreHelper::base64_url_encode(random_bytes(RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH)));
 
-        return base64_decode(Session::instance()->value('_csrf_token'), true);
+        return CoreHelper::base64_url_decode(Session::instance()->value('_csrf_token'), true);
     }
 
     /**
@@ -225,7 +225,7 @@ class RequestForgeryProtection
         $oneTimePad = random_bytes(RequestForgeryProtection::AUTHENTICITY_TOKEN_LENGTH);
         $encryptedCsrfToken = $this->xorByteString($oneTimePad, $rawToken);
         $maskedToken = $oneTimePad . $encryptedCsrfToken;
-        return base64_encode($maskedToken);
+        return CoreHelper::base64_url_encode($maskedToken);
     }
 
     /**

@@ -509,6 +509,33 @@ class CoreHelper
         return $arr === [] || (array_keys($arr) === range(0, count($arr) - 1));
     }
 
+    /**
+     * Метод конвертации в Base64 для дальнейшего корректного экранирования методом urlencode
+     * @param string $string
+     * @return string
+     */
+    static public function base64_url_encode(string $string): string {
+        return strtr(base64_encode($string), '+/=', '._-');
+    }
+
+    /**
+     * Метод конвертации из Base64 после распаковки методом urldecode
+     * @param string $string
+     * @param bool $strict
+     * @return string|false
+     */
+    static public function base64_url_decode(string $string, bool $strict = false)/*: string|false*/ {
+        return base64_decode(strtr($string, '._-', '+/='), $strict);
+    }
+
+    /**
+     * Выполнение команды консоли
+     * @param string $cmd
+     * @param $stdOut
+     * @param string $stdErr
+     * @param bool $selectStdErr
+     * @return false|int
+     */
     static public function execCmd(string $cmd,
                                    /*string*/ &$stdOut,
                                    /*string*/ &$stdErr = "",
