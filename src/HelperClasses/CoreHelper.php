@@ -14,6 +14,26 @@ use FlyCubePHP\Core\Routes\RouteCollector;
 
 class CoreHelper
 {
+    const UINT_8_MIN = 0;
+    const UINT_16_MIN = self::UINT_8_MIN;
+    const UINT_32_MIN = self::UINT_8_MIN;
+    const UINT_64_MIN = self::UINT_8_MIN;
+
+    const UINT_8_MAX = 255;
+    const UINT_16_MAX = 65535;
+    const UINT_32_MAX = 4294967295;
+    const UINT_64_MAX = 18446744073709551615;
+
+    const INT_8_MIN = -128;
+    const INT_16_MIN = -32768;
+    const INT_32_MIN = -2147483648;
+    const INT_64_MIN = -9223372036854775808;
+
+    const INT_8_MAX = 127;
+    const INT_16_MAX = 32767;
+    const INT_32_MAX = 2147483647;
+    const INT_64_MAX = 9223372036854775807;
+
     /**
      * Получить путь корневого каталога приложения
      * @return string
@@ -566,5 +586,86 @@ class CoreHelper
             $stdErr = stream_get_contents($pipes[2]);
 
         return proc_close($proc);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер uint8
+     * @param int $value
+     * @return bool
+     */
+    static public function isUInt8(int $value): bool {
+        return ($value >= self::UINT_8_MIN && $value <= self::UINT_8_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер uint16
+     * @param int $value
+     * @return bool
+     */
+    static public function isUInt16(int $value): bool {
+        return ($value >= self::UINT_16_MIN && $value <= self::UINT_16_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер uint32
+     * @param int $value
+     * @return bool
+     */
+    static public function isUInt32(int $value): bool {
+        return ($value >= self::UINT_32_MIN && $value <= self::UINT_32_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер uint64
+     * @param int $value
+     * @return bool
+     */
+    static public function isUInt64(int $value): bool {
+        return ($value >= self::UINT_64_MIN && $value <= self::UINT_64_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер int8
+     * @param int $value
+     * @return bool
+     */
+    static public function isInt8(int $value): bool {
+        return ($value >= self::INT_8_MIN && $value <= self::INT_8_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер int16
+     * @param int $value
+     * @return bool
+     */
+    static public function isInt16(int $value): bool {
+        return ($value >= self::INT_16_MIN && $value <= self::INT_16_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер int32
+     * @param int $value
+     * @return bool
+     */
+    static public function isInt32(int $value): bool {
+        return ($value >= self::INT_32_MIN && $value <= self::INT_32_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер int64
+     * @param int $value
+     * @return bool
+     */
+    static public function isInt64(int $value): bool {
+        return ($value >= self::INT_64_MIN && $value <= self::INT_64_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер bigInt (int64)
+     * @param int $value
+     * @return bool
+     */
+    static public function isBigInt(int $value): bool {
+        return (!self::isInt32($value) && self::isInt64($value));
     }
 }
