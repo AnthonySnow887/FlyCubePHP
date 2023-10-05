@@ -14,25 +14,35 @@ use FlyCubePHP\Core\Routes\RouteCollector;
 
 class CoreHelper
 {
-    const UINT_8_MIN = 0;
+    const UINT_8_MIN  = 0;
     const UINT_16_MIN = self::UINT_8_MIN;
     const UINT_32_MIN = self::UINT_8_MIN;
     const UINT_64_MIN = self::UINT_8_MIN;
 
-    const UINT_8_MAX = 255;
+    const UINT_8_MAX  = 255;
     const UINT_16_MAX = 65535;
     const UINT_32_MAX = 4294967295;
     const UINT_64_MAX = 18446744073709551615;
 
-    const INT_8_MIN = -128;
+    const INT_8_MIN  = -128;
     const INT_16_MIN = -32768;
     const INT_32_MIN = -2147483648;
     const INT_64_MIN = -9223372036854775808;
 
-    const INT_8_MAX = 127;
+    const INT_8_MAX  = 127;
     const INT_16_MAX = 32767;
     const INT_32_MAX = 2147483647;
     const INT_64_MAX = 9223372036854775807;
+
+    const TYPE_NUMBER_INVALID = -1;
+    const TYPE_NUMBER_UINT_8  = 0;
+    const TYPE_NUMBER_UINT_16 = 1;
+    const TYPE_NUMBER_UINT_32 = 2;
+    const TYPE_NUMBER_UINT_64 = 3;
+    const TYPE_NUMBER_INT_8   = 4;
+    const TYPE_NUMBER_INT_16  = 5;
+    const TYPE_NUMBER_INT_32  = 6;
+    const TYPE_NUMBER_INT_64  = 7;
 
     /**
      * Получить путь корневого каталога приложения
@@ -590,82 +600,193 @@ class CoreHelper
 
     /**
      * Проверка, укладывается ли число в размер uint8
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isUInt8(int $value): bool {
-        return ($value >= self::UINT_8_MIN && $value <= self::UINT_8_MAX);
+    static public function isUInt8($value): bool {
+        return (floatval($value) >= self::UINT_8_MIN
+                && floatval($value) <= self::UINT_8_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер uint16
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isUInt16(int $value): bool {
-        return ($value >= self::UINT_16_MIN && $value <= self::UINT_16_MAX);
+    static public function isUInt16($value): bool {
+        return (!self::isUInt8($value)
+                && floatval($value) >= self::UINT_16_MIN
+                && floatval($value) <= self::UINT_16_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер uint32
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isUInt32(int $value): bool {
-        return ($value >= self::UINT_32_MIN && $value <= self::UINT_32_MAX);
+    static public function isUInt32($value): bool {
+        return (!self::isUInt8($value)
+                && !self::isUInt16($value)
+                && floatval($value) >= self::UINT_32_MIN
+                && floatval($value) <= self::UINT_32_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер uint64
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isUInt64(int $value): bool {
-        return ($value >= self::UINT_64_MIN && $value <= self::UINT_64_MAX);
+    static public function isUInt64($value): bool {
+        return (!self::isUInt8($value)
+                && !self::isUInt16($value)
+                && !self::isUInt32($value)
+                && floatval($value) >= self::UINT_64_MIN
+                && floatval($value) <= self::UINT_64_MAX);
+    }
+
+    /**
+     * Проверка, укладывается ли число в размер bigUInt (uint64)
+     * @param mixed $value
+     * @return bool
+     */
+    static public function isBigUInt($value): bool {
+        return self::isUInt64($value);
     }
 
     /**
      * Проверка, укладывается ли число в размер int8
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isInt8(int $value): bool {
-        return ($value >= self::INT_8_MIN && $value <= self::INT_8_MAX);
+    static public function isInt8($value): bool {
+        return (floatval($value) >= self::INT_8_MIN
+                && floatval($value) <= self::INT_8_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер int16
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isInt16(int $value): bool {
-        return ($value >= self::INT_16_MIN && $value <= self::INT_16_MAX);
+    static public function isInt16($value): bool {
+        return (!self::isInt8($value)
+                && floatval($value) >= self::INT_16_MIN
+                && floatval($value) <= self::INT_16_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер int32
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isInt32(int $value): bool {
-        return ($value >= self::INT_32_MIN && $value <= self::INT_32_MAX);
+    static public function isInt32($value): bool {
+        return (!self::isInt8($value)
+                && !self::isInt16($value)
+                && floatval($value) >= self::INT_32_MIN
+                && floatval($value) <= self::INT_32_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер int64
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isInt64(int $value): bool {
-        return ($value >= self::INT_64_MIN && $value <= self::INT_64_MAX);
+    static public function isInt64($value): bool {
+        return (!self::isInt8($value)
+                && !self::isInt16($value)
+                && !self::isInt32($value)
+                && floatval($value) >= self::INT_64_MIN
+                && floatval($value) <= self::INT_64_MAX);
     }
 
     /**
      * Проверка, укладывается ли число в размер bigInt (int64)
-     * @param int $value
+     * @param mixed $value
      * @return bool
      */
-    static public function isBigInt(int $value): bool {
-        return (!self::isInt32($value) && self::isInt64($value));
+    static public function isBigInt($value): bool {
+        return self::isInt64($value);
+    }
+
+    /**
+     * Проверка типа числа
+     * @param mixed $value
+     * @return int
+     */
+    static public function numberType($value): int {
+        if (self::isInt8($value))
+            return self::TYPE_NUMBER_INT_8;
+        else if (self::isUInt8($value))
+            return self::TYPE_NUMBER_UINT_8;
+        else if (self::isInt16($value))
+            return self::TYPE_NUMBER_INT_16;
+        else if (self::isUInt16($value))
+            return self::TYPE_NUMBER_UINT_16;
+        else if (self::isInt32($value))
+            return self::TYPE_NUMBER_INT_32;
+        else if (self::isUInt32($value))
+            return self::TYPE_NUMBER_UINT_32;
+        else if (self::isInt64($value))
+            return self::TYPE_NUMBER_INT_64;
+        else if (self::isUInt64($value))
+            return self::TYPE_NUMBER_UINT_64;
+
+        return self::TYPE_NUMBER_INVALID;
+    }
+
+    /**
+     * Перевод типа числа в строку
+     * @param int $type
+     * @return string
+     */
+    static public function numberTypeToStr(int $type): string {
+        switch ($type) {
+            case self::TYPE_NUMBER_UINT_8:
+                return "UInt8";
+            case self::TYPE_NUMBER_UINT_16;
+                return "UInt16";
+            case self::TYPE_NUMBER_UINT_32;
+                return "UInt32";
+            case self::TYPE_NUMBER_UINT_64;
+                return "UInt64";
+            case self::TYPE_NUMBER_INT_8;
+                return "Int8";
+            case self::TYPE_NUMBER_INT_16;
+                return "Int16";
+            case self::TYPE_NUMBER_INT_32;
+                return "Int32";
+            case self::TYPE_NUMBER_INT_64;
+                return "Int64";
+            default:
+                break;
+        }
+        return "Invalid";
+    }
+
+    /**
+     * Перевод типа числа из строки в число
+     * @param string $str
+     * @return int
+     */
+    static public function numberTypeFromStr(string $str): int {
+        $str = strtolower(trim($str));
+        if (strcmp($str, 'uint8') == 0)
+            return self::TYPE_NUMBER_UINT_8;
+        else if (strcmp($str, 'uint16') == 0)
+            return self::TYPE_NUMBER_UINT_16;
+        else if (strcmp($str, 'uint32') == 0)
+            return self::TYPE_NUMBER_UINT_32;
+        else if (strcmp($str, 'uint64') == 0)
+            return self::TYPE_NUMBER_UINT_64;
+        else if (strcmp($str, 'int8') == 0)
+            return self::TYPE_NUMBER_INT_8;
+        else if (strcmp($str, 'int16') == 0)
+            return self::TYPE_NUMBER_INT_16;
+        else if (strcmp($str, 'int32') == 0)
+            return self::TYPE_NUMBER_INT_32;
+        else if (strcmp($str, 'int64') == 0)
+            return self::TYPE_NUMBER_INT_64;
+
+        return self::TYPE_NUMBER_INVALID;
     }
 }
