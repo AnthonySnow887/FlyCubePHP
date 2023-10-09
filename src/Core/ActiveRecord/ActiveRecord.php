@@ -70,7 +70,7 @@ abstract class ActiveRecord
      * Имя текущей таблицы
      * @return string
      */
-    final protected function tableName(): string {
+    final public function tableName(): string {
         return $this->_tableName;
     }
 
@@ -86,7 +86,7 @@ abstract class ActiveRecord
      * Имя колонки первичного ключа
      * @return string
      */
-    final protected function primaryKey(): string {
+    final public function primaryKey(): string {
         return $this->_primaryKey;
     }
 
@@ -159,7 +159,7 @@ abstract class ActiveRecord
      * Имя колонки с паролем
      * @return string
      */
-    final protected function passwordColumn(): string {
+    final public function passwordColumn(): string {
         return $this->_passwordColumn;
     }
 
@@ -177,7 +177,7 @@ abstract class ActiveRecord
      *
      * NOTE: Call to the save/destroy functions with the specified "read-only" flag will trigger an error!
      */
-    final protected function isReadOnly(): bool {
+    final public function isReadOnly(): bool {
         return $this->_readOnly;
     }
 
