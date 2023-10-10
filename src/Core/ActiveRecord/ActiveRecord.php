@@ -336,6 +336,7 @@ abstract class ActiveRecord
 
     /**
      * Получить текстовое представление объекта модели
+     * @param integer $maxParamValueStrLen маскимальный размер строкового представления значения параметра
      * @param bool $includeChanged включить вывод изменений параметров
      * @param string $changedDelimiter размедлитель между старым и новым значением параметра (поддерживается, если $includeChanged == true)
      * @return string
@@ -353,6 +354,14 @@ abstract class ActiveRecord
      *      id: 123,
      *      name: "test name",
      *      description: "test description"
+     *    }"
+     *
+     * // - 3 show object with $maxParamValueStrLen -
+     * ActiveRecord.objectToStr(5);
+     *   "ActiveRecord {
+     *      id: 123,
+     *      name: "test ...",
+     *      description: "test ..."
      *    }"
      *
      * === Example:
@@ -382,7 +391,9 @@ abstract class ActiveRecord
      *      description: "test new description"
      *    }"
      */
-    final public function objectToStr(bool $includeChanged = false, string $changedDelimiter = "->"): string {
+    final public function objectToStr(int $maxParamValueStrLen = 20,
+                                      bool $includeChanged = false,
+                                      string $changedDelimiter = "->"): string {
         $objectName = $this->objectName();
         $objectProps = $this->dataParamVars();
         $tmpStr = "";
@@ -396,12 +407,21 @@ abstract class ActiveRecord
             if (is_numeric($value))
                 $strQuote = "";
 
-            $valueStr = $strQuote.strval($value).$strQuote;
+            $tmpValueStr = strval($value);
+            if ($maxParamValueStrLen > 0
+                && strlen($tmpValueStr) > $maxParamValueStrLen)
+                $tmpValueStr = mb_substr($tmpValueStr, 0, $maxParamValueStrLen) . "...";
+
+            $valueStr = $strQuote.$tmpValueStr.$strQuote;
             if ($includeChanged
                 && array_key_exists($key, $this->_dataHash)
-                && $this->_dataHash[$key] != $value)
-                $valueStr = $strQuote.strval($this->_dataHash[$key]).$strQuote." $changedDelimiter ".$strQuote.strval($value).$strQuote;
-
+                && $this->_dataHash[$key] != $value) {
+                $tmpHashValueStr = strval($this->_dataHash[$key]);
+                if ($maxParamValueStrLen > 0
+                    && strlen($tmpHashValueStr) > $maxParamValueStrLen)
+                    $tmpHashValueStr = mb_substr($tmpHashValueStr, 0, $maxParamValueStrLen) . "...";
+                $valueStr = $strQuote.$tmpHashValueStr.$strQuote." $changedDelimiter ".$strQuote.$tmpValueStr.$strQuote;
+            }
             $tmpStr .= "\n  $key: $valueStr";
         }
         return "$objectName { $tmpStr \n}";
