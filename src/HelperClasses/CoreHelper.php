@@ -540,6 +540,98 @@ class CoreHelper
     }
 
     /**
+     * Метод преобразования массива в строковое представление
+     * @param array $arr
+     * @return string
+     */
+    static public function arrayToStr(array $arr): string {
+        return self::objectToStr($arr);
+    }
+
+    /**
+     * Получить имя класса объекта
+     * @param $object
+     * @return string
+     */
+    static public function objectClassName($object): string {
+        if (is_null($object))
+            return "";
+        else if (is_array($object) && self::arrayIsList($object))
+            return "Array";
+        else if (is_array($object) && !self::arrayIsList($object))
+            return "Hash";
+        else if (is_string($object))
+            return "String";
+        else if (is_bool($object))
+            return "Boolean";
+        else if (is_integer($object))
+            return "Integer";
+        else if (is_float($object))
+            return "Float";
+        else if (is_object($object))
+            return get_class($object);
+
+        return "";
+    }
+
+    /**
+     * Получить свойства объекта класса
+     * @param $object
+     * @return array
+     */
+    static public function objectProperties($object): array {
+        if (is_subclass_of($object, '\FlyCubePHP\Core\ActiveRecord\ActiveRecord'))
+            return $object->dataParamVars();
+        return get_object_vars($object);
+    }
+
+    /**
+     * Метод преобразования объекта в строковое представление
+     * @param mixed $object
+     * @return string
+     */
+    static public function objectToStr($object): string {
+        if (is_null($object))
+            return "";
+        $tmpStr = "";
+        $objClass = self::objectClassName($object);
+        if (strcmp($objClass, 'String') === 0) {
+            $tmpStr = "\"$object\"";
+        } else if (strcmp($objClass, 'Integer') === 0
+                   || strcmp($objClass, 'Float') === 0) {
+            $tmpStr = strval($object);
+        } else if (strcmp($objClass, 'Boolean') === 0) {
+            $tmpStr = self::boolToStr($object);
+        } else if (strcmp($objClass, 'Array') === 0) {
+            $delimiter = ",";
+            foreach ($object as $value) {
+                if (!empty($tmpStr))
+                    $tmpStr .= "$delimiter ";
+                $tmpStr .= self::objectToStr($value);
+            }
+            $tmpStr = "[ $tmpStr ]";
+        } else if (strcmp($objClass, 'Hash') === 0) {
+            $delimiter = ";";
+            foreach ($object as $key => $value) {
+                if (!empty($tmpStr))
+                    $tmpStr .= "$delimiter ";
+                $tmpStr .= "$key: " . self::objectToStr($value);
+            }
+            $tmpStr = "{ $tmpStr }";
+        } else {
+            $objProps = self::objectProperties($object);
+            $delimiter = ";";
+            foreach ($objProps as $key => $value) {
+                if (!empty($tmpStr))
+                    $tmpStr .= "$delimiter ";
+                $tmpStr .= "$key: " . self::objectToStr($value);
+            }
+            $tmpStr = "$objClass { $tmpStr }";
+        }
+        return $tmpStr;
+    }
+
+    /**
      * Метод конвертации в Base64 для дальнейшего корректного экранирования методом urlencode
      * @param string $string
      * @return string

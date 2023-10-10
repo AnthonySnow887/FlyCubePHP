@@ -391,7 +391,7 @@ abstract class ActiveRecord
      *      description: "test new description"
      *    }"
      */
-    final public function objectToStr(int $maxParamValueStrLen = 20,
+    final public function objectToStr(int $maxParamValueStrLen = 30,
                                       bool $includeChanged = false,
                                       string $changedDelimiter = "->"): string {
         $objectName = $this->objectName();
@@ -403,24 +403,20 @@ abstract class ActiveRecord
             if (!empty($tmpStr))
                 $tmpStr .= ",";
 
-            $strQuote = "\"";
-            if (is_numeric($value))
-                $strQuote = "";
-
-            $tmpValueStr = strval($value);
+            $tmpValueStr = CoreHelper::objectToStr($value);
             if ($maxParamValueStrLen > 0
                 && strlen($tmpValueStr) > $maxParamValueStrLen)
                 $tmpValueStr = mb_substr($tmpValueStr, 0, $maxParamValueStrLen) . "...";
 
-            $valueStr = $strQuote.$tmpValueStr.$strQuote;
+            $valueStr = $tmpValueStr;
             if ($includeChanged
                 && array_key_exists($key, $this->_dataHash)
                 && $this->_dataHash[$key] != $value) {
-                $tmpHashValueStr = strval($this->_dataHash[$key]);
+                $tmpHashValueStr = CoreHelper::objectToStr($this->_dataHash[$key]);
                 if ($maxParamValueStrLen > 0
                     && strlen($tmpHashValueStr) > $maxParamValueStrLen)
                     $tmpHashValueStr = mb_substr($tmpHashValueStr, 0, $maxParamValueStrLen) . "...";
-                $valueStr = $strQuote.$tmpHashValueStr.$strQuote." $changedDelimiter ".$strQuote.$tmpValueStr.$strQuote;
+                $valueStr = "$tmpHashValueStr $changedDelimiter $tmpValueStr";
             }
             $tmpStr .= "\n  $key: $valueStr";
         }
