@@ -67,6 +67,14 @@ abstract class ActiveRecord
     }
 
     /**
+     * Проверка, является ли объект новым и не сохраненным в базу данных.
+     * @return bool
+     */
+    final public function isNewObject(): bool {
+        return $this->_newRecord;
+    }
+
+    /**
      * Имя текущей таблицы
      * @return string
      */
@@ -254,6 +262,152 @@ abstract class ActiveRecord
     }
 
     /**
+     * Был ли изменен объект модели
+     * @return bool
+     *
+     * === Example:
+     * ActiveRecord.isObjectChanged();
+     *   false // if object not changed
+     *
+     * ActiveRecord.id = 123; // old value: 1
+     * ActiveRecord.isObjectChanged();
+     *   true // object changed
+     *
+     * ActiveRecord.id = 123; // old value: 1
+     * ActiveRecord.save();
+     * ActiveRecord.isObjectChanged();
+     *   false // object already saved and not changed
+     */
+    final public function isObjectChanged(): bool {
+        $objectProps = $this->dataParamVars();
+        if ($this->isNewObject() === true)
+            return !empty($objectProps);
+        foreach ($objectProps as $key => $value) {
+            if (strcmp($this->_passwordColumn, $key) !== 0
+                && array_key_exists($key, $this->_dataHash)
+                && $this->_dataHash[$key] !== $value)
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Получить массив со списком измененных параметров модели и их новыми значениями
+     * @return array
+     *
+     * === Example:
+     * ActiveRecord.objectChangedParams();
+     *   [] // if object not changed
+     *
+     * ActiveRecord.id = 123; // old value: 1
+     * ActiveRecord.objectChangedParams();
+     *   [ 'id' => '123' ] // object changed
+     */
+    final public function objectChangedParams(): array {
+        $objectProps = $this->dataParamVars();
+        if ($this->isNewObject() === true)
+            return $objectProps;
+        foreach ($objectProps as $key => $value) {
+            if (strcmp($this->_passwordColumn, $key) !== 0
+                && array_key_exists($key, $this->_dataHash)
+                && $this->_dataHash[$key] === $value)
+                unset($objectProps[$key]);
+        }
+        return $objectProps;
+    }
+
+    /**
+     * Получить массив со списком измененных параметров модели и их новыми значениями
+     * @return array
+     *
+     * === Example:
+     * ActiveRecord.objectChangedVars();
+     *   [] // if object not changed
+     *
+     * ActiveRecord.id = 123; // old value: 1
+     * ActiveRecord.objectChangedVars();
+     *   [ 'id' => '123' ] // object changed
+     *
+     * NOTE: This alias function for 'ActiveRecord::objectChangedParams()'.
+     */
+    final public function objectChangedVars(): array {
+        return $this->objectChangedParams();
+    }
+
+    /**
+     * Получить текстовое представление объекта модели
+     * @param bool $includeChanged включить вывод изменений параметров
+     * @param string $changedDelimiter размедлитель между старым и новым значением параметра (поддерживается, если $includeChanged == true)
+     * @return string
+     * @throws ErrorActiveRecord
+     *
+     * === Example:
+     * // - 1 set values -
+     * ActiveRecord.id = 123;
+     * ActiveRecord.name = "test name";
+     * ActiveRecord.description = "test description";
+     *
+     * // - 2 show object -
+     * ActiveRecord.objectToStr();
+     *   "ActiveRecord {
+     *      id: 123,
+     *      name: "test name",
+     *      description: "test description"
+     *    }"
+     *
+     * === Example:
+     * // - 1 update values -
+     * ActiveRecord.name = "test new name"; // old value "test name"
+     * ActiveRecord.description = "test new description"; // old value "test description"
+     *
+     * // - 2 show object -
+     * ActiveRecord.objectToStr(true);
+     *   "ActiveRecord {
+     *      id: 123,
+     *      name: "test name" -> "test new name",
+     *      description: "test description" -> "test new description"
+     *    }"
+     *
+     * === Example:
+     * // - 1 update values -
+     * ActiveRecord.name = "test new name"; // old value "test name"
+     * ActiveRecord.description = "test new description"; // old value "test description"
+     * ActiveRecord.save(); // old values hash cleared after update
+     *
+     * // - 2 show object -
+     * ActiveRecord.objectToStr(true);
+     *   "ActiveRecord {
+     *      id: 123,
+     *      name: "test new name",
+     *      description: "test new description"
+     *    }"
+     */
+    final public function objectToStr(bool $includeChanged = false, string $changedDelimiter = "->"): string {
+        $objectName = $this->objectName();
+        $objectProps = $this->dataParamVars();
+        $tmpStr = "";
+        foreach ($objectProps as $key => $value) {
+            if (strcmp($this->_passwordColumn, $key) === 0)
+                continue;
+            if (!empty($tmpStr))
+                $tmpStr .= ",";
+
+            $strQuote = "\"";
+            if (is_numeric($value))
+                $strQuote = "";
+
+            $valueStr = $strQuote.strval($value).$strQuote;
+            if ($includeChanged
+                && array_key_exists($key, $this->_dataHash)
+                && $this->_dataHash[$key] != $value)
+                $valueStr = $strQuote.strval($this->_dataHash[$key]).$strQuote." $changedDelimiter ".$strQuote.strval($value).$strQuote;
+
+            $tmpStr .= "\n  $key: $valueStr";
+        }
+        return "$objectName { $tmpStr \n}";
+    }
+
+    /**
      * Сохранить/Обновить объект в БД
      * @throws
      *
@@ -269,7 +423,7 @@ abstract class ActiveRecord
                 'active-r-method' => __FUNCTION__
             ]);
         $this->processingCallbacks('before-save');
-        if ($this->_newRecord === true)
+        if ($this->isNewObject() === true)
             $this->insert();
         else
             $this->update();
@@ -288,7 +442,7 @@ abstract class ActiveRecord
                 'active-r-class' => $this->objectName(),
                 'active-r-method' => __FUNCTION__
             ]);
-        if ($this->_newRecord === true)
+        if ($this->isNewObject() === true)
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
                 'message' => 'Trying to destroy an object not present in the database!',
@@ -888,10 +1042,13 @@ abstract class ActiveRecord
         $dataValuesKeys = array_keys($dataValues);
         $tName = $this->tableName();
         try {
-            $res = $db->query("INSERT INTO ".$db->quoteTableName($tName)." (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ") RETURNING ".$db->quoteTableName($this->_primaryKey).";", $dataValues);
+            $res = $db->query("INSERT INTO ".$db->quoteTableName($tName)." (" . implode(', ', $dataColumns) . ") VALUES (" . implode(', ', $dataValuesKeys) . ") RETURNING *;", $dataValues);
             if (count($res) === 1) {
-                $tmpName = $this->_primaryKey;
-                $this->__set($this->_primaryKey, $res[0]->$tmpName);
+                $this->_newRecord = false;
+                $this->_data = [];
+                $this->_dataHash = [];
+                foreach ($res[0] as $rKey => $rVal)
+                    $this->__set($rKey, $rVal);
             }
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
@@ -923,7 +1080,13 @@ abstract class ActiveRecord
         $tPK = $this->primaryKey();
         $dataValues[":pk_value"] = $this->preparePKeyValue();
         try {
-            $db->query("UPDATE ".$db->quoteTableName($tName)." SET " . implode(',', $dataValues4Upd) . " WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value;", $dataValues);
+            $res = $db->query("UPDATE ".$db->quoteTableName($tName)." SET " . implode(',', $dataValues4Upd) . " WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value RETURNING *;", $dataValues);
+            if (count($res) === 1) {
+                $this->_data = [];
+                $this->_dataHash = [];
+                foreach ($res[0] as $rKey => $rVal)
+                    $this->__set($rKey, $rVal);
+            }
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -948,7 +1111,14 @@ abstract class ActiveRecord
         $dataValues = array();
         $dataValues[":pk_value"] = $this->preparePKeyValue();
         try {
-            $db->query("DELETE FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value;", $dataValues);
+            $res = $db->query("DELETE FROM ".$db->quoteTableName($tName)." WHERE ".$db->quoteTableName("$tName.$tPK")." = :pk_value RETURNING *;", $dataValues);
+            if (count($res) === 1) {
+                $this->_newRecord = true;
+                $this->_data = [];
+                $this->_dataHash = [];
+                foreach ($res[0] as $rKey => $rVal)
+                    $this->__set($rKey, $rVal);
+            }
         } catch (ErrorDatabase $ex) {
             throw ErrorActiveRecord::makeError([
                 'tag' => 'active-record',
@@ -958,7 +1128,6 @@ abstract class ActiveRecord
                 'error-database' => $ex
             ]);
         }
-        $this->_newRecord = true;
     }
 
     /**
