@@ -578,11 +578,25 @@ class CoreHelper
      * Получить свойства объекта класса
      * @param $object
      * @return array
+     *
+     * NOTE: Return only public properties.
      */
     static public function objectProperties($object): array {
         if (is_subclass_of($object, '\FlyCubePHP\Core\ActiveRecord\ActiveRecord'))
             return $object->dataParamVars();
         return get_object_vars($object);
+    }
+
+    /**
+     * Проверка, задан ли у объекта требуемый параметр
+     * @param $object
+     * @param string $propName
+     * @return bool
+     */
+    static public function hasObjectProperty($object, string $propName): bool {
+        if (is_subclass_of($object, '\FlyCubePHP\Core\ActiveRecord\ActiveRecord'))
+            return $object->hasDataParamKey($propName);
+        return property_exists($object, $propName);
     }
 
     /**

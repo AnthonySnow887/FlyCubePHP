@@ -236,6 +236,15 @@ abstract class ActiveRecord
     }
 
     /**
+     * Содержит ли модель требуемый параметр
+     * @param string $key название параметра
+     * @return bool
+     */
+    final public function hasDataParamKey(string $key): bool {
+        return array_key_exists($key, $this->_data);
+    }
+
+    /**
      * Получить массив со списком параметров модели и их значениями
      * @return array
      *
@@ -336,7 +345,7 @@ abstract class ActiveRecord
 
     /**
      * Получить текстовое представление объекта модели
-     * @param integer $maxParamValueStrLen маскимальный размер строкового представления значения параметра
+     * @param integer $maxParamValueStrLen маскимальный размер строкового представления значения параметра (если меньше или равно 0, то выводится вся строка)
      * @param bool $includeChanged включить вывод изменений параметров
      * @param string $changedDelimiter размедлитель между старым и новым значением параметра (поддерживается, если $includeChanged == true)
      * @return string
@@ -370,7 +379,7 @@ abstract class ActiveRecord
      * ActiveRecord.description = "test new description"; // old value "test description"
      *
      * // - 2 show object -
-     * ActiveRecord.objectToStr(true);
+     * ActiveRecord.objectToStr();
      *   "ActiveRecord {
      *      id: 123,
      *      name: "test name" -> "test new name",
@@ -384,7 +393,7 @@ abstract class ActiveRecord
      * ActiveRecord.save(); // old values hash cleared after update
      *
      * // - 2 show object -
-     * ActiveRecord.objectToStr(true);
+     * ActiveRecord.objectToStr(30, false);
      *   "ActiveRecord {
      *      id: 123,
      *      name: "test new name",
@@ -392,7 +401,7 @@ abstract class ActiveRecord
      *    }"
      */
     final public function objectToStr(int $maxParamValueStrLen = 30,
-                                      bool $includeChanged = false,
+                                      bool $includeChanged = true,
                                       string $changedDelimiter = "->"): string {
         $objectName = $this->objectName();
         $objectProps = $this->dataParamVars();
