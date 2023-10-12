@@ -413,6 +413,8 @@ abstract class ActiveRecord
                 $tmpStr .= ",";
 
             $tmpValueStr = CoreHelper::objectToStr($value);
+            $tmpValueStr = str_replace("\n", "", $tmpValueStr);
+            $tmpValueStr = str_replace("\r", "", $tmpValueStr);
             if ($maxParamValueStrLen > 0
                 && strlen($tmpValueStr) > $maxParamValueStrLen)
                 $tmpValueStr = mb_substr($tmpValueStr, 0, $maxParamValueStrLen) . "...";
@@ -422,6 +424,8 @@ abstract class ActiveRecord
                 && array_key_exists($key, $this->_dataHash)
                 && $this->_dataHash[$key] != $value) {
                 $tmpHashValueStr = CoreHelper::objectToStr($this->_dataHash[$key]);
+                $tmpHashValueStr = str_replace("\n", "", $tmpHashValueStr);
+                $tmpHashValueStr = str_replace("\r", "", $tmpHashValueStr);
                 if ($maxParamValueStrLen > 0
                     && strlen($tmpHashValueStr) > $maxParamValueStrLen)
                     $tmpHashValueStr = mb_substr($tmpHashValueStr, 0, $maxParamValueStrLen) . "...";
