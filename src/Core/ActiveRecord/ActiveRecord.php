@@ -44,11 +44,13 @@ abstract class ActiveRecord
     }
 
     final public function &__get(string $name) {
-        return $this->_data[$name];
+        $tmpName = CoreHelper::camelcase($name, false);
+        return $this->_data[$tmpName];
     }
 
     final public function __isset(string $name) {
-        return isset($this->_data[$name]);
+        $tmpName = CoreHelper::camelcase($name, false);
+        return isset($this->_data[$tmpName]);
     }
 
     final public function __set(string $name, $value) {
