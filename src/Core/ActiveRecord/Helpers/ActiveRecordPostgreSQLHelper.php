@@ -55,6 +55,7 @@ class ActiveRecordPostgreSQLHelper
                 $resParts[$openBrackets] = $tmpParentPart;
             } else if ($chPrev != "\\" && $ch =="\"") {
                 $isStr = !$isStr;
+                $isVal = true;
             } else if ($chPrev != "\\" && $ch == "," && !$isStr) {
                 if ($isVal) {
                     // append value to local part
