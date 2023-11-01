@@ -16,6 +16,7 @@ include_once __DIR__.'/../../Cache/APCu.php';
 use FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\BaseStylesheetCompiler;
 use FlyCubePHP\Core\AssetPipeline\CSSBuilder\Compilers\SassCompiler;
 use FlyCubePHP\Core\Config\Config;
+use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Error\ErrorAssetPipeline;
 use FlyCubePHP\Core\Cache\APCu;
@@ -246,14 +247,18 @@ class CSSBuilder
 
             // prepare require tree
             $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
-            if (empty($tmpFList) || count($tmpFList) === 1) {
+            if (empty($tmpFList)) {
                 $fPath = $this->preBuildFile($fPath);
+                return CoreHelper::buildAppPath($fPath);
+            } else if (count($tmpFList) === 1) {
+                $item = array_shift($tmpFList);
+                $fPath = $this->preBuildFile($item['path'], ($item['modified'] === true));
                 return CoreHelper::buildAppPath($fPath);
             }
             $tmpCSSLst = array();
             foreach ($tmpFList as $key => $item) {
-                $item = $this->preBuildFile($item);
-                $tmpCSSLst[$key] = CoreHelper::buildAppPath($item);
+                $fPath = $this->preBuildFile($item['path'], ($item['modified'] === true));
+                $tmpCSSLst[$key] = CoreHelper::buildAppPath($fPath);
             }
             return $tmpCSSLst;
         } elseif (Config::instance()->isProduction()) {
@@ -312,9 +317,20 @@ class CSSBuilder
             $isChanged = true;
             return $this->parseRequireTree($path);
         }
+        return $this->analyzeRequireTree($tmpRT, $isChanged);
+    }
 
-        foreach ($tmpRT as $key => $object) {
+    /**
+     * Метод анализа изменений в дереве зависимостей
+     * @param array $tree
+     * @param bool $isChanged
+     * @return array
+     * @throws ErrorAssetPipeline
+     */
+    private function analyzeRequireTree(array $tree, bool &$isChanged = false): array {
+        foreach ($tree as $key => $object) {
             // check object
+            $usedCssImport = $object['used-css-import'];
             $fileLastModified = CoreHelper::fileLastModified($object['path']);
             $fileLastModifiedCached = $object['last-modified'];
             if ($fileLastModified === -1
@@ -322,19 +338,26 @@ class CSSBuilder
                 // parse require tree
                 $isChanged = true;
                 $tmpRtNew = $this->parseRequireTree($object['path']);
-                $tmpRT[$key] = $tmpRtNew[$key];
+                $tmpRtNew[$key]['used-css-import'] = $usedCssImport; // replace old value for 'used-css-import'
+                $tmpRtNew[$key]['modified'] = true; // set is modified
+                $tree[$key] = $tmpRtNew[$key];
             } else {
                 // check object requires
                 $treePartRequires = $object['require'];
                 foreach ($treePartRequires as $keyReq => $objectReq) {
-                    $tmpRtReq = $this->loadRequireTree($objectReq['path'], $isChanged);
+                    $usedCssImportReq = $objectReq['used-css-import'];
+                    $tmpRtReq = $this->analyzeRequireTree([$keyReq => $objectReq], $isChanged);
+                    $tmpRtReq[$keyReq]['used-css-import'] = $usedCssImportReq; // replace old value for 'used-css-import'
+                    $tmpRtReq[$keyReq]['modified'] = $isChanged; // set child is modified
                     $object['require'][$keyReq] = $tmpRtReq[$keyReq];
+                    if ($isChanged)
+                        $object['modified'] = $isChanged; // set parent is modified
                 }
                 // update object
-                $tmpRT[$key] = $object;
+                $tree[$key] = $object;
             }
         }
-        return $tmpRT;
+        return $tree;
     }
 
     /**
@@ -400,6 +423,55 @@ class CSSBuilder
                 $line = trim(fgets($file));
                 if (empty($line))
                     continue; // ignore empty line
+                // check is saas @import
+                if (!$isMLineComment && preg_match_all('/^@import\s+([\"|\'].*[\"|\'])+\s*\;$/', $line, $matches)) {
+                    $tmpCSS = $matches[1][0];
+                    $tmpCSS = str_replace("\"", "", $tmpCSS);
+                    $tmpCSS = str_replace("'", "", $tmpCSS);
+                    $tmpCSS = explode(',', $tmpCSS);
+                    foreach ($tmpCSS as $css) {
+                        $css = explode(' ', $css)[0]; // get file path if used: @import 'WebTable/WebTable' wt;
+                        $tmpPath = $this->makeFilePath(dirname($path), $css);
+                        try {
+                            $tmpReqTree = $this->parseRequireTree($tmpPath, $readFiles);
+                            // set 'used-css-import' => true
+                            if (array_key_exists($tmpPath, $tmpReqTree))
+                                $tmpReqTree[$tmpPath]['used-css-import'] = true;
+                            $tmpChild = array_merge($tmpChild, $tmpReqTree);
+                        } catch (\Throwable $ex) {
+                            $errorMessage = $ex->getMessage();
+                            $isCyclicDep = false;
+                            $cyclicErr = "";
+                            if (is_subclass_of($ex, "\FlyCubePHP\Core\Error\Error")
+                                && $ex->additionalDataValue('cyclic-dep') === true) {
+                                $isCyclicDep = true;
+                                if ($ex->hasAdditionalDataKey('cyclic-err'))
+                                    $cyclicErr = "$tmpPath --> " . $ex->additionalDataValue('cyclic-err');
+                                else
+                                    $cyclicErr = $tmpPath;
+
+                                $errorMessage = "Cyclic require! $cyclicErr";
+                            }
+                            throw ErrorAssetPipeline::makeError([
+                                'tag' => 'asset-pipeline',
+                                'message' => "Require tree failed! Require tree file \"$tmpPath\" caused an error: $errorMessage",
+                                'class-name' => __CLASS__,
+                                'class-method' => __FUNCTION__,
+                                'asset-name' => $path,
+                                'file' => $path,
+                                'line' => $currentLine,
+                                'has-asset-code' => true,
+                                'additional-data' => [
+                                    'cyclic-dep' => $isCyclicDep,
+                                    'cyclic-err' => $cyclicErr
+                                ]
+                            ]);
+                        }
+                    }
+                    continue; // goto read next row
+                }
+
+                // check is require or require_tree
                 if (substr($line, 0, 2) === "/*")
                     $isMLineComment = true;
                 if (substr($line, strlen($line) - 2, 2) === "*/")
@@ -419,7 +491,7 @@ class CSSBuilder
                     $line = substr($line, 13, strlen($line));
                     $line = trim($line);
                     $tmpPath = $this->makeDirPath(dirname($path), $line);
-                    $tmpCSS = CoreHelper::scanDir($tmpPath, [ 'recursive' => true ]);
+                    $tmpCSS = CoreHelper::scanDir($tmpPath, ['recursive' => true]);
                     foreach ($tmpCSS as $css) {
                         if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.css|\.scss)$/", $css))
                             continue;
@@ -528,6 +600,8 @@ class CSSBuilder
                 'name' => $this->makeRequireFileName($path),
                 'path' => $fAppPath,
                 'last-modified' => CoreHelper::fileLastModified($path),
+                'used-css-import' => false,
+                'modified' => false,
                 'require' => $tmpChild
             ]
         ];
@@ -541,8 +615,13 @@ class CSSBuilder
     private function requireTreeToList(array $tree): array {
         $tmpList = [];
         foreach ($tree as $object) {
+            if ($object['used-css-import'] === true)
+                continue;
             $tmpList = array_merge($tmpList, $this->requireTreeToList($object['require']));
-            $tmpList = array_unique(array_merge($tmpList, [ $object['name'] => $object['path'] ]));
+            $tmpList = array_merge($tmpList, [ $object['name'] => [
+                'path' => $object['path'],
+                'modified' => $object['modified']
+            ]]);
         }
         return $tmpList;
     }
@@ -670,17 +749,17 @@ class CSSBuilder
         // prepare require tree
         $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
         foreach ($tmpFList as $item) {
-            $item = $this->preBuildFile($item);
+            $fPath = $this->preBuildFile($item['path'], ($item['modified'] === true));
 
             // --- get last modified and check ---
-            $fLastModified = filemtime($item);
+            $fLastModified = filemtime($fPath);
             if ($fLastModified === false)
                 $fLastModified = time();
             if ($lastModified < $fLastModified)
                 $lastModified = $fLastModified;
 
             // --- get stylesheet data ---
-            $tmpFileData .= file_get_contents($item) . "\n";
+            $tmpFileData .= file_get_contents($fPath) . "\n";
         }
 
         // --- build min.css ---
@@ -749,18 +828,19 @@ class CSSBuilder
     /**
      * "Сборка" stylesheet файла
      * @param string $path
+     * @param bool $forced - принудительная сборка
      * @return string
      * @throws
      */
-    private function preBuildFile(string $path): string {
+    private function preBuildFile(string $path, bool $forced = false): string {
         // get compiler
         $fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $cssCompiler = $this->findCompiler($fExt);
         if (is_null($cssCompiler))
             return $path;
         elseif ($fExt === "css")
-            return $cssCompiler->compileFile($path);
-        return $this->preBuildFile($cssCompiler->compileFile($path));
+            return $cssCompiler->compileFile($path, $forced);
+        return $this->preBuildFile($cssCompiler->compileFile($path, $forced), $forced);
     }
 
     /**
@@ -939,9 +1019,10 @@ class CSSBuilder
         $tmpArray = [];
         $pos = 0;
         foreach ($requireList as $key => $value) {
-            if (strpos($value, $FLCPrefix) === 0
-                || strpos($value, $vendorPrefix) === 0
-                || strpos($value, $libPrefix) === 0) {
+            $vPath = $value['path'];
+            if (strpos($vPath, $FLCPrefix) === 0
+                || strpos($vPath, $vendorPrefix) === 0
+                || strpos($vPath, $libPrefix) === 0) {
                 if ($pos <= 0) {
                     $tmpArray = [$key => $value] + $tmpArray;
                 } else {

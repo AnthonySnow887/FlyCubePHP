@@ -252,13 +252,17 @@ class JSBuilder
 
             // prepare require tree
             $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
-            if (empty($tmpFList) || count($tmpFList) === 1) {
+            if (empty($tmpFList)) {
                 $fPath = $this->preBuildFile($fPath);
+                return CoreHelper::buildAppPath($fPath);
+            } else if (count($tmpFList) === 1) {
+                $item = array_shift($tmpFList);
+                $fPath = $this->preBuildFile($item['path'], ($item['modified'] === true));
                 return CoreHelper::buildAppPath($fPath);
             }
             $tmpJSLst = array();
             foreach ($tmpFList as $key => $item) {
-                $item = $this->preBuildFile($item);
+                $item = $this->preBuildFile($item['path'], ($item['modified'] === true));
                 $tmpJSLst[$key] = CoreHelper::buildAppPath($item);
             }
             return $tmpJSLst;
@@ -317,8 +321,18 @@ class JSBuilder
             $isChanged = true;
             return $this->parseRequireTree($path);
         }
+        return $this->analyzeRequireTree($tmpRT, $isChanged);
+    }
 
-        foreach ($tmpRT as $key => $object) {
+    /**
+     * Метод анализа изменений в дереве зависимостей
+     * @param array $tree
+     * @param bool $isChanged
+     * @return array
+     * @throws ErrorAssetPipeline
+     */
+    private function analyzeRequireTree(array $tree, bool &$isChanged = false): array {
+        foreach ($tree as $key => $object) {
             // check object
             $fileLastModified = CoreHelper::fileLastModified($object['path']);
             $fileLastModifiedCached = $object['last-modified'];
@@ -327,19 +341,23 @@ class JSBuilder
                 // parse require tree
                 $isChanged = true;
                 $tmpRtNew = $this->parseRequireTree($object['path']);
-                $tmpRT[$key] = $tmpRtNew[$key];
+                $tmpRtNew[$key]['modified'] = true; // set is modified
+                $tree[$key] = $tmpRtNew[$key];
             } else {
                 // check object requires
                 $treePartRequires = $object['require'];
                 foreach ($treePartRequires as $keyReq => $objectReq) {
-                    $tmpRtReq = $this->loadRequireTree($objectReq['path'], $isChanged);
+                    $tmpRtReq = $this->analyzeRequireTree([$keyReq => $objectReq], $isChanged);
+                    $tmpRtReq[$keyReq]['modified'] = $isChanged; // set child is modified
                     $object['require'][$keyReq] = $tmpRtReq[$keyReq];
+                    if ($isChanged)
+                        $object['modified'] = $isChanged; // set parent is modified
                 }
                 // update object
-                $tmpRT[$key] = $object;
+                $tree[$key] = $object;
             }
         }
-        return $tmpRT;
+        return $tree;
     }
 
     /**
@@ -533,6 +551,7 @@ class JSBuilder
                 'name' => $this->makeRequireFileName($path),
                 'path' => $fAppPath,
                 'last-modified' => CoreHelper::fileLastModified($path),
+                'modified' => false,
                 'require' => $tmpChild
             ]
         ];
@@ -547,7 +566,10 @@ class JSBuilder
         $tmpList = [];
         foreach ($tree as $object) {
             $tmpList = array_merge($tmpList, $this->requireTreeToList($object['require']));
-            $tmpList = array_unique(array_merge($tmpList, [ $object['name'] => $object['path'] ]));
+            $tmpList = array_merge($tmpList, [ $object['name'] => [
+                'path' => $object['path'],
+                'modified' => $object['modified']
+            ]]);
         }
         return $tmpList;
     }
@@ -680,17 +702,17 @@ class JSBuilder
         // prepare require tree
         $tmpFList = $this->prepareRequireList($this->requireTreeToList($tmpRT));
         foreach ($tmpFList as $item) {
-            $item = $this->preBuildFile($item);
+            $fPath = $this->preBuildFile($item['path'], ($item['modified'] === true));
 
             // --- get last modified and check ---
-            $fLastModified = filemtime($item);
+            $fLastModified = filemtime($fPath);
             if ($fLastModified === false)
                 $fLastModified = time();
             if ($lastModified < $fLastModified)
                 $lastModified = $fLastModified;
 
             // --- append javascript data ---
-            $tmpFileData = $this->appendJsContent($tmpFileData, file_get_contents($item));
+            $tmpFileData = $this->appendJsContent($tmpFileData, file_get_contents($fPath));
         }
 
         // --- build min.js ---
@@ -767,10 +789,11 @@ class JSBuilder
     /**
      * "Сборка" js файла
      * @param string $path
+     * @param bool $forced - принудительная сборка
      * @return string
      * @throws
      */
-    private function preBuildFile(string $path): string {
+    private function preBuildFile(string $path, bool $forced = false): string {
         // skip:
         // - all min.js files
         // - all *.js files from vendor/FlyCubePHP/
@@ -789,8 +812,8 @@ class JSBuilder
         if (is_null($jsCompiler))
             return $path;
         elseif ($fExt === "js")
-            return $jsCompiler->compileFile($path);
-        return $this->preBuildFile($jsCompiler->compileFile($path));
+            return $jsCompiler->compileFile($path, $forced);
+        return $this->preBuildFile($jsCompiler->compileFile($path, $forced), $forced);
     }
 
     /**
@@ -988,9 +1011,10 @@ class JSBuilder
         $tmpArray = [];
         $pos = 0;
         foreach ($requireList as $key => $value) {
-            if (strpos($value, $FLCPrefix) === 0
-                || strpos($value, $vendorPrefix) === 0
-                || strpos($value, $libPrefix) === 0) {
+            $vPath = $value['path'];
+            if (strpos($vPath, $FLCPrefix) === 0
+                || strpos($vPath, $vendorPrefix) === 0
+                || strpos($vPath, $libPrefix) === 0) {
                 if ($pos <= 0) {
                     $tmpArray = [$key => $value] + $tmpArray;
                 } else {

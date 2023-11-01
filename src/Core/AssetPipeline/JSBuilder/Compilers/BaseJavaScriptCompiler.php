@@ -27,10 +27,11 @@ abstract class BaseJavaScriptCompiler
     /**
      * Метод компиляции JS файла
      * @param string $filePath Путь до файла
+     * @param bool $forced - Принудительная сборка (исключает проверку на изменение в файле)
      * @return string Путь до собранного файла
      * @throws
      */
-    final public function compileFile(string $filePath): string {
+    final public function compileFile(string $filePath, bool $forced = false): string {
         if (empty($filePath))
             return "";
         if (is_dir($filePath))
@@ -50,7 +51,7 @@ abstract class BaseJavaScriptCompiler
         if ($buildLastModified === false)
             $buildLastModified = -1;
         // check last modified
-        if ($buildLastModified > $fileLastModified)
+        if (!$forced && $buildLastModified > $fileLastModified)
             return $fPath;
         // compile...
         $compilerName = $this->compilerName();
