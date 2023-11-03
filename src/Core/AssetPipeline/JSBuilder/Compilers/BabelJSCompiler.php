@@ -92,25 +92,52 @@ class BabelJSCompiler extends BaseJavaScriptCompiler
         // v1: var _excluded = [...];
         // v2: const _excluded = [...];
         //
-        $excludedUid = "";
+        $excludedUid = [];
         $outputChecked = "";
         $outputLst = explode("\n", $output);
         foreach ($outputLst as $row) {
-            preg_match_all("/^(var|const)\s+_excluded\s*(=)/", $row, $matches);
+            $rowTrim = trim($row);
+            preg_match_all("/^(var\s+|const\s+)?(_excluded[a-zA-Z0-9_]*)\s*\=/", $rowTrim, $matches);
             if (count($matches) < 3
                 || count($matches[0]) <= 0) {
-                preg_match_all("/.*((|,)\s*_excluded\s*(,|))/", $row, $matchesNext);
-                if (count($matchesNext) < 4
+                preg_match_all("/.*((|,)\s*(_excluded[a-zA-Z0-9_]*)\s*(,|))/", $rowTrim, $matchesNext);
+                if (count($matchesNext) < 5
                     || count($matchesNext[0]) <= 0) {
                     $outputChecked .= "$row\n";
                 } else {
-                    $tmpRow = str_replace("_excluded", "_excluded_$excludedUid", $row);
+                    $tmpExcludedName = $matchesNext[3][0];
+                    $tmpExcludedNameNew = $tmpExcludedName."_".$excludedUid[$tmpExcludedName];
+                    $tmpRow = str_replace($tmpExcludedName, $tmpExcludedNameNew, $row);
                     $outputChecked .= "$tmpRow\n";
                 }
             } else {
-                $excludedUid = uniqid();
-                $tmpRow = str_replace("_excluded", "_excluded_$excludedUid", $row);
-                $outputChecked .= "$tmpRow\n";
+                $tmpExcludedType = trim($matches[1][0]);
+                $tmpExcludedName = $matches[2][0];
+                $excludedUid[$tmpExcludedName] = uniqid();
+                $tmpExcludedNameNew = $tmpExcludedName."_".$excludedUid[$tmpExcludedName];
+                $tmpRow = rtrim(str_replace($tmpExcludedName, $tmpExcludedNameNew, $row));
+                if (strcmp($tmpRow[strlen($tmpRow) - 1], ',') === 0)
+                    $tmpRow = substr($tmpRow, 0, strlen($tmpRow) - 1) . ";";
+                if (empty($tmpExcludedType)) {
+                    $tmpExcludedType = "const";
+                    $tmpRow = "const ".ltrim($tmpRow);
+                }
+                if (strcmp($tmpExcludedType, 'const') === 0) {
+                    $outputChecked .= <<<EOL
+// check object has already been declared
+if (typeof $tmpExcludedNameNew !== 'object') {
+    $tmpRow
+    // declare class in global view
+    Object.defineProperty(window, '$tmpExcludedNameNew', {
+        writable: false,
+        value: $tmpExcludedNameNew,
+    });
+} // end check object has already been declared
+
+EOL;
+                } else {
+                    $outputChecked .= "$tmpRow\n";
+                }
             }
         }
         return $outputChecked;
