@@ -601,6 +601,10 @@ EOT;
           }
         };
 
+        Consumer.prototype.isActive = function () {
+          return this.connection.isActive();
+        };
+
         return Consumer;
 
       })();
