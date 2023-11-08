@@ -9,8 +9,10 @@ class ActiveRecordPostgreSQLHelper
      * @param array $list
      * @return string
      */
-    static public function psqlArrayToStr(array $list) : string
+    static public function psqlArrayToStr(/*array*/ $list) : string
     {
+        if (!is_array($list))
+            return "{}";
         return "{".implode(',', $list)."}";
     }
 
@@ -19,8 +21,10 @@ class ActiveRecordPostgreSQLHelper
      * @param string $data
      * @return array
      */
-    static public function psqlStrToArray(string $data) : array
+    static public function psqlStrToArray(/*string*/ $data) : array
     {
+        if (!is_string($data))
+            return [];
         $data = str_replace("\n", "", $data);
         preg_match_all("/\{(.*)\}/", $data, $matches);
         if (count($matches) < 2)
