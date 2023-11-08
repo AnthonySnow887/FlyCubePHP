@@ -348,10 +348,11 @@ class JSBuilder
                 $treePartRequires = $object['require'];
                 foreach ($treePartRequires as $keyReq => $objectReq) {
                     $tmpRtReq = $this->analyzeRequireTree([$keyReq => $objectReq], $isChanged);
-                    $tmpRtReq[$keyReq]['modified'] = $isChanged; // set child is modified
                     $object['require'][$keyReq] = $tmpRtReq[$keyReq];
-                    if ($isChanged)
-                        $object['modified'] = $isChanged; // set parent is modified
+//                    // TODO uncomment when the JS-Import functionality appears
+//                    if ($isChanged === true
+//                        && $tmpRtReq[$keyReq]['used-css-import'] === true)
+//                        $object['modified'] = $isChanged; // set parent is modified
                 }
                 // update object
                 $tree[$key] = $object;

@@ -345,12 +345,10 @@ class CSSBuilder
                 // check object requires
                 $treePartRequires = $object['require'];
                 foreach ($treePartRequires as $keyReq => $objectReq) {
-                    $usedCssImportReq = $objectReq['used-css-import'];
                     $tmpRtReq = $this->analyzeRequireTree([$keyReq => $objectReq], $isChanged);
-                    $tmpRtReq[$keyReq]['used-css-import'] = $usedCssImportReq; // replace old value for 'used-css-import'
-                    $tmpRtReq[$keyReq]['modified'] = $isChanged; // set child is modified
                     $object['require'][$keyReq] = $tmpRtReq[$keyReq];
-                    if ($isChanged)
+                    if ($isChanged === true
+                        && $tmpRtReq[$keyReq]['used-css-import'] === true)
                         $object['modified'] = $isChanged; // set parent is modified
                 }
                 // update object
