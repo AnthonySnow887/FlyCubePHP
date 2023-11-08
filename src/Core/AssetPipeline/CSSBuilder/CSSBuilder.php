@@ -1045,19 +1045,11 @@ class CSSBuilder
      * @throws ErrorAssetPipeline
      */
     private function saveRequireTree(array $tree) {
-        $this->saveRequireTreePart($tree);
-        $this->updateCacheList();
-    }
-
-    /**
-     * Сохранить часть дерева зависимостей файла стилей
-     * @param array $treePart
-     */
-    private function saveRequireTreePart(array $treePart) {
-        foreach ($treePart as $object) {
+        // save all primary keys
+        foreach ($tree as $object) {
             $this->_cssRequireList[$object['path']] = [ $object['path'] => $object ];
-            $this->saveRequireTreePart($object['require']);
         }
+        $this->updateCacheList();
     }
 
     /**

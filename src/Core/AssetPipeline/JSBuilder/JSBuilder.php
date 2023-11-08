@@ -1037,19 +1037,11 @@ class JSBuilder
      * @throws ErrorAssetPipeline
      */
     private function saveRequireTree(array $tree) {
-        $this->saveRequireTreePart($tree);
-        $this->updateCacheList();
-    }
-
-    /**
-     * Сохранить часть дерева зависимостей JS файла
-     * @param array $treePart
-     */
-    private function saveRequireTreePart(array $treePart) {
-        foreach ($treePart as $object) {
+        // save all primary keys
+        foreach ($tree as $object) {
             $this->_jsRequireList[$object['path']] = [ $object['path'] => $object ];
-            $this->saveRequireTreePart($object['require']);
         }
+        $this->updateCacheList();
     }
 
     /**
