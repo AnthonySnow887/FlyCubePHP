@@ -535,6 +535,8 @@ class WSWorker
     protected function decodeData($connectionId)/*: array:bool */
     {
         $data = $this->_read[$connectionId];
+        if (!is_string($data))
+            return false;
         if (strlen($data) < 2)
             return false;
 
