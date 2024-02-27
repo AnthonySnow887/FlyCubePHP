@@ -418,7 +418,7 @@ class RouteCollector
      * @return string
      */
     static public function currentClientUserAgent(): string {
-        return $_SERVER['HTTP_USER_AGENT'];
+        return strval($_SERVER['HTTP_USER_AGENT']);
     }
 
     /**
@@ -427,11 +427,11 @@ class RouteCollector
      */
     static public function currentClientIP(): string {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
-            return $_SERVER['HTTP_CLIENT_IP'];
+            return strval($_SERVER['HTTP_CLIENT_IP']);
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+            return strval($_SERVER['HTTP_X_FORWARDED_FOR']);
 
-        return $_SERVER['REMOTE_ADDR'];
+        return strval($_SERVER['REMOTE_ADDR']);
     }
 
     /**
