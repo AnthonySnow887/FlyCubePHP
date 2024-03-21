@@ -26,6 +26,8 @@ class RouteCollector
     private static $_instance = null;
 
     private $_routes = array();
+    private $_hasInputDataError = false;
+    private $_inputDataErrorStr = "";
 
     /**
      * gets the instance via lazy initialization (created on first usage)
@@ -206,6 +208,22 @@ class RouteCollector
     }
 
     /**
+     * Выявлена ли ошибка при разборе входных данных
+     * @return bool
+     */
+    public function hasInputDataError(): bool {
+        return $this->_hasInputDataError;
+    }
+
+    /**
+     * Текст ошибки при разборе входных данных
+     * @return string
+     */
+    public function inputDataErrorStr(): string {
+        return $this->_inputDataErrorStr;
+    }
+
+    /**
      * Обработка входящего запроса и рендеринг страницы
      * @throws \FlyCubePHP\Core\Error\Error
      * @private
@@ -232,10 +250,15 @@ class RouteCollector
         else
             Logger::info("PARAMS:", $httpArgs);
 
-        // --- check current route ---
-        $tmpCurRoute = $this->currentRoute();
-        if (is_null($tmpCurRoute))
-            $tmpCurRoute = $this->processingFailed("Not found route: [$httpM] $httpUrl", 404);
+        // --- check input data parsing error ---
+        if ($this->hasInputDataError()) {
+            $tmpCurRoute = $this->processingFailed($this->inputDataErrorStr(), 422);
+        } else {
+            // --- check current route ---
+            $tmpCurRoute = $this->currentRoute();
+            if (is_null($tmpCurRoute))
+                $tmpCurRoute = $this->processingFailed("Not found route: [$httpM] $httpUrl", 404);
+        }
 
         // --- check redirect ---
         if ($tmpCurRoute->hasRedirect()) {
@@ -297,6 +320,7 @@ class RouteCollector
         // replace REQUEST_METHOD & REQUEST_URI
         $_SERVER['FAILED_REQUEST_METHOD'] = $_SERVER['REQUEST_METHOD'];
         $_SERVER['FAILED_REQUEST_URI'] = $_SERVER['REQUEST_URI'];
+        $_SERVER['FAILED_REQUEST_MESSAGE'] = $message;
         $_SERVER['REQUEST_METHOD'] = 'GET';
         // build REQUEST_URI
         $requestUri = "/$httpCode";
@@ -942,7 +966,11 @@ class RouteCollector
             || $tmpMethod === 'patch'
             || $tmpMethod === 'delete') {
             if (empty($_POST)) {
-                $inData = RouteStreamParser::parseInputData();
+                $parseIsOk = false;
+                $parseErrorStr = "";
+                $inData = RouteStreamParser::parseInputData($parseIsOk, $parseErrorStr);
+                RouteCollector::instance()->_hasInputDataError = !$parseIsOk;
+                RouteCollector::instance()->_inputDataErrorStr = $parseErrorStr;
                 $_POST = $inData['args'];
                 if (empty($_FILES))
                     $_FILES = $inData['files'];

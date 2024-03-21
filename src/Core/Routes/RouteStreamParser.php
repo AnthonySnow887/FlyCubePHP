@@ -17,9 +17,13 @@ class RouteStreamParser
 
     /**
      * Метод разбора входных данных
+     * @param bool $isOk
+     * @param string $errorStr
      * @return array|array[]
      */
-    public static function parseInputData(): array {
+    public static function parseInputData(bool &$isOk, string &$errorStr): array {
+        $isOk = true;
+        $errorStr = "";
         $parser = new static();
         if (empty($parser->_input))
             return [ 'args'=>[], 'files'=>[] ];
@@ -27,7 +31,7 @@ class RouteStreamParser
         $boundary = $parser->formBoundary();
         if (empty($boundary)) {
             $data = [
-                'args' => $parser->parseDataBody(),
+                'args' => $parser->parseDataBody($isOk, $errorStr),
                 'files' => []
             ];
         } else {
@@ -52,15 +56,24 @@ class RouteStreamParser
 
     /**
      * Разбор данных тела запроса
-     * @returns array
+     * @param bool $isOk
+     * @param string $errorStr
+     * @return array
      */
-    private function parseDataBody(): array {
-        if (!isset($_SERVER['CONTENT_TYPE']))
+    private function parseDataBody(bool &$isOk, string &$errorStr): array {
+        $isOk = true;
+        if (!isset($_SERVER['CONTENT_TYPE'])) {
+            $isOk = false;
+            $errorStr = "Not found content-type for input data!";
             return [];
+        }
         if (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
             $jsonArray = json_decode(urldecode($this->_input), true);
-            if (!is_array($jsonArray))
+            if (!is_array($jsonArray)) {
+                $isOk = false;
+                $errorStr = "Invalid input data for content-type 'application/json'! Error: " . json_last_error_msg();
                 return [];
+            }
             return $jsonArray;
         }
 
