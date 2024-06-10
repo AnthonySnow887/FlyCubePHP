@@ -62,6 +62,22 @@ class Session
     }
 
     /**
+     * Получить ИД сессии
+     * @return string
+     */
+    public static function sessionId(): string {
+        return strval(session_id());
+    }
+
+    /**
+     * Получить имя сессии
+     * @return string
+     */
+    public static function sessionName(): string {
+        return strval(session_name());
+    }
+
+    /**
      * is not allowed to call from outside to prevent from creating multiple instances,
      * to use the singleton, you have to obtain the instance from Singleton::instance() instead
      */

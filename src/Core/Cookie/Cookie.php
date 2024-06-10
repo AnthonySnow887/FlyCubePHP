@@ -126,16 +126,6 @@ class Cookie
                 'cookie-key' => $key,
                 'cookie-options' => $options
             ]);
-        $cookieSessionName = session_name();
-        if ($cookieSessionName !== false && strcmp($cookieSessionName, $key) === 0)
-            throw ErrorCookie::makeError([
-                'tag' => 'cookie',
-                'message' => "Invalid key (key '$cookieSessionName' is reserved)!",
-                'class-name' => __CLASS__,
-                'class-method' => __FUNCTION__,
-                'cookie-key' => $key,
-                'cookie-options' => $options
-            ]);
 
         $expires = time() + Cookie::ONE_DAY_SEC;
         if (isset($options["expires"]))
