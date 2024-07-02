@@ -138,7 +138,39 @@ class PostgreSQLAdapter extends BaseDatabaseAdapter
         if (array_key_exists('password', $settings))
             $password = $settings['password'];
 
-        $pdo .= ";user=$username;password=$password";
+        // check is Kerberos keytab auth
+        if (array_key_exists('use_kerberos_keytab', $settings)
+            && $settings['use_kerberos_keytab'] === true) {
+            $remoteUser = $_SERVER['REMOTE_USER'];
+            if (empty($remoteUser))
+                throw ErrorDatabase::makeError([
+                    'tag' => 'database',
+                    'message' => "Not found _SERVER['REMOTE_USER'] for Kerberos keytab authentication!",
+                    'class-name' => $this->objectName(),
+                    'class-method' => __FUNCTION__,
+                    'adapter-name' => $this->name()
+                ]);
+            $krb5ccname = $_SERVER['KRB5CCNAME'];
+            if (empty($krb5ccname))
+                throw ErrorDatabase::makeError([
+                    'tag' => 'database',
+                    'message' => "Not found _SERVER['KRB5CCNAME'] for Kerberos keytab authentication!",
+                    'class-name' => $this->objectName(),
+                    'class-method' => __FUNCTION__,
+                    'adapter-name' => $this->name()
+                ]);
+
+//            preg_match('/^(.*)\@.*$/', $remoteUser, $matches, PREG_OFFSET_CAPTURE);
+//            if (count($matches) >= 2) {
+//                $username = $matches[1][0];
+//            }
+            $username = $remoteUser;
+            $pdo .= ";user=$username";
+            // set env
+            putenv("KRB5CCNAME={$krb5ccname}");
+        } else {
+            $pdo .= ";user=$username;password=$password";
+        }
         return $pdo;
     }
 }
