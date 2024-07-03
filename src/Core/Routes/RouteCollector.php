@@ -806,14 +806,19 @@ class RouteCollector
      * echo makeValidUrl("/api/test_api");
      *   if url-prefix not set => "/api/test_api"
      *   if url-prefix set ("/app1") => "/app1/api/test_api"
+     *
+     * echo makeValidUrl("api/test_api");
+     *   if url-prefix not set => "/api/test_api"
+     *   if url-prefix set ("/app1") => "/app1/api/test_api"
      */
     static public function makeValidUrl(string $uri): string {
         $appPrefix = \FlyCubePHP\configValue(Config::TAG_APP_URL_PREFIX);
         $appPrefix = RouteCollector::makeValidUrlPrefix($appPrefix);
-        if (!empty($appPrefix) && strcmp($appPrefix, "/") !== 0) {
-            $uri = RouteCollector::spliceUrlFirst($uri);
+        $uri = RouteCollector::spliceUrlFirst($uri);
+        if (!empty($appPrefix) && strcmp($appPrefix, "/") !== 0)
             $uri = $appPrefix . "/" . $uri;
-        }
+        if (!empty($uri) && strcmp($uri[0], "/") !== 0)
+            $uri = "/".$uri;
         return $uri;
     }
 
