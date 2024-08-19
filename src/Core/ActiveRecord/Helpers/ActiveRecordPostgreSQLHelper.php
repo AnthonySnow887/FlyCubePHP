@@ -32,18 +32,18 @@ class ActiveRecordPostgreSQLHelper
         $resParts = [ 0 => [] ]; // root part
         $tmpVal = "";
         $openBrackets = 0;
-        $isStr = false;
+        $inQuotes = false;
+        $escaped = false;
         $isVal = false;
+        $index = 0;
         $tmpData = $matches[1][0];
-        for ($i = 0; $i < strlen($tmpData); $i++) {
-            $ch = $tmpData[$i];
-            $chPrev = "\0";
-            if ($i != 0)
-                $chPrev = $tmpData[$i - 1];
-            if ($chPrev != "\\" && $ch == "{") {
+        while ($index < strlen($tmpData)) {
+            $escaped = false;
+            $ch = self::dataSymbol($tmpData, $index, $escaped);
+            if (!$escaped && !$inQuotes && $ch == "{") {
                 $openBrackets++;
                 $resParts[$openBrackets] = [];
-            } else if ($chPrev != "\\" && $ch == "}") {
+            } else if (!$escaped && !$inQuotes && $ch == "}") {
                 // append value to local part
                 $tmpPart = $resParts[$openBrackets];
                 unset($resParts[$openBrackets]);
@@ -57,10 +57,12 @@ class ActiveRecordPostgreSQLHelper
                 $tmpParentPart = $resParts[$openBrackets];
                 $tmpParentPart[] = $tmpPart;
                 $resParts[$openBrackets] = $tmpParentPart;
-            } else if ($chPrev != "\\" && $ch =="\"") {
-                $isStr = !$isStr;
+            } else if (!$escaped && !$inQuotes && $ch =="\"") {
+                $inQuotes = true;
+            } else if (!$escaped && $inQuotes && $ch =="\"") {
+                $inQuotes = false;
                 $isVal = true;
-            } else if ($chPrev != "\\" && $ch == "," && !$isStr) {
+            } else if (!$escaped && !$inQuotes && $ch == ",") {
                 if ($isVal) {
                     // append value to local part
                     $tmpPart = $resParts[$openBrackets];
@@ -82,5 +84,24 @@ class ActiveRecordPostgreSQLHelper
             $resParts[$openBrackets] = $tmpPart;
         }
         return $resParts[0];
+    }
+
+    /**
+     * Получить символ строки по индексу включая экранирование
+     * @param string $data
+     * @param int $index
+     * @param bool $escaped
+     * @return string
+     */
+    static protected function dataSymbol(string $data, int &$index, bool &$escaped): string
+    {
+        $ch = $data[$index];
+        $index++;
+        if ($ch == '\\') {
+            $escaped = true;
+            $ch = $data[$index];
+            $index++;
+        }
+        return $ch;
     }
 }
