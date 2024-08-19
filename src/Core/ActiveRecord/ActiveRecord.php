@@ -113,7 +113,7 @@ abstract class ActiveRecord
      * @param string $classParam
      * @return bool
      */
-    final protected function hasColumnMapping(string $classParam): bool {
+    final public function hasColumnMapping(string $classParam): bool {
         return array_key_exists($classParam, $this->_columnMappings);
     }
 
@@ -122,7 +122,7 @@ abstract class ActiveRecord
      * @param string $classParam
      * @return string
      */
-    final protected function columnMapping(string $classParam): string {
+    final public function columnMapping(string $classParam): string {
         if (array_key_exists($classParam, $this->_columnMappings))
             return $this->_columnMappings[$classParam];
         return "";
@@ -132,7 +132,7 @@ abstract class ActiveRecord
      * Массив сопоставлений параметров класса реальным названиям колонок в таблице
      * @return array
      */
-    final protected function columnMappings():array {
+    final public function columnMappings():array {
         return $this->_columnMappings;
     }
 
