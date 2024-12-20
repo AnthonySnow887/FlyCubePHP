@@ -756,7 +756,7 @@ class AssetTagHelper extends BaseControllerHelper
             $count = 0;
             $url = str_replace(":$key", $val, $url, $count);
             if ($count == 0)
-                $tmpParams[] = [ $key => $val ];
+                $tmpParams[$key] = $val;
         }
         if (empty($tmpParams))
             return $url;
