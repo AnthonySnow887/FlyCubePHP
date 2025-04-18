@@ -176,5 +176,33 @@ class SassCompiler extends BaseStylesheetCompiler
             },
             ['path']
         );
+
+        // --- asset_name_url ---
+        $compiler->registerFunction(
+            'asset_name_url',
+            function($args) use ($compiler) {
+                $pathArray = $compiler->assertString($args[0], 'path');
+                if (count($pathArray) !== 3
+                    || !is_array($pathArray[2])
+                    || empty($pathArray[2]))
+                    throw $compiler->error('%s Invalid arguments!', '[asset_name_url]');
+
+                $path = $pathArray[2][0];
+                try {
+                    $fPath = AssetPipeline::instance()->imageFilePath($path);
+                    $fPathList = explode('/', $fPath);
+                    $fPath = $fPathList[count($fPathList) - 1];
+                } catch (ErrorAssetPipeline $ex) {
+                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_name_url]', $path);
+                }
+                if (empty($fPath))
+                    throw $compiler->error('%s Not found needed asset file: %s!', '[asset_name_url]', $path);
+
+                // NOTE: use for convert from php value to sass value
+                // return \ScssPhp\ScssPhp\ValueConverter::fromPhp("url($fPath)");
+                return [\ScssPhp\ScssPhp\Type::T_STRING, '', ["url($fPath)"]];
+            },
+            ['path']
+        );
     }
 }

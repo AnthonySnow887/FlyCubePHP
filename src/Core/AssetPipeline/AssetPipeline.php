@@ -219,6 +219,7 @@ class AssetPipeline
     /**
      * Получить путь (список путей) для JS файлов
      * @param string $name
+     * @param bool $makeValidUrl
      * @return array|string
      * @throws
      *
@@ -227,18 +228,18 @@ class AssetPipeline
      *   javascriptFilePath('application')
      *   * => /assets/application-e869470b75d3b312f45e9fa0f624016f7f416b59914493c6e1ebb9d83a441abb.js
      */
-    public function javascriptFilePath(string $name)/*: string|array*/ {
+    public function javascriptFilePath(string $name, bool $makeValidUrl = true)/*: string|array*/ {
         if (is_null($this->_jsBuilder))
             return "";
         $tmpPaths = $this->_jsBuilder->javascriptFilePath($name);
         if (is_array($tmpPaths)) {
             $tmpAssetPaths = array();
             foreach ($tmpPaths as $key => $value)
-                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression);
+                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression, $makeValidUrl);
 
             return $tmpAssetPaths;
         }
-        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
+        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression, $makeValidUrl);
     }
 
     /**
@@ -293,6 +294,7 @@ class AssetPipeline
     /**
      * Получить путь (список путей) для CSS файлов
      * @param string $name
+     * @param bool $makeValidUrl
      * @return array|string
      * @throws
      *
@@ -301,18 +303,18 @@ class AssetPipeline
      *   stylesheetFilePath('application')
      *   * => /assets/application-ad08b6bea609d12d0b678befdd49138306c7d34d8567fcefa3e1bab3d33d9013.css
      */
-    public function stylesheetFilePath(string $name)/*: string|array*/ {
+    public function stylesheetFilePath(string $name, bool $makeValidUrl = true)/*: string|array*/ {
         if (is_null($this->_cssBuilder))
             return "";
         $tmpPaths = $this->_cssBuilder->stylesheetFilePath($name);
         if (is_array($tmpPaths)) {
             $tmpAssetPaths = array();
             foreach ($tmpPaths as $key => $value)
-                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression);
+                $tmpAssetPaths[] = $this->buildAssetPath($value, CoreHelper::dirName($key), $this->_useCompression, $makeValidUrl);
 
             return $tmpAssetPaths;
         }
-        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression);
+        return $this->buildAssetPath($tmpPaths, "", $this->_useCompression, $makeValidUrl);
     }
 
     /**
@@ -357,6 +359,7 @@ class AssetPipeline
     /**
      * Поиск пути до image файла по имени
      * @param string $name
+     * @param bool $makeValidUrl
      * @return string
      * @throws
      *
@@ -365,11 +368,11 @@ class AssetPipeline
      *   imageFilePath("configure.svg")
      *   * => /assets/configure-00f4bd1cfae9c8fd0b1877596b78d384638484e744e0769d49a1efc48c7f3fb8.svg
      */
-    public function imageFilePath(string $name): string {
+    public function imageFilePath(string $name, bool $makeValidUrl = true): string {
         if (is_null($this->_imageBuilder))
             return "";
         $tmpPath = $this->_imageBuilder->imageFilePath($name);
-        return $this->buildAssetPath($tmpPath);
+        return $this->buildAssetPath($tmpPath, "", false, $makeValidUrl);
     }
 
     /**
@@ -386,8 +389,7 @@ class AssetPipeline
     public function imageFilePathReal(string $name): string {
         if (is_null($this->_imageBuilder))
             return "";
-        $tmpPath = $this->_imageBuilder->imageFilePath($name);
-        return $this->buildAssetPath($tmpPath);
+        return $this->_imageBuilder->imageFilePath($name);
     }
 
     /**
@@ -515,12 +517,14 @@ class AssetPipeline
      * @param string $path - полный путь до файла
      * @param string $childDir - дочерний подкаталог
      * @param bool $useCompression - использовать сжатие
+     * @param bool $makeValidUrl - использовать RouteCollector::makeValidUrl(...) при генерации пути
      * @return string
      * @throws
      */
     private function buildAssetPath(string $path,
                                     string $childDir = "",
-                                    bool $useCompression = false): string {
+                                    bool $useCompression = false,
+                                    bool $makeValidUrl = true): string {
         if (empty($path))
             return "";
         $assetPath = "assets/";
@@ -547,8 +551,12 @@ class AssetPipeline
             $childDir = RouteCollector::spliceUrlLast($childDir);
             $assetPath .= $childDir . "/" . $tmpName;
         }
-        if (array_key_exists($assetPath, $this->_cacheList))
-            return RouteCollector::makeValidUrl($assetPath);
+        if (array_key_exists($assetPath, $this->_cacheList)) {
+            if ($makeValidUrl)
+                return RouteCollector::makeValidUrl($assetPath);
+
+            return $assetPath;
+        }
 
         // --- use compression ---
         $compressFilePath = "";
@@ -586,7 +594,11 @@ class AssetPipeline
             $this->_compressionType => CoreHelper::buildAppPath($compressFilePath)
         ];
         $this->updateCacheList();
-        return RouteCollector::makeValidUrl($assetPath);
+
+        if ($makeValidUrl)
+            return RouteCollector::makeValidUrl($assetPath);
+
+        return $assetPath;
     }
 
     /**
