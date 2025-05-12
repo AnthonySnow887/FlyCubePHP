@@ -45,10 +45,11 @@ class HelpDocObject
      * @param array $files Список файлов справки
      * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
      * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
+     * @param callable|null $callbackSort Функция сортировки массива
      * @return HelpDocObject
      * @throws Error
      */
-    static public function parseHelpDoc(array $files, string $heading = "", int $level = -1): HelpDocObject
+    static public function parseHelpDoc(array $files, string $heading = "", int $level = -1, callable $callbackSort = null): HelpDocObject
     {
         $hlp = new HelpDocObject();
         foreach ($files as $file)
@@ -61,8 +62,11 @@ class HelpDocObject
             else
                 $hlp->setRootPart($tmpPart);
         }
-        if ($hlp->isEnabledTOCSort())
-            $hlp->sortParts($hlp->TOCSortMaxLevel());
+        if ($hlp->isEnabledTOCSort()) {
+            if (is_null($callbackSort))
+                $callbackSort = [HelpPart::class, 'sortCallback'];
+            $hlp->sortParts($callbackSort, $hlp->TOCSortMaxLevel());
+        }
         return $hlp;
     }
 
@@ -134,9 +138,10 @@ class HelpDocObject
 
     /**
      * Отсортировать разделы
+     * @param callable $callbackSort Функция сортировки массива
      * @param int $maxLevel Максимальный уровень раздела для сортировки
      */
-    public function sortParts(int $maxLevel = -1)
+    public function sortParts(callable $callbackSort, int $maxLevel = -1)
     {
         if ($this->isEmpty())
             return;
@@ -146,11 +151,9 @@ class HelpDocObject
             return;
         if ($maxLevel != -1 && $firstPart->level() > $maxLevel)
             return;
-        usort($this->_parts, function ($item1, $item2) {
-            return $item1->heading() <=> $item2->heading();
-        });
+        usort($this->_parts, $callbackSort);
         foreach ($this->_parts as $sPart)
-            $sPart->sortSubParts($maxLevel);
+            $sPart->sortSubParts($callbackSort, $maxLevel);
     }
 
     /**

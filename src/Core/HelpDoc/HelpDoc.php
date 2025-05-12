@@ -111,23 +111,25 @@ class HelpDoc
      * Получить объект с разобранным описанием help-doc
      * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
      * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
+     * @param callable|null $callbackSort Функция сортировки массива
      * @return HelpDocObject|null
-     * @throws
+     * @throws Error
      */
-    public function helpDoc(string $heading = "", int $level = -1)/*: HelpDocObject|null */ {
+    public function helpDoc(string $heading = "", int $level = -1, callable $callbackSort = null)/*: HelpDocObject|null */ {
         if (!$this->_isEnabled || empty($this->_helpDocList))
             return null;
-        return HelpDocObject::parseHelpDoc(array_values($this->_helpDocList), $heading, $level);
+        return HelpDocObject::parseHelpDoc(array_values($this->_helpDocList), $heading, $level, $callbackSort);
     }
 
     /**
      * Получить help-doc в формате markdown
      * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
      * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
+     * @param callable|null $callbackSort Функция сортировки массива
      * @return string
      * @throws
      */
-    public function helpDocMarkdown(string $heading = "", int $level = -1): string {
+    public function helpDocMarkdown(string $heading = "", int $level = -1, callable $callbackSort = null): string {
         if (!$this->_isEnabled)
             return "";
         $tmpName = $this->buildCacheFileName($heading, $level);
@@ -135,9 +137,9 @@ class HelpDoc
             if (isset($this->_cacheList[$tmpName]))
                 return file_get_contents($this->_cacheList[$tmpName]);
 
-            return file_get_contents($this->buildCacheFile($heading, $level));
+            return file_get_contents($this->buildCacheFile($heading, $level, $callbackSort));
         }
-        return file_get_contents($this->buildCacheFile($heading, $level));
+        return file_get_contents($this->buildCacheFile($heading, $level, $callbackSort));
     }
 
     /**
@@ -253,8 +255,8 @@ class HelpDoc
      * @return string
      * @throws
      */
-    private function buildCacheFile(string $heading, int $level): string {
-        $obj = $this->helpDoc($heading, $level);
+    private function buildCacheFile(string $heading, int $level, callable $callbackSort): string {
+        $obj = $this->helpDoc($heading, $level, $callbackSort);
         if (is_null($obj))
             throw Error::makeError([
                 'tag' => 'help-doc',

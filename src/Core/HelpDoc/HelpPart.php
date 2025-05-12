@@ -158,9 +158,10 @@ class HelpPart
 
     /**
      * Отсортировать подразделы
+     * @param callable $callbackSort Функция сортировки массива
      * @param int $maxLevel Максимальный уровень подраздела для сортировки
      */
-    public function sortSubParts(int $maxLevel = -1)
+    public function sortSubParts(callable $callbackSort, int $maxLevel = -1)
     {
         if (!$this->hasSubParts())
             return;
@@ -172,11 +173,9 @@ class HelpPart
             return;
         if ($firstSubPart->level() > $maxLevel)
             return;
-        usort($this->_subParts, function ($item1, $item2) {
-            return $item1->heading() <=> $item2->heading();
-        });
+        usort($this->_subParts, $callbackSort);
         foreach ($this->_subParts as $sPart)
-            $sPart->sortSubParts();
+            $sPart->sortSubParts($callbackSort, $maxLevel);
     }
 
     /**
@@ -195,5 +194,15 @@ class HelpPart
             $md .= "\n" . trim($part->buildMarkdown()) . "\n";
         $md .= "\n";
         return $md;
+    }
+
+    /**
+     * Статичная функция сортировки массива значений
+     * @param $item1
+     * @param $item2
+     * @return int
+     */
+    static public function sortCallback($item1, $item2): int {
+        return $item1->heading() <=> $item2->heading();
     }
 }
