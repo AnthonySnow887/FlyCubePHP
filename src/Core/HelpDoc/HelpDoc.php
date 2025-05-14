@@ -255,7 +255,7 @@ class HelpDoc
      * @return string
      * @throws
      */
-    private function buildCacheFile(string $heading, int $level, callable $callbackSort): string {
+    private function buildCacheFile(string $heading, int $level, /*callable*/ $callbackSort): string {
         $obj = $this->helpDoc($heading, $level, $callbackSort);
         if (is_null($obj))
             throw Error::makeError([
