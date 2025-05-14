@@ -43,13 +43,13 @@ class HelpDocObject
     /**
      * Метод разбора help-doc файлов
      * @param array $files Список файлов справки
+     * @param callable $callbackSort Функция сортировки массива
      * @param string $heading Заголовок требуемого раздела (если пустой, то возвращается весь HelpDoc)
      * @param int $level Уровень раздела (если <= 0, то игнорируется при поиске)
-     * @param callable|null $callbackSort Функция сортировки массива
      * @return HelpDocObject
      * @throws Error
      */
-    static public function parseHelpDoc(array $files, string $heading = "", int $level = -1, callable $callbackSort = null): HelpDocObject
+    static public function parseHelpDoc(array $files, callable $callbackSort, string $heading = "", int $level = -1): HelpDocObject
     {
         $hlp = new HelpDocObject();
         foreach ($files as $file)
@@ -62,11 +62,8 @@ class HelpDocObject
             else
                 $hlp->setRootPart($tmpPart);
         }
-        if ($hlp->isEnabledTOCSort()) {
-            if (is_null($callbackSort))
-                $callbackSort = [HelpPart::class, 'sortCallback'];
+        if ($hlp->isEnabledTOCSort())
             $hlp->sortParts($callbackSort, $hlp->TOCSortMaxLevel());
-        }
         return $hlp;
     }
 

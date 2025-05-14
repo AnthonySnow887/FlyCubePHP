@@ -20,6 +20,7 @@ class HelpDoc
     private $_helpDocList = array();
     private $_cacheList = array();
     private $_helpDocDirs = array();
+    private $_defCallbackSort = [HelpPart::class, 'sortCallback'];
 
     const SETTINGS_DIR      = "tmp/cache/FlyCubePHP/help_doc/";
     const CACHE_LIST_FILE   = "cache_list.json";
@@ -67,6 +68,16 @@ class HelpDoc
      */
     public function isEnabled(): bool {
         return $this->_isEnabled;
+    }
+
+    /**
+     * Установить дефолтную функцию сортировки массива
+     * @param callable $callbackSort
+     */
+    public function setDefaultCallbackSort(callable $callbackSort) {
+        if (is_null($callbackSort))
+            return;
+        $this->_defCallbackSort = $callbackSort;
     }
 
     /**
@@ -118,7 +129,9 @@ class HelpDoc
     public function helpDoc(string $heading = "", int $level = -1, callable $callbackSort = null)/*: HelpDocObject|null */ {
         if (!$this->_isEnabled || empty($this->_helpDocList))
             return null;
-        return HelpDocObject::parseHelpDoc(array_values($this->_helpDocList), $heading, $level, $callbackSort);
+        if (is_null($callbackSort))
+            $callbackSort = $this->_defCallbackSort;
+        return HelpDocObject::parseHelpDoc(array_values($this->_helpDocList), $callbackSort, $heading, $level);
     }
 
     /**
@@ -132,6 +145,8 @@ class HelpDoc
     public function helpDocMarkdown(string $heading = "", int $level = -1, callable $callbackSort = null): string {
         if (!$this->_isEnabled)
             return "";
+        if (is_null($callbackSort))
+            $callbackSort = $this->_defCallbackSort;
         $tmpName = $this->buildCacheFileName($heading, $level);
         if ($this->_rebuildCache === false) {
             if (isset($this->_cacheList[$tmpName]))
@@ -252,10 +267,11 @@ class HelpDoc
      * Создать кэш файл и вернуть путь до него
      * @param string $heading
      * @param int $level
+     * @param callable $callbackSort
      * @return string
      * @throws
      */
-    private function buildCacheFile(string $heading, int $level, /*callable*/ $callbackSort): string {
+    private function buildCacheFile(string $heading, int $level, callable $callbackSort): string {
         $obj = $this->helpDoc($heading, $level, $callbackSort);
         if (is_null($obj))
             throw Error::makeError([
