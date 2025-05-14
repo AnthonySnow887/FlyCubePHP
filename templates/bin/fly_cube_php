@@ -398,6 +398,7 @@ Options include:
     --upgrade                           Update FlyCubePHP core version of your project to the latest version 
     --force                             Forced update flag
     --patch-twig                        Patch Twig-2.x for php8
+    --copy-help-doc                     Copy Help-Doc files
     
     --new [option]                      Create new object (project/controller/model/migration/plugin/...etc)
     --project                           Create new FlyCubePHP project
@@ -3577,6 +3578,88 @@ function patchTwig() {
 }
 
 
+function copyHelpDoc(string $savePath) {
+    chdir(__DIR__."/../"); // go to app root
+
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_APP_URL_PREFIX, "");
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_HELP_DOC, true);
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_HELP_DOC_TOC, false);
+    \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_ENABLE_HELP_DOC_HEADING_LINKS, false);
+
+    if (is_file(__DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php"))
+        include_once __DIR__."/../vendor/FlyCubePHP/FlyCubePHP/FlyCubePHPEnv.php";
+
+    $dstMdPath = \FlyCubePHP\HelperClasses\CoreHelper::buildPath($savePath, 'help-doc.md');
+    $dstImgPath = \FlyCubePHP\HelperClasses\CoreHelper::buildPath($savePath, 'images');
+
+    // --- create help dir ---
+    echo "  - Create help-doc dir: ";
+    if (is_dir($savePath)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Folder for help-doc already exists (path: $savePath)!\r\n";
+        return;
+    }
+    if (!makeDir($savePath, 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create folder for help-doc failed (path: $savePath)!\r\n";
+        return;
+    }
+    if (!makeDir($dstImgPath, 0755, true)) {
+        echo "FAILED\r\n";
+        echo "ERROR: Create folder for help-doc-images failed (path: $dstImgPath)!\r\n";
+        return;
+    }
+    echo "OK\r\n";
+
+    $hlpDirs = \FlyCubePHP\Core\HelpDoc\HelpDoc::instance()->helpDocDirs(true);
+    echo "  - Copy images: ";
+    foreach ($hlpDirs as $dir) {
+        $srcImgPath = \FlyCubePHP\HelperClasses\CoreHelper::buildPath($dir, 'images');
+        $tmpImages = \FlyCubePHP\HelperClasses\CoreHelper::scanDir($srcImgPath, [ 'recursive' => true ]);
+        foreach ($tmpImages as $img) {
+            $img = \FlyCubePHP\HelperClasses\CoreHelper::buildAppPath($img);
+            $tmpName = $img;
+            if (!preg_match("/([a-zA-Z0-9\s_\\.\-\(\):])+(\.svg|\.png|\.jpg|\.jpeg|\.gif|\.ico)$/", $tmpName))
+                continue;
+            $pos = strpos($tmpName, "images/");
+            if ($pos === false) {
+                $tmpName = basename($tmpName);
+            } else {
+                $tmpName = substr($tmpName, $pos + 7, strlen($tmpName));
+                $tmpName = trim($tmpName);
+            }
+            if ($tmpName[0] == DIRECTORY_SEPARATOR)
+                $tmpName = ltrim($tmpName, $tmpName[0]);
+
+            // select asset path
+            $assetPath = \FlyCubePHP\Core\AssetPipeline\AssetPipeline::instance()->imageFilePath($tmpName);
+            // replace asset path
+            $assetPath = str_replace('/assets/', "$dstImgPath/", $assetPath);
+            // copy image file
+            if (copy($img, $assetPath) === false) {
+                echo "FAILED\r\n";
+                echo "ERROR: Copy help-doc-images failed (path: $assetPath)!\r\n";
+                return;
+            }
+        }
+    }
+    echo "OK\r\n";
+
+    echo "  - Create help-doc markdown file: ";
+    $hlpMD = \FlyCubePHP\Core\HelpDoc\HelpDoc::instance()->helpDocMarkdown();
+    // replace assets path
+    $hlpMD = str_replace('/assets/', 'images/', $hlpMD);
+    // --- write file ---
+    if (false !== @file_put_contents($dstMdPath, $hlpMD)) {
+        @chmod($dstMdPath, 0644 & ~umask());
+        echo "OK\r\n";
+    } else {
+        echo "FAILED\r\n";
+        echo "ERROR: Write help-doc file failed (path: $savePath)!\r\n";
+    }
+}
+
+
 $app = $argv[0];
 $arguments = [];
 for ($i = 1; $i < $argc; $i++)
@@ -3999,6 +4082,14 @@ if (in_array('--new', $arguments)) {
 } else if (in_array('--patch-twig', $arguments)) {
     echo "=== FlyCubePHP: Patch Twig-2.x for php8 ===\r\n";
     patchTwig();
+    echo "=== FlyCubePHP ============================\r\n";
+} else if (in_array('--copy-help-doc', $arguments)) {
+    $savePath = argumentValue('--path', $arguments, realpath(__DIR__."/../"));
+    if (empty($savePath))
+        exit("Invalid save path! Use --help!\r\n");
+
+    echo "=== FlyCubePHP: Copy Help-Doc files ===\r\n";
+    copyHelpDoc($savePath);
     echo "=== FlyCubePHP ============================\r\n";
 } else {
     exit("Invalid arguments! Use --help!\r\n");
