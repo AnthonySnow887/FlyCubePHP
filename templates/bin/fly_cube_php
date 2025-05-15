@@ -398,7 +398,7 @@ Options include:
     --upgrade                           Update FlyCubePHP core version of your project to the latest version 
     --force                             Forced update flag
     --patch-twig                        Patch Twig-2.x for php8
-    --copy-help-doc                     Copy Help-Doc files
+    --export-help-doc                   Export Help-Doc files
     
     --new [option]                      Create new object (project/controller/model/migration/plugin/...etc)
     --project                           Create new FlyCubePHP project
@@ -3578,7 +3578,7 @@ function patchTwig() {
 }
 
 
-function copyHelpDoc(string $savePath) {
+function exportHelpDoc(string $savePath) {
     chdir(__DIR__."/../"); // go to app root
 
     \FlyCubePHP\Core\Config\Config::instance()->setArg(\FlyCubePHP\Core\Config\Config::TAG_APP_URL_PREFIX, "");
@@ -4083,13 +4083,13 @@ if (in_array('--new', $arguments)) {
     echo "=== FlyCubePHP: Patch Twig-2.x for php8 ===\r\n";
     patchTwig();
     echo "=== FlyCubePHP ============================\r\n";
-} else if (in_array('--copy-help-doc', $arguments)) {
+} else if (in_array('--export-help-doc', $arguments)) {
     $savePath = argumentValue('--path', $arguments, realpath(__DIR__."/../"));
     if (empty($savePath))
         exit("Invalid save path! Use --help!\r\n");
 
-    echo "=== FlyCubePHP: Copy Help-Doc files ===\r\n";
-    copyHelpDoc($savePath);
+    echo "=== FlyCubePHP: Export Help-Doc files ===\r\n";
+    exportHelpDoc($savePath);
     echo "=== FlyCubePHP ============================\r\n";
 } else {
     exit("Invalid arguments! Use --help!\r\n");
