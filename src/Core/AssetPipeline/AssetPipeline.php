@@ -432,7 +432,8 @@ class AssetPipeline
             return;
         if (strcmp($path[strlen($path) - 1], "/") === 0)
             return;
-        if (strpos($path, "assets/") !== 0)
+        if (strpos($path, "assets/") !== 0
+            && strpos($path, "/assets/") === false)
             return;
         $fExt = pathinfo($path, PATHINFO_EXTENSION);
         if (empty(strtolower($fExt)))
