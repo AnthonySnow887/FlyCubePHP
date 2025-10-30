@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/NodeVisitor/SafeAnalysisNodeVisitor.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/NodeVisitor/SafeAnalysisNodeVisitor.php	2025-10-30 16:09:55.659752846 +0300
+@@ -134,7 +134,7 @@
+         return $node;
+     }
+ 
+-    private function intersectSafe(array $a = null, array $b = null): array
++    private function intersectSafe(array|null $a = null, array|null $b = null): array
+     {
+         if (null === $a || null === $b) {
+             return [];

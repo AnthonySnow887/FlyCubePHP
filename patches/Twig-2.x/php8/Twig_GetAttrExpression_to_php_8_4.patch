@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/Expression/GetAttrExpression.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/Expression/GetAttrExpression.php	2025-10-30 16:03:32.758580607 +0300
+@@ -18,7 +18,7 @@
+ 
+ class GetAttrExpression extends AbstractExpression
+ {
+-    public function __construct(AbstractExpression $node, AbstractExpression $attribute, AbstractExpression $arguments = null, string $type, int $lineno)
++    public function __construct(AbstractExpression $node, AbstractExpression $attribute, AbstractExpression|null $arguments = null, string $type, int $lineno)
+     {
+         $nodes = ['node' => $node, 'attribute' => $attribute];
+         if (null !== $arguments) {

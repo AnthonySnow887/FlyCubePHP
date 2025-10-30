@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/Expression/Test/DefinedTest.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/Expression/Test/DefinedTest.php	2025-10-30 16:08:19.634455731 +0300
+@@ -35,7 +35,7 @@
+  */
+ class DefinedTest extends TestExpression
+ {
+-    public function __construct(Node $node, string $name, Node $arguments = null, int $lineno)
++    public function __construct(Node $node, string $name, Node|null $arguments = null, int $lineno)
+     {
+         if ($node instanceof NameExpression) {
+             $node->setAttribute('is_defined_test', true);

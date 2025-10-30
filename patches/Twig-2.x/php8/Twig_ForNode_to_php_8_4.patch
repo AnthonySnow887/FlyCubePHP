@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/ForNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/ForNode.php	2025-10-30 15:18:17.233980627 +0300
+@@ -25,7 +25,7 @@
+ {
+     private $loop;
+ 
+-    public function __construct(AssignNameExpression $keyTarget, AssignNameExpression $valueTarget, AbstractExpression $seq, AbstractExpression $ifexpr = null, Node $body, Node $else = null, int $lineno, string $tag = null)
++    public function __construct(AssignNameExpression $keyTarget, AssignNameExpression $valueTarget, AbstractExpression $seq, AbstractExpression|null $ifexpr = null, Node $body, Node|null $else = null, int $lineno, string|null $tag = null)
+     {
+         $body = new Node([$body, $this->loop = new ForLoopNode($lineno, $tag)]);
+ 

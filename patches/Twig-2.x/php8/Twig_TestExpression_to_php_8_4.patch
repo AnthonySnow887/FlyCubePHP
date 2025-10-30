@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/Expression/TestExpression.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/Expression/TestExpression.php	2025-10-30 16:05:39.900298048 +0300
+@@ -16,7 +16,7 @@
+ 
+ class TestExpression extends CallExpression
+ {
+-    public function __construct(Node $node, string $name, Node $arguments = null, int $lineno)
++    public function __construct(Node $node, string $name, Node|null $arguments = null, int $lineno)
+     {
+         $nodes = ['node' => $node];
+         if (null !== $arguments) {

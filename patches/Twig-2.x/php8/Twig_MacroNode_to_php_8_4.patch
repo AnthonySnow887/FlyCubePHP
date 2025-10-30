@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/MacroNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/MacroNode.php	2025-10-30 15:22:58.161742251 +0300
+@@ -23,7 +23,7 @@
+ {
+     const VARARGS_NAME = 'varargs';
+ 
+-    public function __construct(string $name, Node $body, Node $arguments, int $lineno, string $tag = null)
++    public function __construct(string $name, Node $body, Node $arguments, int $lineno, string|null $tag = null)
+     {
+         foreach ($arguments as $argumentName => $argument) {
+             if (self::VARARGS_NAME === $argumentName) {

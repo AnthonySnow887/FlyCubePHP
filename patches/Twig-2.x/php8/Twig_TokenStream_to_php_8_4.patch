@@ -1,0 +1,20 @@
+--- vendor/Twig-2.x/Twig/TokenStream.php	2024-03-04 14:06:02.596190640 +0300
++++ vendor/Twig-2.x/Twig/TokenStream.php	2025-10-30 14:51:29.444475658 +0300
+@@ -25,7 +25,7 @@
+     private $current = 0;
+     private $source;
+ 
+-    public function __construct(array $tokens, Source $source = null)
++    public function __construct(array $tokens, Source|null $source = null)
+     {
+         $this->tokens = $tokens;
+         $this->source = $source ?: new Source('', '');
+@@ -68,7 +68,7 @@
+     /**
+      * Tests a token and returns it or throws a syntax error.
+      */
+-    public function expect($type, $value = null, string $message = null): Token
++    public function expect($type, $value = null, string|null $message = null): Token
+     {
+         $token = $this->tokens[$this->current];
+         if (!$token->test($type, $value)) {

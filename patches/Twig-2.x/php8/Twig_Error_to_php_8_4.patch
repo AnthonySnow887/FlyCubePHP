@@ -1,6 +1,14 @@
---- vendor/Twig-2.x/Twig/Error/Error.php	2022-12-08 16:42:55.255797184 +0300
-+++ vendor/Twig-2.x/Twig/Error/Error.php	2022-12-08 16:56:30.443763755 +0300
-@@ -62,7 +62,7 @@
+--- vendor/Twig-2.x/Twig/Error/Error.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Error/Error.php	2025-10-30 14:58:59.350490084 +0300
+@@ -55,14 +55,14 @@
+      * @param Source|string|null $source   The source context where the error occurred
+      * @param \Exception         $previous The previous exception
+      */
+-    public function __construct(string $message, int $lineno = -1, $source = null, \Exception $previous = null)
++    public function __construct(string $message, int $lineno = -1, $source = null, \Exception|null $previous = null)
+     {
+         parent::__construct('', 0, $previous);
+ 
          if (null === $source) {
              $name = null;
          } elseif (!$source instanceof Source && !$source instanceof \Twig_Source) {
@@ -9,6 +17,15 @@
              $name = $source;
          } else {
              $name = $source->getName();
+@@ -121,7 +121,7 @@
+     /**
+      * Sets the source context of the Twig template where the error occurred.
+      */
+-    public function setSourceContext(Source $source = null)
++    public function setSourceContext(Source|null $source = null)
+     {
+         if (null === $source) {
+             $this->sourceCode = $this->name = $this->sourcePath = null;
 @@ -196,11 +196,11 @@
          $template = null;
          $templateClass = null;

@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Sandbox/SecurityNotAllowedTagError.php	2024-03-04 14:06:02.596190640 +0300
++++ vendor/Twig-2.x/Twig/Sandbox/SecurityNotAllowedTagError.php	2025-10-30 16:15:41.456423869 +0300
+@@ -22,7 +22,7 @@
+ {
+     private $tagName;
+ 
+-    public function __construct(string $message, string $tagName, int $lineno = -1, string $filename = null, \Exception $previous = null)
++    public function __construct(string $message, string $tagName, int $lineno = -1, string|null $filename = null, \Exception|null $previous = null)
+     {
+         if (-1 !== $lineno) {
+             @trigger_error(sprintf('Passing $lineno as a 3th argument of the %s constructor is deprecated since Twig 2.8.1.', __CLASS__), E_USER_DEPRECATED);

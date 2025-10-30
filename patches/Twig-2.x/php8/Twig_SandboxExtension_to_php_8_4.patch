@@ -1,0 +1,29 @@
+--- vendor/Twig-2.x/Twig/Extension/SandboxExtension.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Extension/SandboxExtension.php	2025-10-30 15:03:36.802198684 +0300
+@@ -77,7 +77,7 @@
+         }
+     }
+ 
+-    public function checkMethodAllowed($obj, $method, int $lineno = -1, Source $source = null)
++    public function checkMethodAllowed($obj, $method, int $lineno = -1, Source|null $source = null)
+     {
+         if ($this->isSandboxed()) {
+             try {
+@@ -91,7 +91,7 @@
+         }
+     }
+ 
+-    public function checkPropertyAllowed($obj, $method, int $lineno = -1, Source $source = null)
++    public function checkPropertyAllowed($obj, $method, int $lineno = -1, Source|null $source = null)
+     {
+         if ($this->isSandboxed()) {
+             try {
+@@ -105,7 +105,7 @@
+         }
+     }
+ 
+-    public function ensureToStringAllowed($obj, int $lineno = -1, Source $source = null)
++    public function ensureToStringAllowed($obj, int $lineno = -1, Source|null $source = null)
+     {
+         if ($this->isSandboxed() && \is_object($obj) && method_exists($obj, '__toString')) {
+             try {

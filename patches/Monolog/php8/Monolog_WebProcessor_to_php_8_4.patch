@@ -1,0 +1,11 @@
+--- vendor/Monolog/Monolog/Monolog/Processor/WebProcessor.php	2024-03-04 14:06:02.588190565 +0300
++++ vendor/Monolog/Monolog/Monolog/Processor/WebProcessor.php	2025-10-30 14:19:41.022618106 +0300
+@@ -42,7 +42,7 @@
+      * @param array|\ArrayAccess $serverData  Array or object w/ ArrayAccess that provides access to the $_SERVER data
+      * @param array|null         $extraFields Field names and the related key inside $serverData to be added. If not provided it defaults to: url, ip, http_method, server, referrer
+      */
+-    public function __construct($serverData = null, array $extraFields = null)
++    public function __construct($serverData = null, array|null $extraFields = null)
+     {
+         if (null === $serverData) {
+             $this->serverData = &$_SERVER;

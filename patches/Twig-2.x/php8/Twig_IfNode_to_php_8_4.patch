@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/IfNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/IfNode.php	2025-10-30 15:19:39.383080605 +0300
+@@ -21,7 +21,7 @@
+  */
+ class IfNode extends Node
+ {
+-    public function __construct(Node $tests, Node $else = null, int $lineno, string $tag = null)
++    public function __construct(Node $tests, Node|null $else = null, int $lineno, string|null $tag = null)
+     {
+         $nodes = ['tests' => $tests];
+         if (null !== $else) {

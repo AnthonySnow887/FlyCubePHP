@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/SetNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/SetNode.php	2025-10-30 15:35:37.987957121 +0300
+@@ -21,7 +21,7 @@
+  */
+ class SetNode extends Node implements NodeCaptureInterface
+ {
+-    public function __construct(bool $capture, Node $names, Node $values, int $lineno, string $tag = null)
++    public function __construct(bool $capture, Node $names, Node $values, int $lineno, string|null $tag = null)
+     {
+         parent::__construct(['names' => $names, 'values' => $values], ['capture' => $capture, 'safe' => false], $lineno, $tag);
+ 

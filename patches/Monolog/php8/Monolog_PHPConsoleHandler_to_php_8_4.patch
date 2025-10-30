@@ -1,0 +1,20 @@
+--- vendor/Monolog/Monolog/Monolog/Handler/PHPConsoleHandler.php	2024-03-04 14:06:02.588190565 +0300
++++ vendor/Monolog/Monolog/Monolog/Handler/PHPConsoleHandler.php	2025-10-30 14:16:22.731934992 +0300
+@@ -73,7 +73,7 @@
+      * @param  bool           $bubble
+      * @throws Exception
+      */
+-    public function __construct(array $options = array(), Connector $connector = null, $level = Logger::DEBUG, $bubble = true)
++    public function __construct(array $options = array(), Connector|null $connector = null, $level = Logger::DEBUG, $bubble = true)
+     {
+         if (!class_exists('PhpConsole\Connector')) {
+             throw new Exception('PHP Console library not found. See https://github.com/barbushin/php-console#installation');
+@@ -93,7 +93,7 @@
+         return array_replace($this->options, $options);
+     }
+ 
+-    private function initConnector(Connector $connector = null)
++    private function initConnector(Connector|null $connector = null)
+     {
+         if (!$connector) {
+             if ($this->options['dataStorage']) {

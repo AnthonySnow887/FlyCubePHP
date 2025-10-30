@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Parser.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Parser.php	2025-10-30 14:49:24.338780628 +0300
+@@ -272,7 +272,7 @@
+         $this->embeddedTemplates[] = $template;
+     }
+ 
+-    public function addImportedSymbol($type, $alias, $name = null, AbstractExpression $node = null)
++    public function addImportedSymbol($type, $alias, $name = null, AbstractExpression|null $node = null)
+     {
+         $this->importedSymbols[0][$type][$alias] = ['name' => $name, 'node' => $node];
+     }

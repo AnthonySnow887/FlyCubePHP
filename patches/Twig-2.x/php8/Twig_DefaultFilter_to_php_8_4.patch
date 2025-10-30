@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/Expression/Filter/DefaultFilter.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/Expression/Filter/DefaultFilter.php	2025-10-30 16:07:18.353627946 +0300
+@@ -29,7 +29,7 @@
+  */
+ class DefaultFilter extends FilterExpression
+ {
+-    public function __construct(Node $node, ConstantExpression $filterName, Node $arguments, int $lineno, string $tag = null)
++    public function __construct(Node $node, ConstantExpression $filterName, Node $arguments, int $lineno, string|null $tag = null)
+     {
+         $default = new FilterExpression($node, new ConstantExpression('default', $node->getTemplateLine()), $arguments, $node->getTemplateLine());
+ 

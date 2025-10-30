@@ -1,0 +1,11 @@
+--- vendor/ScssPhp/ScssPhp/Parser.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/ScssPhp/ScssPhp/Parser.php	2025-10-30 14:25:35.951427215 +0300
+@@ -140,7 +140,7 @@
+      * @param bool                 $cssOnly
+      * @param LoggerInterface|null $logger
+      */
+-    public function __construct($sourceName, $sourceIndex = 0, $encoding = 'utf-8', Cache $cache = null, $cssOnly = false, LoggerInterface $logger = null)
++    public function __construct($sourceName, $sourceIndex = 0, $encoding = 'utf-8', Cache|null $cache = null, $cssOnly = false, LoggerInterface|null $logger = null)
+     {
+         $this->sourceName       = $sourceName ?: '(stdin)';
+         $this->sourceIndex      = $sourceIndex;

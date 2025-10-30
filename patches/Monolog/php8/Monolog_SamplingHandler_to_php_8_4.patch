@@ -1,0 +1,11 @@
+--- vendor/Monolog/Monolog/Monolog/Handler/SamplingHandler.php	2024-03-04 14:06:02.588190565 +0300
++++ vendor/Monolog/Monolog/Monolog/Handler/SamplingHandler.php	2025-10-30 14:17:55.397186917 +0300
+@@ -81,7 +81,7 @@
+      *
+      * @return HandlerInterface
+      */
+-    public function getHandler(array $record = null)
++    public function getHandler(array|null $record = null)
+     {
+         if (!$this->handler instanceof HandlerInterface) {
+             $this->handler = call_user_func($this->handler, $record, $this);

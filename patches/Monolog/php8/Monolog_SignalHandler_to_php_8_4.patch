@@ -1,0 +1,11 @@
+--- vendor/Monolog/Monolog/Monolog/SignalHandler.php	2025-10-30 13:36:14.079368353 +0300
++++ vendor/Monolog/Monolog/Monolog/SignalHandler.php	2025-10-30 14:11:03.563637192 +0300
+@@ -64,7 +64,7 @@
+         return $this;
+     }
+ 
+-    public function handleSignal($signo, array $siginfo = null)
++    public function handleSignal($signo, array|null $siginfo = null)
+     {
+         static $signals = array();
+ 

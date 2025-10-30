@@ -1,0 +1,11 @@
+--- vendor/ScssPhp/ScssPhp/Warn.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/ScssPhp/ScssPhp/Warn.php	2025-10-30 14:45:11.811359186 +0300
+@@ -59,7 +59,7 @@
+      *
+      * @internal
+      */
+-    public static function setCallback(callable $callback = null)
++    public static function setCallback(callable|null $callback = null)
+     {
+         $previousCallback = self::$callback;
+         self::$callback = $callback;

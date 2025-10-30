@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/BlockReferenceNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/BlockReferenceNode.php	2025-10-30 15:12:08.217039487 +0300
+@@ -21,7 +21,7 @@
+  */
+ class BlockReferenceNode extends Node implements NodeOutputInterface
+ {
+-    public function __construct(string $name, int $lineno, string $tag = null)
++    public function __construct(string $name, int $lineno, string|null $tag = null)
+     {
+         parent::__construct([], ['name' => $name], $lineno, $tag);
+     }

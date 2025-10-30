@@ -1,0 +1,15 @@
+--- vendor/Twig-2.x/Twig/Loader/FilesystemLoader.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Loader/FilesystemLoader.php	2025-10-30 15:06:57.456880794 +0300
+@@ -34,10 +34,10 @@
+      * @param string|array $paths    A path or an array of paths where to look for templates
+      * @param string|null  $rootPath The root path common to all relative paths (null for getcwd())
+      */
+-    public function __construct($paths = [], string $rootPath = null)
++    public function __construct($paths = [], string|null $rootPath = null)
+     {
+         $this->rootPath = (null === $rootPath ? getcwd() : $rootPath).\DIRECTORY_SEPARATOR;
+-        if (false !== $realPath = realpath($rootPath)) {
++        if (null !== $rootPath && false !== ($realPath = realpath($rootPath))) {
+             $this->rootPath = $realPath.\DIRECTORY_SEPARATOR;
+         }
+ 

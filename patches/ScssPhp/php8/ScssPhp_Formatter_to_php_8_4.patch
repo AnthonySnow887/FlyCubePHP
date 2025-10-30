@@ -1,0 +1,11 @@
+--- vendor/ScssPhp/ScssPhp/Formatter.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/ScssPhp/ScssPhp/Formatter.php	2025-10-30 14:24:39.130657327 +0300
+@@ -272,7 +272,7 @@
+      *
+      * @return string
+      */
+-    public function format(OutputBlock $block, SourceMapGenerator $sourceMapGenerator = null)
++    public function format(OutputBlock $block, SourceMapGenerator|null $sourceMapGenerator = null)
+     {
+         $this->sourceMapGenerator = null;
+ 

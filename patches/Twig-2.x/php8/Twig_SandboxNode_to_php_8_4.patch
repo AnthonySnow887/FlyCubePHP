@@ -1,0 +1,11 @@
+--- vendor/Twig-2.x/Twig/Node/SandboxNode.php	2024-03-04 14:06:02.592190603 +0300
++++ vendor/Twig-2.x/Twig/Node/SandboxNode.php	2025-10-30 15:34:24.074962301 +0300
+@@ -20,7 +20,7 @@
+  */
+ class SandboxNode extends Node
+ {
+-    public function __construct(Node $body, int $lineno, string $tag = null)
++    public function __construct(Node $body, int $lineno, string|null $tag = null)
+     {
+         parent::__construct(['body' => $body], [], $lineno, $tag);
+     }
