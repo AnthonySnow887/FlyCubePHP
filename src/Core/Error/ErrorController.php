@@ -22,7 +22,7 @@ class ErrorController extends Error
                          string $message = "",
                          string $tag = "",
                          int $code = 0,
-                         \Throwable $previous = null) {
+                         /*\Throwable|null*/ $previous = null) {
         parent::__construct($message, $tag, $code, $previous);
         $this->_type = ErrorType::CONTROLLER;
         $this->_controller = $controller;

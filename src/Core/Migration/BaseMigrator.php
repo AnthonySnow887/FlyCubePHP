@@ -744,7 +744,7 @@ abstract class BaseMigrator
      *
      * NOTE: override this method for correct implementation.
      */
-    protected function toDatabaseType(string $name, int $limit = null): string {
+    protected function toDatabaseType(string $name, /*int|null*/ $limit = null): string {
         if (strcmp($name, 'string') === 0) {
             if (isset($limit))
                 return "varchar ($limit)";

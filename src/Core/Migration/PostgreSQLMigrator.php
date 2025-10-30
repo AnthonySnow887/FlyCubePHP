@@ -529,7 +529,7 @@ EOT;
      *
      * NOTE: override this method for correct implementation.
      */
-    final protected function toDatabaseType(string $name, int $limit = null): string {
+    final protected function toDatabaseType(string $name, /*int|null*/ $limit = null): string {
         $name = str_replace("unsigned", "", $name);
         $name = str_replace("UNSIGNED", "", $name);
         $name = trim($name);

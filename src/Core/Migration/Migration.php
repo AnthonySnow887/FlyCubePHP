@@ -20,7 +20,7 @@ abstract class Migration
     private $_dbAdapter = null;
     private $_migrator = null;
 
-    public function __construct(int $version = null) {
+    public function __construct(/*int|null*/ $version = null) {
         $tmpRef = null;
         try {
             $tmpRef = new \ReflectionClass($this);

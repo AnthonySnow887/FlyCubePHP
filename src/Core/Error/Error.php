@@ -22,7 +22,7 @@ class Error extends \Exception
     public function __construct(string $message = "",
                                 string $tag = "",
                                 int $code = 0,
-                                \Throwable $previous = null) {
+                                /*\Throwable|null*/ $previous = null) {
         parent::__construct($message, $code, $previous);
         $this->_tag = $tag;
     }

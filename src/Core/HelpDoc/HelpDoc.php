@@ -126,7 +126,7 @@ class HelpDoc
      * @return HelpDocObject|null
      * @throws Error
      */
-    public function helpDoc(string $heading = "", int $level = -1, callable $callbackSort = null)/*: HelpDocObject|null */ {
+    public function helpDoc(string $heading = "", int $level = -1, /*callable|null*/ $callbackSort = null)/*: HelpDocObject|null */ {
         if (!$this->_isEnabled || empty($this->_helpDocList))
             return null;
         if (is_null($callbackSort))
@@ -142,7 +142,7 @@ class HelpDoc
      * @return string
      * @throws
      */
-    public function helpDocMarkdown(string $heading = "", int $level = -1, callable $callbackSort = null): string {
+    public function helpDocMarkdown(string $heading = "", int $level = -1, /*callable|null*/ $callbackSort = null): string {
         if (!$this->_isEnabled)
             return "";
         if (is_null($callbackSort))
