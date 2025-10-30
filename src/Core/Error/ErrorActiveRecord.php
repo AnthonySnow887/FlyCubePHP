@@ -21,9 +21,9 @@ class ErrorActiveRecord extends Error
                          string $activeRecordMethod,
                          string $message = "",
                          string $tag = "",
-                         ErrorDatabase $errorDatabase = null,
+                         /*ErrorDatabase|null*/ $errorDatabase = null,
                          int $code = 0,
-                         \Throwable $previous = null) {
+                         /*\Throwable|null*/ $previous = null) {
         parent::__construct($message, $tag, $code, $previous);
         $this->_type = ErrorType::ACTIVE_RECORD;
         $this->_activeRecordClass = $activeRecordClass;
