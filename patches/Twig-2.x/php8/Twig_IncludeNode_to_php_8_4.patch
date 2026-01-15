@@ -1,11 +1,11 @@
---- vendor/Twig-2.x/Twig/Node/IncludeNode.php	2024-03-04 14:06:02.592190603 +0300
-+++ vendor/Twig-2.x/Twig/Node/IncludeNode.php	2025-10-30 15:21:55.472902847 +0300
+--- vendor/Twig-2.x/Twig/Node/IncludeNode.php	2025-10-30 15:22:18.393209750 +0300
++++ vendor/Twig-2.x/Twig/Node/IncludeNode.php	2026-01-15 12:30:13.905030357 +0300
 @@ -22,7 +22,7 @@
   */
  class IncludeNode extends Node implements NodeOutputInterface
  {
 -    public function __construct(AbstractExpression $expr, AbstractExpression $variables = null, bool $only = false, bool $ignoreMissing = false, int $lineno, string $tag = null)
-+    public function __construct(AbstractExpression $expr, AbstractExpression|null $variables = null, bool $only = false, bool $ignoreMissing = false, int $lineno, string|null $tag = null)
++    public function __construct(AbstractExpression $expr, AbstractExpression|null $variables = null, bool $only = false, bool $ignoreMissing = false, int $lineno = 0, string|null $tag = null)
      {
          $nodes = ['expr' => $expr];
          if (null !== $variables) {
