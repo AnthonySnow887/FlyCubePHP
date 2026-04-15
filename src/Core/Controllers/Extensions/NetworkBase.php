@@ -176,6 +176,7 @@ trait NetworkBase
     /**
      * Отправить ответ клиенту
      * @param array $options
+     * @throws
      *
      * ==== Options
      *
@@ -184,6 +185,9 @@ trait NetworkBase
      * - [string]   encoding       - Set response HTTP encoding (default: utf-8)
      * - [array]    headers        - Set additional response HTTP headers
      * - [string]   body           - Set response body
+     * - [string]   body-from-file - Set file path for read response body
+     *
+     * NOTE: 'body' and 'body-from-file' are mutually exclusive!
      *
      * ==== Examples
      */
@@ -211,8 +215,21 @@ trait NetworkBase
             $headers = $options['headers'];
 
         $body = "";
-        if (isset($options['body']))
+        if (isset($options['body'])) {
+            unset($options['body-from-file']);
             $body = strval($options['body']);
+        }
+
+        $body_file_path = "";
+        if (isset($options['body-from-file'])) {
+            unset($options['body']);
+            $body_file_path = strval($options['body-from-file']);
+            // check file
+            if (!file_exists($body_file_path))
+                throw new ErrorController(__CLASS__, __FUNCTION__, "", "File not found! Path: $body_file_path", "controller-base");
+            if (!is_readable($body_file_path))
+                throw new ErrorController(__CLASS__, __FUNCTION__, "", "File is not readable! Path: $body_file_path", "controller-base");
+        }
 
         // --- send ---
         http_response_code($status);
@@ -225,8 +242,12 @@ trait NetworkBase
             header("$key: $value");
         }
 
-        if ($cLength === false)
-            header("Content-Length: ".strlen($body));
+        if ($cLength === false) {
+            if (isset($options['body-from-file']))
+                header("Content-Length: " . filesize($body_file_path));
+            else
+                header("Content-Length: " . strlen($body));
+        }
 
         header("Content-Type: $contentType; charset=".strtoupper($encoding));
 
@@ -236,13 +257,18 @@ trait NetworkBase
 
         // --- check HTTP request (if HEAD - skip body) ---
         $httpM = strtolower(RouteCollector::currentRouteMethod());
-        if (strcmp($httpM, 'head') !== 0)
-            echo $body;
+        if (strcmp($httpM, 'head') !== 0) {
+            if (isset($options['body-from-file']))
+                readfile($body_file_path);
+            else
+                echo $body;
+        }
     }
 
     /**
      * Отправить данные клиенту
      * @param array $options
+     * @throws
      *
      * ==== Options
      *
@@ -251,7 +277,10 @@ trait NetworkBase
      * - [string]   encoding       - Set response HTTP encoding (default: utf-8)
      * - [array]    headers        - Set additional response HTTP headers
      * - [string]   data           - Set response file data
+     * - [string]   data-from-file - Set file path for read response file data
      * - [string]   filename       - Set response file name
+     *
+     * NOTE: 'data' and 'data-from-file' are mutually exclusive!
      *
      * ==== Examples
      */
@@ -284,8 +313,21 @@ trait NetworkBase
             $headers = $options['headers'];
 
         $data = "";
-        if (isset($options['data']))
+        if (isset($options['data'])) {
+            unset($options['data-from-file']);
             $data = strval($options['data']);
+        }
+
+        $data_file_path = "";
+        if (isset($options['data-from-file'])) {
+            unset($options['data']);
+            $data_file_path = strval($options['data-from-file']);
+            // check file
+            if (!file_exists($data_file_path))
+                throw new ErrorController(__CLASS__, __FUNCTION__, "", "File not found! Path: $data_file_path", "controller-base");
+            if (!is_readable($data_file_path))
+                throw new ErrorController(__CLASS__, __FUNCTION__, "", "File is not readable! Path: $data_file_path", "controller-base");
+        }
 
         // --- send ---
         http_response_code($status);
@@ -301,8 +343,12 @@ trait NetworkBase
         }
         header("Accept-Ranges: bytes");
 
-        if ($cLength === false)
-            header("Content-Length: ".strlen($data));
+        if ($cLength === false) {
+            if (isset($options['data-from-file']))
+                header("Content-Length: " . filesize($data_file_path));
+            else
+                header("Content-Length: " . strlen($data));
+        }
 
         header("Content-Type: $contentType");
         header("Content-Transfer-Encoding: binary");
@@ -315,8 +361,12 @@ trait NetworkBase
 
         // --- check HTTP request (if HEAD - skip body) ---
         $httpM = strtolower(RouteCollector::currentRouteMethod());
-        if (strcmp($httpM, 'head') !== 0)
-            echo $data;
+        if (strcmp($httpM, 'head') !== 0) {
+            if (isset($options['data-from-file']))
+                readfile($data_file_path);
+            else
+                echo $data;
+        }
     }
 
     /**
@@ -378,7 +428,7 @@ trait NetworkBase
         // --- check HTTP request (if HEAD - skip body) ---
         $httpM = strtolower(RouteCollector::currentRouteMethod());
         if (strcmp($httpM, 'head') !== 0)
-            echo readfile($path);
+            readfile($path);
     }
 
     /**
@@ -416,16 +466,12 @@ trait NetworkBase
         if (isset($options['headers']) && is_array($options['headers']))
             $headers = $options['headers'];
 
-        $data = file_get_contents($path);
-        if ($data === false)
-            throw new ErrorController(__CLASS__, __FUNCTION__, "", "Read file data failed! Path: $path", "controller-base");
-
         // --- send ---
         $this->send_response_data([
             'status' => $status,
             'content-type' => $contentType,
             'headers' => $headers,
-            'data' => $data
+            'data-from-file' => $path
         ]);
     }
 }

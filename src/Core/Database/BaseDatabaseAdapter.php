@@ -8,9 +8,11 @@
 
 namespace FlyCubePHP\Core\Database;
 
+include_once __DIR__.'/BaseDatabaseResult.php';
 include_once __DIR__.'/../Error/ErrorDatabase.php';
 include_once __DIR__.'/../Logger/Logger.php';
 
+use BaseDatabaseResult;
 use FlyCubePHP\Core\Logger\Logger;
 use FlyCubePHP\Core\Error\ErrorDatabase;
 
@@ -198,6 +200,96 @@ abstract class BaseDatabaseAdapter
         if ($sth->columnCount() === 0)
             return [];
         return $sth->fetchAll(\PDO::FETCH_CLASS, $className);
+    }
+
+    /**
+     * Метод выполнения запроса к базе данных
+     * @param string $sql - SQL запрос
+     * @param array $params - параметры запроса
+     * @return BaseDatabaseResult|null
+     * @throws
+     */
+    final public function queryToResult(string $sql, array $params = [])/*: BaseDatabaseResult|null */ {
+        if ($this->_showOutput)
+            echo "=> SQL: $sql".$this->_outputDelimeter;
+
+        if (!$this->isValid())
+            throw ErrorDatabase::makeError([
+                'tag' => 'database',
+                'message' => 'Database adapter is not valid!',
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
+                'adapter-name' => $this->name(),
+                'sql-query' => $sql,
+                'sql-params' => $params
+            ]);
+        try {
+            $sth = $this->_pdoObject->prepare($sql);
+            $sqlStartMS = microtime(true);
+            $result = $sth->execute($params);
+            $sqlMS = round(microtime(true) - $sqlStartMS, 3);
+            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+        } catch (\Exception $e) {
+            throw ErrorDatabase::makeError([
+                'tag' => 'database',
+                'message' => $e->getMessage(),
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
+                'adapter-name' => $this->name(),
+                'sql-query' => $sql,
+                'sql-params' => $params
+            ]);
+        }
+        if (false === $result)
+            return null;
+        return new BaseDatabaseResult($sth);
+    }
+
+    /**
+     * Метод выполнения запроса к базе данных в рамках одной транзакции
+     * @param string $sql - SQL запрос
+     * @param array $params - параметры запроса
+     * @param string $className - Имя класса, для создания объектов результатов
+     * @return BaseDatabaseResult|null
+     * @throws
+     */
+    final public function queryTransactionToResult(string $sql, array $params = [], string $className = 'stdClass')/*: BaseDatabaseResult|null */ {
+        if ($this->_showOutput)
+            echo "=> SQL: $sql".$this->_outputDelimeter;
+
+        if (!$this->isValid())
+            throw ErrorDatabase::makeError([
+                'tag' => 'database',
+                'message' => 'Database adapter is not valid!',
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
+                'adapter-name' => $this->name(),
+                'sql-query' => $sql,
+                'sql-params' => $params
+            ]);
+        try {
+            $this->beginTransaction();
+            $sth = $this->_pdoObject->prepare($sql);
+            $sqlStartMS = microtime(true);
+            $result = $sth->execute($params);
+            $this->commitTransaction();
+            $sqlMS = round(microtime(true) - $sqlStartMS, 3);
+            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+        } catch (\Exception $e) {
+            $this->rollBackTransaction();
+            throw ErrorDatabase::makeError([
+                'tag' => 'database',
+                'message' => $e->getMessage(),
+                'class-name' => $this->objectName(),
+                'class-method' => __FUNCTION__,
+                'adapter-name' => $this->name(),
+                'sql-query' => $sql,
+                'sql-params' => $params
+            ]);
+        }
+        if (false === $result)
+            return null;
+        return new BaseDatabaseResult($sth);
     }
 
     /**

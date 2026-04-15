@@ -12,6 +12,7 @@ include_once __DIR__.'/../Database/DatabaseFactory.php';
 include_once __DIR__.'/../../HelperClasses/CoreHelper.php';
 include_once __DIR__.'/../Error/ErrorActiveRecord.php';
 
+use BaseDatabaseResult;
 use FlyCubePHP\Core\Database\BaseDatabaseAdapter;
 use FlyCubePHP\Core\Error\ErrorActiveRecord;
 use FlyCubePHP\HelperClasses\CoreHelper;
@@ -1011,6 +1012,37 @@ abstract class ActiveRecord
         }
         foreach ($res as &$r)
             $r->_newRecord = false;
+        return $res;
+    }
+
+    // --- protected ---
+
+    /**
+     * Выполнить произвольный SQL и вернуть объект результата BaseDatabaseResult
+     * @param string $sql - SQL запрос
+     * @param array $params - массив параметров запроса с их значениями
+     * @return BaseDatabaseResult|null
+     * @throws
+     */
+    final protected static function queryToResult(string $sql, array $params = [])/*: BaseDatabaseResult|null*/ {
+        $aClassName = static::class;
+        $aRec = new $aClassName();
+        $dbName = $aRec->database();
+        unset($aRec);
+        // --- get adapter ---
+        $db = ActiveRecord::databaseAdapter($aClassName, $dbName);
+        // --- exec query ---
+        try {
+            $res = $db->queryToResult($sql, $params);
+        } catch (ErrorDatabase $ex) {
+            throw ErrorActiveRecord::makeError([
+                'tag' => 'active-record',
+                'message' => $ex->getMessage(),
+                'active-r-class' => static::class,
+                'active-r-method' => __FUNCTION__,
+                'error-database' => $ex
+            ]);
+        }
         return $res;
     }
 
