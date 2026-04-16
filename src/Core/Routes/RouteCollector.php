@@ -297,7 +297,7 @@ class RouteCollector
             $tmpController = null;
         }
         $renderMS = $this->processingRender($tmpCurRoute, $tmpController);
-        Logger::info("RENDER: [$renderMS"."ms] $tmpClassName::$tmpClassAct()");
+        Logger::info("RENDER: [$renderMS"."s] $tmpClassName::$tmpClassAct()");
     }
 
     /**

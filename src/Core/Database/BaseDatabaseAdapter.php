@@ -134,7 +134,7 @@ abstract class BaseDatabaseAdapter
             $sqlStartMS = microtime(true);
             $result = $sth->execute($params);
             $sqlMS = round(microtime(true) - $sqlStartMS, 3);
-            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+            Logger::info("SQL: [$sqlMS"."s] $sql", $params);
         } catch (\Exception $e) {
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
@@ -182,7 +182,7 @@ abstract class BaseDatabaseAdapter
             $result = $sth->execute($params);
             $this->commitTransaction();
             $sqlMS = round(microtime(true) - $sqlStartMS, 3);
-            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+            Logger::info("SQL: [$sqlMS"."s] $sql", $params);
         } catch (\Exception $e) {
             $this->rollBackTransaction();
             throw ErrorDatabase::makeError([
@@ -228,7 +228,7 @@ abstract class BaseDatabaseAdapter
             $sqlStartMS = microtime(true);
             $result = $sth->execute($params);
             $sqlMS = round(microtime(true) - $sqlStartMS, 3);
-            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+            Logger::info("SQL: [$sqlMS"."s] $sql", $params);
         } catch (\Exception $e) {
             throw ErrorDatabase::makeError([
                 'tag' => 'database',
@@ -274,7 +274,7 @@ abstract class BaseDatabaseAdapter
             $result = $sth->execute($params);
             $this->commitTransaction();
             $sqlMS = round(microtime(true) - $sqlStartMS, 3);
-            Logger::info("SQL: [$sqlMS"."ms] $sql", $params);
+            Logger::info("SQL: [$sqlMS"."s] $sql", $params);
         } catch (\Exception $e) {
             $this->rollBackTransaction();
             throw ErrorDatabase::makeError([
