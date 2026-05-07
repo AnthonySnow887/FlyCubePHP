@@ -849,19 +849,19 @@ class CoreHelper
         switch ($type) {
             case self::TYPE_NUMBER_UINT_8:
                 return "UInt8";
-            case self::TYPE_NUMBER_UINT_16;
+            case self::TYPE_NUMBER_UINT_16:
                 return "UInt16";
-            case self::TYPE_NUMBER_UINT_32;
+            case self::TYPE_NUMBER_UINT_32:
                 return "UInt32";
-            case self::TYPE_NUMBER_UINT_64;
+            case self::TYPE_NUMBER_UINT_64:
                 return "UInt64";
-            case self::TYPE_NUMBER_INT_8;
+            case self::TYPE_NUMBER_INT_8:
                 return "Int8";
-            case self::TYPE_NUMBER_INT_16;
+            case self::TYPE_NUMBER_INT_16:
                 return "Int16";
-            case self::TYPE_NUMBER_INT_32;
+            case self::TYPE_NUMBER_INT_32:
                 return "Int32";
-            case self::TYPE_NUMBER_INT_64;
+            case self::TYPE_NUMBER_INT_64:
                 return "Int64";
             default:
                 break;
