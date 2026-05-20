@@ -65,21 +65,27 @@ APP_URL_PREFIX: /{{ APP_URL_PREFIX }}
 # NOTE: disable this settings in production mode!
 #
 # In production mode:
-#  - enable action output           - default false
-#  - enable twig strict variables   - default true
-#  - enable twig debug extension    - default false
-#  - check duplicate helpers        - default false
+#  - enable action output                   - default false
+#  - enable twig strict variables           - default true
+#  - enable twig debug extension            - default false
+#  - check duplicate helpers                - default false
+#  - enable asset tag helper href version   - default false (append version argument in asset tag href url (example: assets/state-open.svg?v=123))
+#  - asset tag helper href version string   - default empty (if empty and `asset tag helper href version` is enabled, then generates a random value)
 #
 # In development mode:
-#  - enable action output           - default true
-#  - enable twig strict variables   - default true
-#  - enable twig debug extension    - default true
-#  - check duplicate helpers        - default true
+#  - enable action output                   - default true
+#  - enable twig strict variables           - default true
+#  - enable twig debug extension            - default true
+#  - check duplicate helpers                - default true
+#  - enable asset tag helper href version   - default false (append version argument in asset tag href url (example: assets/state-open.svg?v=123))
+#  - asset tag helper href version string   - default empty (if empty and `asset tag helper href version` is enabled, then generates a random value)
 #
 #FLY_CUBE_PHP_ENABLE_ACTION_OUTPUT: false
 #FLY_CUBE_PHP_ENABLE_TWIG_STRICT_VARIABLES: false
 #FLY_CUBE_PHP_ENABLE_TWIG_DEBUG_EXTENSION: true
 #FLY_CUBE_PHP_CHECK_DUPLICATE_HELPERS: false
+#FLY_CUBE_PHP_ENABLE_ASSET_TAG_HLP_HREF_VERSION: false
+#FLY_CUBE_PHP_ASSET_TAG_HLP_HREF_VERSION_STR: ""
 
 #
 # --- plugins system settings ---

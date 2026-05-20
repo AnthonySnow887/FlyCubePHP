@@ -10,13 +10,23 @@ namespace FlyCubePHP\Core\Controllers\Helpers;
 
 include_once 'BaseControllerHelper.php';
 
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Routes\RouteCollector;
 use FlyCubePHP\Core\AssetPipeline\AssetPipeline;
 
 class AssetUrlHelper extends BaseControllerHelper
 {
+    private $_enableTagHrefVersion = false;
+    private $_tagHrefVersionStr = "";
+
     function __construct() {
+        // check is enable href version argument
+        $this->_enableTagHrefVersion = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSET_TAG_HLP_HREF_VERSION, false));
+        $this->_tagHrefVersionStr = \FlyCubePHP\configValue(Config::TAG_ASSET_TAG_HLP_HREF_VERSION_STR, "");
+        if ($this->_enableTagHrefVersion
+            && empty($this->_tagHrefVersionStr))
+            $this->_tagHrefVersionStr = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey(16);
     }
 
     /**
@@ -72,7 +82,7 @@ class AssetUrlHelper extends BaseControllerHelper
         if (empty($fPath))
             throw new \RuntimeException("[asset_path] Not found asset in asset pipeline (name: $name)!");
 
-        return $fPath;
+        return $this->makeAssetPathWithParams($fPath, $this->pathArgs());
     }
 
     /**
@@ -131,13 +141,13 @@ class AssetUrlHelper extends BaseControllerHelper
 
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "$host/assets/$name";
+            return $this->makeAssetPathWithParams("$host/assets/$name", $this->pathArgs());
 
         $fPath = $this->prepareAssetPath($name, $options);
         if (empty($fPath))
             throw new \RuntimeException("[asset_url] Not found asset in asset pipeline (name: $name)!");
 
-        return $host.$fPath;
+        return $this->makeAssetPathWithParams($host.$fPath, $this->pathArgs());
     }
 
     /**
@@ -152,22 +162,22 @@ class AssetUrlHelper extends BaseControllerHelper
      *
      * ==== Examples in Twig notations
      *
-     *   image_path("test")
+     *   javascript_path("test")
      *   * => "/assets/test.js"
      *
-     *   image_path("test/test.js")
+     *   javascript_path("test/test.js")
      *   * => "/assets/test.js"
      *
-     *   image_path("test", {"skip_asset_pipeline": true})
+     *   javascript_path("test", {"skip_asset_pipeline": true})
      *   * => "/assets/test"
      *
-     *   image_path("test/test.js", {"skip_asset_pipeline": true})
+     *   javascript_path("test/test.js", {"skip_asset_pipeline": true})
      *   * => "/assets/test/test.js"
      *
-     *   image_path("/test/test.js")
+     *   javascript_path("/test/test.js")
      *   * => "/test/test.js"
      *
-     *   image_path("http://www.example.com/test/test.js")
+     *   javascript_path("http://www.example.com/test/test.js")
      *   * => "http://www.example.com/test/test.js"
      *
      */
@@ -180,14 +190,14 @@ class AssetUrlHelper extends BaseControllerHelper
             return $name;
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "/assets/$name";
+            return $this->makeAssetPathWithParams("/assets/$name", $this->pathArgs());
 
         $name = CoreHelper::fileName($name, true);
         $fPath = AssetPipeline::instance()->javascriptFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[javascript_path] Not found javascript file in asset pipeline (name: $name)!");
 
-        return $fPath;
+        return $this->makeAssetPathWithParams($fPath, $this->pathArgs());
     }
 
     /**
@@ -242,14 +252,14 @@ class AssetUrlHelper extends BaseControllerHelper
 
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "$host/assets/$name";
+            return $this->makeAssetPathWithParams("$host/assets/$name", $this->pathArgs());
 
         $name = CoreHelper::fileName($name, true);
         $fPath = AssetPipeline::instance()->javascriptFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[javascript_url] Not found javascript file in asset pipeline (name: $name)!");
 
-        return $host.$fPath;
+        return $this->makeAssetPathWithParams($host.$fPath, $this->pathArgs());
     }
 
     /**
@@ -292,14 +302,14 @@ class AssetUrlHelper extends BaseControllerHelper
             return $name;
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "/assets/$name";
+            return $this->makeAssetPathWithParams("/assets/$name", $this->pathArgs());
 
         $name = CoreHelper::fileName($name, true);
         $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[stylesheet_path] Not found stylesheet file in asset pipeline (name: $name)!");
 
-        return $fPath;
+        return $this->makeAssetPathWithParams($fPath, $this->pathArgs());
     }
 
     /**
@@ -354,14 +364,14 @@ class AssetUrlHelper extends BaseControllerHelper
 
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "$host/assets/$name";
+            return $this->makeAssetPathWithParams("$host/assets/$name", $this->pathArgs());
 
         $name = CoreHelper::fileName($name, true);
         $fPath = AssetPipeline::instance()->stylesheetFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[stylesheet_url] Not found stylesheet file in asset pipeline (name: $name)!");
 
-        return $host.$fPath;
+        return $this->makeAssetPathWithParams($host.$fPath, $this->pathArgs());
     }
 
     /**
@@ -401,13 +411,13 @@ class AssetUrlHelper extends BaseControllerHelper
             return $name;
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "/assets/$name";
+            return $this->makeAssetPathWithParams("/assets/$name", $this->pathArgs());
 
         $fPath = AssetPipeline::instance()->imageFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[image_path] Not found image in asset pipeline (name: $name)!");
 
-        return $fPath;
+        return $this->makeAssetPathWithParams($fPath, $this->pathArgs());
     }
 
     /**
@@ -459,13 +469,13 @@ class AssetUrlHelper extends BaseControllerHelper
 
         if (isset($options["skip_asset_pipeline"])
             && $options["skip_asset_pipeline"] === true)
-            return "$host/assets/$name";
+            return $this->makeAssetPathWithParams("$host/assets/$name", $this->pathArgs());
 
         $fPath = AssetPipeline::instance()->imageFilePath($name);
         if (empty($fPath))
             throw new \RuntimeException("[image_url] Not found image in asset pipeline (name: $name)!");
 
-        return $host.$fPath;
+        return $this->makeAssetPathWithParams($host.$fPath, $this->pathArgs());
     }
 
     /**
@@ -538,5 +548,35 @@ class AssetUrlHelper extends BaseControllerHelper
             }
         }
         return $fPath;
+    }
+
+    private function makeAssetPathWithParams(string $url, array $params): string {
+        if (!preg_match('/\:([a-zA-Z0-9_]*)/i', $url)) {
+            if (empty($params))
+                return $url;
+            $sep = '?';
+            if (preg_match('/\?(.*)/i', $url))
+                $sep = '&';
+            $url .= $sep . http_build_query($params);
+            return $url;
+        }
+        $tmpParams = [];
+        foreach ($params as $key => $val) {
+            $count = 0;
+            $url = str_replace(":$key", $val, $url, $count);
+            if ($count == 0)
+                $tmpParams[$key] = $val;
+        }
+        if (empty($tmpParams))
+            return $url;
+        return $this->makeAssetPathWithParams($url, $tmpParams);
+    }
+
+    private function pathArgs(): array {
+        $args = [];
+        if ($this->_enableTagHrefVersion)
+            $args["v"] = $this->_tagHrefVersionStr;
+
+        return $args;
     }
 }

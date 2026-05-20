@@ -13,6 +13,7 @@ include_once 'Extensions/TagBuilder.php';
 include_once __DIR__.'/../../../HelperClasses/MimeTypes.php';
 
 use FlyCubePHP\ComponentsCore\ComponentsManager;
+use FlyCubePHP\Core\Config\Config;
 use FlyCubePHP\Core\Routes\RouteType;
 use FlyCubePHP\HelperClasses\CoreHelper;
 use FlyCubePHP\Core\Routes\RouteCollector;
@@ -23,7 +24,17 @@ class AssetTagHelper extends BaseControllerHelper
 {
     use Extensions\TagBuilder;
 
+    private $_enableTagHrefVersion = false;
+    private $_tagHrefVersionStr = "";
+
     function __construct() {
+        // check is enable href version argument
+        $this->_enableTagHrefVersion = CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSET_TAG_HLP_HREF_VERSION, false));
+        $this->_tagHrefVersionStr = \FlyCubePHP\configValue(Config::TAG_ASSET_TAG_HLP_HREF_VERSION_STR, "");
+        if ($this->_enableTagHrefVersion
+            && empty($this->_tagHrefVersionStr))
+            $this->_tagHrefVersionStr = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey(16);
+
         $this->appendSafeFunction("stylesheet_link_tag");
         $this->appendSafeFunction("javascript_include_tag");
         $this->appendSafeFunction("auto_discovery_link_tag");
@@ -76,13 +87,13 @@ class AssetTagHelper extends BaseControllerHelper
         if (is_array($tmpLst)) {
             $tmpData = "";
             foreach ($tmpLst as $key => $value) {
-                $tmpOptions = [ "rel" => "stylesheet", "href" => $value ];
+                $tmpOptions = [ "rel" => "stylesheet", "href" => $this->makeHrefWithParams($value, $this->hrefArgs()) ];
                 $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
                 $tmpData .= $this->makeTag('link', '', $tmpOptions) . "\r\n";
             }
             return $tmpData;
         }
-        $tmpOptions = [ "rel" => "stylesheet", "href" => $tmpLst ];
+        $tmpOptions = [ "rel" => "stylesheet", "href" => $this->makeHrefWithParams($tmpLst, $this->hrefArgs()) ];
         $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
         return $this->makeTag('link', '', $tmpOptions) . "\r\n";
     }
@@ -103,13 +114,13 @@ class AssetTagHelper extends BaseControllerHelper
         if (is_array($tmpLst)) {
             $tmpData = "";
             foreach ($tmpLst as $key => $value) {
-                $tmpOptions = [ "src" => $value ];
+                $tmpOptions = [ "src" => $this->makeHrefWithParams($value, $this->hrefArgs()) ];
                 $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
                 $tmpData .= $this->makeTag('script', '', $tmpOptions, true) . "\r\n";
             }
             return $tmpData;
         }
-        $tmpOptions = [ "src" => $tmpLst ];
+        $tmpOptions = [ "src" => $this->makeHrefWithParams($tmpLst, $this->hrefArgs()) ];
         $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
         return $this->makeTag('script', '', $tmpOptions, true) . "\r\n";
     }
@@ -245,7 +256,7 @@ class AssetTagHelper extends BaseControllerHelper
         if (isset($options['type']))
             $attrType = strval($options['type']);
 
-        $tmpOptions = [ "href" => $sPath, "rel" => $attrRel, "type" => $attrType ];
+        $tmpOptions = [ "href" => $this->makeHrefWithParams($sPath, $this->hrefArgs()), "rel" => $attrRel, "type" => $attrType ];
         $tmpOptions = $this->prepareTagAttributes($tmpOptions, $options);
         return $this->makeTag('link', '', $tmpOptions);
     }
@@ -306,7 +317,7 @@ class AssetTagHelper extends BaseControllerHelper
 
         $props = [
             "rel" => "preload",
-            "href" => $sPath,
+            "href" => $this->makeHrefWithParams($sPath, $this->hrefArgs()),
             "type" => $attrType
         ];
         if (!empty($attrAs))
@@ -359,9 +370,9 @@ class AssetTagHelper extends BaseControllerHelper
             throw new \RuntimeException("[image_tag] Not found image in asset pipeline (name: $name)!");
 
         if (empty($options))
-            return $this->makeTag("img", "", [ "src" => $fPath ]);
+            return $this->makeTag("img", "", [ "src" => $this->makeHrefWithParams($fPath, $this->hrefArgs()) ]);
 
-        $props = [ "src" => $fPath ];
+        $props = [ "src" => $this->makeHrefWithParams($fPath, $this->hrefArgs()) ];
 
         if (array_key_exists("class", $options)) {
             $val = strval($options["class"]);
@@ -761,5 +772,13 @@ class AssetTagHelper extends BaseControllerHelper
         if (empty($tmpParams))
             return $url;
         return $this->makeHrefWithParams($url, $tmpParams);
+    }
+
+    private function hrefArgs(): array {
+        $args = [];
+        if ($this->_enableTagHrefVersion)
+            $args["v"] = $this->_tagHrefVersionStr;
+
+        return $args;
     }
 }
