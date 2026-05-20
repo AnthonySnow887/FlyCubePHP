@@ -144,6 +144,16 @@ class SassCompiler extends BaseStylesheetCompiler
                 if (empty($fPath))
                     throw $compiler->error('%s Not found needed asset file: %s!', '[asset_path]', $path);
 
+                // check is enable href version argument
+                if (CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSET_TAG_HLP_HREF_VERSION, false))) {
+                    $tagHrefVersionStr = \FlyCubePHP\configValue(Config::TAG_ASSET_TAG_HLP_HREF_VERSION_STR, "");
+                    if (empty($tagHrefVersionStr))
+                        $tagHrefVersionStr = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey(16);
+
+                    $separator = (parse_url($fPath, PHP_URL_QUERY) !== null) ? '&' : '?';
+                    $fPath = $fPath . $separator . http_build_query([ 'v' => $tagHrefVersionStr ]);
+                }
+
                 // NOTE: use for convert from php value to sass value
                 // return \ScssPhp\ScssPhp\ValueConverter::fromPhp($fPath);
                 return [\ScssPhp\ScssPhp\Type::T_STRING, '"', [$fPath]];
@@ -169,6 +179,16 @@ class SassCompiler extends BaseStylesheetCompiler
                 }
                 if (empty($fPath))
                     throw $compiler->error('%s Not found needed asset file: %s!', '[asset_url]', $path);
+
+                // check is enable href version argument
+                if (CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSET_TAG_HLP_HREF_VERSION, false))) {
+                    $tagHrefVersionStr = \FlyCubePHP\configValue(Config::TAG_ASSET_TAG_HLP_HREF_VERSION_STR, "");
+                    if (empty($tagHrefVersionStr))
+                        $tagHrefVersionStr = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey(16);
+
+                    $separator = (parse_url($fPath, PHP_URL_QUERY) !== null) ? '&' : '?';
+                    $fPath = $fPath . $separator . http_build_query([ 'v' => $tagHrefVersionStr ]);
+                }
 
                 // NOTE: use for convert from php value to sass value
                 // return \ScssPhp\ScssPhp\ValueConverter::fromPhp("url($fPath)");
@@ -197,6 +217,16 @@ class SassCompiler extends BaseStylesheetCompiler
                 }
                 if (empty($fPath))
                     throw $compiler->error('%s Not found needed asset file: %s!', '[asset_name_url]', $path);
+
+                // check is enable href version argument
+                if (CoreHelper::toBool(\FlyCubePHP\configValue(Config::TAG_ENABLE_ASSET_TAG_HLP_HREF_VERSION, false))) {
+                    $tagHrefVersionStr = \FlyCubePHP\configValue(Config::TAG_ASSET_TAG_HLP_HREF_VERSION_STR, "");
+                    if (empty($tagHrefVersionStr))
+                        $tagHrefVersionStr = \FlyCubePHP\Core\Protection\RequestForgeryProtection::makeSecretKey(16);
+
+                    $separator = (parse_url($fPath, PHP_URL_QUERY) !== null) ? '&' : '?';
+                    $fPath = $fPath . $separator . http_build_query([ 'v' => $tagHrefVersionStr ]);
+                }
 
                 // NOTE: use for convert from php value to sass value
                 // return \ScssPhp\ScssPhp\ValueConverter::fromPhp("url($fPath)");
