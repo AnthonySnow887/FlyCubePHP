@@ -153,8 +153,12 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
         try {
             include_once $path;
             $this->_defaultHelpers[] = new $name();
-        } catch (\Exception $e) {
-            // nothing...
+        } catch (\Throwable $e) {
+            error_log(sprintf(
+                '[FlyCubePHP][ControllerHelperTwigExt] Failed to load helper "%s": %s!',
+                $name,
+                $e->getMessage()
+            ));
         }
     }
 
@@ -186,12 +190,21 @@ class ControllerHelperTwigExt extends \Twig\Extension\AbstractExtension
                             $this->_defaultHelpers[] = $tmpClass;
                         else
                             unset($tmpClass);
-                    } catch (\Exception $e) {
-                        // nothing...
+                    } catch (\Throwable $e) {
+                        error_log(sprintf(
+                            '[FlyCubePHP][ControllerHelperTwigExt] Failed to instantiate controller helper "%s" from "%s": %s!',
+                            $cName,
+                            basename($item),
+                            $e->getMessage()
+                        ));
                     }
                 }
-            } catch (\Exception $e) {
-                // nothing...
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][ControllerHelperTwigExt] Failed to include controller helper "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }

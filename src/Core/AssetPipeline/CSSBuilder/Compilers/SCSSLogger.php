@@ -35,6 +35,7 @@ class SCSSLogger implements LoggerInterface
             foreach (preg_split("/((\r?\n)|(\r\n?))/", $message) as $line)
                 Logger::warning("[SCSS]$deprecationMsg $line");
         } catch (Error $err) {
+            error_log("[FlyCubePHP][SCSSLogger] Failed to log warning: " . $err->getMessage() . "!");
         }
     }
 
@@ -51,6 +52,7 @@ class SCSSLogger implements LoggerInterface
             foreach (preg_split("/((\r?\n)|(\r\n?))/", $message) as $line)
                 Logger::debug("[SCSS] $line");
         } catch (Error $err) {
+            error_log("[FlyCubePHP][SCSSLogger] Failed to log debug: " . $err->getMessage() . "!");
         }
     }
 

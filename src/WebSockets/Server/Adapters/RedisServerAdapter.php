@@ -110,7 +110,8 @@ class RedisServerAdapter extends BaseServerAdapter
     {
         try {
             Logger::log($level, "[". self::class ."] $message", $context);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            error_log(sprintf('[FlyCubePHP][RedisServerAdapter][%s] Logging failed: %s!', self::class, $e->getMessage()));
         }
     }
 }

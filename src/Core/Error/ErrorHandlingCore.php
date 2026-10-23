@@ -243,9 +243,12 @@ class ErrorHandlingCore
                     continue;
                 try {
                     include_once $item;
-                } catch (\Exception $e) {
-//                    error_log("MigrationsCore: $e->getMessage()!\n");
-//                    echo 'Выброшено исключение: ',  $e->getMessage(), "\n";
+                } catch (\Throwable $e) {
+                    error_log(sprintf(
+                        '[FlyCubePHP][ErrorHandlingCore] Failed to include "%s": %s!',
+                        basename($item),
+                        $e->getMessage()
+                    ));
                 }
             }
         }

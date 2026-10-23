@@ -88,9 +88,12 @@ class DatabaseFactory
                 continue;
             try {
                 include_once $item;
-            } catch (Exception $e) {
-//                error_log("DatabaseFactory: $e->getMessage()!\n");
-//                echo 'Выброшено исключение: ',  $e->getMessage(), "\n";
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][DatabaseFactory] Failed to include "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }

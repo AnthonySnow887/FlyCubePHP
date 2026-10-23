@@ -173,12 +173,21 @@ class JSBuilder
                             || !method_exists(strval($cName), 'fileExtension'))
                             continue;
                         $this->appendCompiler(strval($cName));
-                    } catch (\Exception $e) {
-                        // nothing...
+                    } catch (\Throwable $e) {
+                        error_log(sprintf(
+                            '[FlyCubePHP][JSBuilder] Failed to register JS compiler "%s" from "%s": %s!',
+                            $cName,
+                            basename($item),
+                            $e->getMessage()
+                        ));
                     }
                 }
-            } catch (\Exception $e) {
-                // nothing...
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][JSBuilder] Failed to include JS builder "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }

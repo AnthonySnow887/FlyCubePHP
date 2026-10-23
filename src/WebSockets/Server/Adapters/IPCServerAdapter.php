@@ -231,7 +231,8 @@ class IPCServerAdapter extends BaseServerAdapter
     protected function log($level, $message, array $context = array()) {
         try {
             Logger::log($level, "[". self::class ."] $message", $context);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            error_log(sprintf('[FlyCubePHP][IPCServerAdapter][%s] Logging failed: %s!', self::class, $e->getMessage()));
         }
     }
 }

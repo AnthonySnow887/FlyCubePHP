@@ -227,12 +227,22 @@ class WSServer
                             $channels[$tmpName] = $cName;
                         }
                         unset($tmpClass);
-                    } catch (\Exception $e) {
-                        // nothing...
+                    } catch (\Throwable $e) {
+                        error_log(sprintf(
+                            '[FlyCubePHP][WSServer][%s] Failed to instantiate class "%s": %s',
+                            self::class,
+                            $cName,
+                            $e->getMessage()
+                        ));
                     }
                 }
-            } catch (\Exception $e) {
-                // nothing...
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][WSServer][%s] Failed to include channel "%s": %s',
+                    self::class,
+                    $channel,
+                    $e->getMessage()
+                ));
             }
         }
         return $channels;

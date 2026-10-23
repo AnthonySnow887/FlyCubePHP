@@ -168,12 +168,21 @@ class CSSBuilder
                             || !method_exists(strval($cName), 'fileExtension'))
                             continue;
                         $this->appendCompiler(strval($cName));
-                    } catch (\Exception $e) {
-                        // nothing...
+                    } catch (\Throwable $e) {
+                        error_log(sprintf(
+                            '[FlyCubePHP][CSSBuilder] Failed to register CSS compiler "%s" from "%s": %s!',
+                            $cName,
+                            basename($item),
+                            $e->getMessage()
+                        ));
                     }
                 }
-            } catch (\Exception $e) {
-                // nothing...
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][CSSBuilder] Failed to include CSS builder "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }

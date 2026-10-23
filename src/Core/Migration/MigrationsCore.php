@@ -121,9 +121,12 @@ class MigrationsCore
                 continue;
             try {
                 include_once $item;
-            } catch (\Exception $e) {
-//                    error_log("MigrationsCore: $e->getMessage()!\n");
-//                    echo 'Выброшено исключение: ',  $e->getMessage(), "\n";
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][MigrationsCore] Failed to include "%s": %s!',
+                    $item,
+                    $e->getMessage()
+                ));
             }
         }
     }
@@ -961,9 +964,12 @@ EOT;
                 continue;
             try {
                 include_once $item;
-            } catch (\Exception $e) {
-//                    error_log("MigrationsCore: $e->getMessage()!\n");
-//                    echo 'Выброшено исключение: ',  $e->getMessage(), "\n";
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][MigrationsCore] Failed to include model "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }
@@ -994,9 +1000,12 @@ EOT;
                         $this->_migrations[$tmpMigration->version()] = $tmpMigration;
                     }
                 }
-            } catch (\Exception $e) {
-//                    error_log("MigrationsCore: $e->getMessage()!\n");
-//                    echo 'Выброшено исключение: ',  $e->getMessage(), "\n";
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    '[FlyCubePHP][MigrationsCore] Failed to load migration "%s": %s!',
+                    basename($item),
+                    $e->getMessage()
+                ));
             }
         }
     }

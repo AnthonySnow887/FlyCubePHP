@@ -957,7 +957,8 @@ class WSWorker
     {
         try {
             Logger::log($level, "[". self::class ."][". $this->_pid ."] $message", $context);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            error_log(sprintf('[FlyCubePHP][WSWorker][%s] Logging failed: %s!', self::class, $e->getMessage()));
         }
     }
 
